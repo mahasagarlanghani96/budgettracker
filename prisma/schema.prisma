@@ -1,0 +1,591 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ─── USERS & AUTH ────────────────────────────────────────────────
+
+model User {
+  id            String    @id @default(cuid())
+  name          String
+  email         String    @unique
+  passwordHash  String
+  currency      String    @default("PKR")
+  timezone      String    @default("Asia/Karachi")
+  isActive      Boolean   @default(true)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  accounts          Account[]
+  transactions      Transaction[]
+  categories        Category[]
+  people            Person[]
+  loans             Loan[]
+  committees        Committee[]
+  committeeEntries  CommitteeEntry[]
+  savingsGoals      SavingsGoal[]
+  investments       Investment[]
+  plots             Plot[]
+  financialTargets  FinancialTarget[]
+  sharedByMe        SharedAccess[]    @relation("SharedBy")
+  sharedWithMe      SharedAccess[]    @relation("SharedWith")
+
+  @@map("users")
+}
+
+// ─── SHARED ACCESS / PERMISSIONS ─────────────────────────────────
+
+enum AccessLevel {
+  VIEW
+  EDIT
+  ADMIN
+}
+
+model SharedAccess {
+  id           String      @id @default(cuid())
+  sharedById   String
+  sharedWithId String
+  resourceType String      // 'account', 'transaction', 'committee', etc.
+  resourceId   String
+  accessLevel  AccessLevel @default(VIEW)
+  createdAt    DateTime    @default(now())
+
+  sharedBy   User @relation("SharedBy", fields: [sharedById], references: [id])
+  sharedWith User @relation("SharedWith", fields: [sharedWithId], references: [id])
+
+  @@unique([sharedById, sharedWithId, resourceType, resourceId])
+  @@index([sharedWithId, resourceType])
+  @@index([resourceType, resourceId])
+  @@map("shared_access")
+}
+
+// ─── ACCOUNTS / WALLETS ──────────────────────────────────────────
+
+enum AccountType {
+  CASH
+  BANK
+  WALLET
+  CREDIT_CARD
+  SAVINGS_ACCOUNT
+  OTHER
+}
+
+model Account {
+  id              String      @id @default(cuid())
+  userId          String
+  name            String
+  accountType     AccountType
+  openingBalance  Decimal     @default(0) @db.Decimal(18, 2)
+  openingDate     DateTime      @default(now())
+  currency        String      @default("PKR")
+  isShared        Boolean     @default(false)
+  isActive        Boolean     @default(true)
+  notes           String?
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+
+  user                User              @relation(fields: [userId], references: [id])
+  outgoingTransactions Transaction[]    @relation("SourceAccount")
+  incomingTransactions Transaction[]    @relation("DestinationAccount")
+  loans               Loan[]
+  loanRepayments      LoanRepayment[]
+  committeeContributions CommitteeContribution[]
+  committeeReceivings CommitteeReceiving[]
+  savingsTransactions SavingsTransaction[]
+  investments         Investment[]
+  plotPayments        PlotPayment[]
+
+  @@index([userId])
+  @@map("accounts")
+}
+
+// ─── CATEGORIES ──────────────────────────────────────────────────
+
+enum CategoryGroup {
+  INCOME
+  EXPENSE
+}
+
+model Category {
+  id        String        @id @default(cuid())
+  userId    String?       // null = system default
+  name      String
+  group     CategoryGroup
+  icon      String?
+  isSystem  Boolean       @default(false)
+  isActive  Boolean       @default(true)
+  createdAt DateTime      @default(now())
+
+  user         User?         @relation(fields: [userId], references: [id])
+  transactions Transaction[]
+
+  @@unique([userId, name, group])
+  @@index([userId, group])
+  @@map("categories")
+}
+
+// ─── PEOPLE / ENTITIES ───────────────────────────────────────────
+
+model Person {
+  id           String   @id @default(cuid())
+  userId       String
+  name         String
+  phone        String?
+  email        String?
+  relationship String?  // friend, family, customer, vendor, etc.
+  linkedUserId String?  // optional link to a registered user
+  notes        String?
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  user         User          @relation(fields: [userId], references: [id])
+  transactions Transaction[]
+  loans        Loan[]
+  committeeMembers CommitteeMember[]
+
+  @@index([userId])
+  @@map("people")
+}
+
+// ─── TRANSACTIONS ────────────────────────────────────────────────
+
+enum TransactionType {
+  INCOME
+  EXPENSE
+  TRANSFER
+  LOAN_GIVEN
+  LOAN_REPAYMENT_RECEIVED
+  LOAN_TAKEN
+  LOAN_REPAYMENT_MADE
+  COMMITTEE_CONTRIBUTION
+  COMMITTEE_RECEIVING
+  SAVINGS_DEPOSIT
+  SAVINGS_WITHDRAWAL
+  INVESTMENT
+  INVESTMENT_RETURN
+  PLOT_PAYMENT
+  OTHER
+}
+
+model Transaction {
+  id                String          @id @default(cuid())
+  userId            String
+  type              TransactionType
+  amount            Decimal         @db.Decimal(18, 2)
+  currency          String          @default("PKR")
+  exchangeRate      Decimal?        @db.Decimal(18, 6)
+  sourceAccountId   String?
+  destAccountId     String?
+  categoryId        String?
+  personId          String?
+  description       String?
+  notes             String?
+  transactionDate   DateTime        // actual date of transaction
+  transactionTime   String?         // optional time "HH:mm"
+  taxAmount         Decimal?        @db.Decimal(18, 2)
+  taxPercent        Decimal?        @db.Decimal(5, 2)
+  expectedAmount    Decimal?        @db.Decimal(18, 2)
+  isPrivate         Boolean         @default(true)
+  relatedTransId    String?         // link to related transaction
+  isDeleted         Boolean         @default(false)
+  deletedAt         DateTime?
+  createdAt         DateTime        @default(now())
+  updatedAt         DateTime        @updatedAt
+
+  user           User         @relation(fields: [userId], references: [id])
+  sourceAccount  Account?     @relation("SourceAccount", fields: [sourceAccountId], references: [id])
+  destAccount    Account?     @relation("DestinationAccount", fields: [destAccountId], references: [id])
+  category       Category?    @relation(fields: [categoryId], references: [id])
+  person         Person?      @relation(fields: [personId], references: [id])
+  relatedTrans   Transaction? @relation("RelatedTransaction", fields: [relatedTransId], references: [id])
+  relatedBy      Transaction[] @relation("RelatedTransaction")
+  attachments    Attachment[]
+
+  // Specific module links
+  loanId             String?
+  loan               Loan?             @relation(fields: [loanId], references: [id])
+  loanRepaymentId    String?
+  loanRepayment      LoanRepayment?    @relation(fields: [loanRepaymentId], references: [id])
+  committeeContribId String?
+  committeeContrib   CommitteeContribution? @relation(fields: [committeeContribId], references: [id])
+  committeeRecvId    String?
+  committeeRecv      CommitteeReceiving? @relation(fields: [committeeRecvId], references: [id])
+  savingsTransId     String?
+  savingsTrans       SavingsTransaction? @relation(fields: [savingsTransId], references: [id])
+  investmentId       String?
+  investment         Investment?       @relation(fields: [investmentId], references: [id])
+  plotPaymentId      String?
+  plotPayment        PlotPayment?      @relation(fields: [plotPaymentId], references: [id])
+
+  @@index([userId, transactionDate])
+  @@index([userId, type])
+  @@index([sourceAccountId])
+  @@index([destAccountId])
+  @@index([userId, isDeleted])
+  @@map("transactions")
+}
+
+// ─── ATTACHMENTS ─────────────────────────────────────────────────
+
+model Attachment {
+  id            String   @id @default(cuid())
+  transactionId String
+  fileName      String
+  filePath      String
+  fileSize      Int
+  mimeType      String
+  createdAt     DateTime @default(now())
+
+  transaction Transaction @relation(fields: [transactionId], references: [id])
+
+  @@index([transactionId])
+  @@map("attachments")
+}
+
+// ─── LOANS / RECEIVABLES ─────────────────────────────────────────
+
+enum LoanDirection {
+  GIVEN       // money given to someone (receivable)
+  TAKEN       // money taken from someone (payable)
+}
+
+enum LoanStatus {
+  ACTIVE
+  SETTLED
+  WRITTEN_OFF
+  CANCELLED
+}
+
+model Loan {
+  id              String        @id @default(cuid())
+  userId          String
+  personId        String
+  direction       LoanDirection
+  amount          Decimal       @db.Decimal(18, 2)
+  remainingAmount Decimal       @db.Decimal(18, 2) // decremented on each repayment
+  accountId       String
+  status          LoanStatus    @default(ACTIVE)
+  transactionDate DateTime
+  dueDate         DateTime?
+  interestRate    Decimal?      @db.Decimal(5, 2)
+  notes           String?
+  isPrivate       Boolean       @default(true)
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+
+  user       User            @relation(fields: [userId], references: [id])
+  person     Person          @relation(fields: [personId], references: [id])
+  account    Account         @relation(fields: [accountId], references: [id])
+  repayments LoanRepayment[]
+  transactions Transaction[]
+
+  @@index([userId, personId])
+  @@index([userId, status])
+  @@map("loans")
+}
+
+model LoanRepayment {
+  id              String   @id @default(cuid())
+  loanId          String?  // null = general person-level repayment
+  personId        String   // always set — the person paying/receiving
+  userId          String
+  amount          Decimal  @db.Decimal(18, 2)
+  accountId       String
+  transactionDate DateTime
+  notes           String?
+  createdAt       DateTime @default(now())
+
+  loan         Loan?         @relation(fields: [loanId], references: [id])
+  account      Account       @relation(fields: [accountId], references: [id])
+  transactions Transaction[]
+
+  @@index([loanId])
+  @@index([personId])
+  @@index([userId])
+  @@map("loan_repayments")
+}
+
+// ─── COMMITTEES ──────────────────────────────────────────────────
+
+enum CommitteeType {
+  NORMAL
+  WAIYK
+}
+
+enum CommitteeStatus {
+  ACTIVE
+  COMPLETED
+  CANCELLED
+}
+
+model Committee {
+  id                  String          @id @default(cuid())
+  userId              String
+  name                String
+  type                CommitteeType
+  status              CommitteeStatus @default(ACTIVE)
+  startDate           DateTime
+  endDate             DateTime?
+  memberCount         Int
+  monthlyContribution Decimal         @db.Decimal(18, 2)
+  totalAmount         Decimal?        @db.Decimal(18, 2) // for Waiyk: opening amount
+  notes               String?
+  isPrivate           Boolean         @default(true)
+  createdAt           DateTime        @default(now())
+  updatedAt           DateTime        @updatedAt
+
+  user          User                  @relation(fields: [userId], references: [id])
+  members       CommitteeMember[]
+  entries       CommitteeEntry[]
+  rounds        CommitteeRound[]
+  contributions CommitteeContribution[]
+  receivings    CommitteeReceiving[]
+
+  @@index([userId])
+  @@map("committees")
+}
+
+model CommitteeMember {
+  id           String  @id @default(cuid())
+  committeeId  String
+  personId     String?  // null if this is the user themselves
+  name         String
+  slots        Int     @default(1)
+  isUser       Boolean @default(false)
+  notes        String?
+
+  committee Committee @relation(fields: [committeeId], references: [id], onDelete: Cascade)
+  person    Person?   @relation(fields: [personId], references: [id])
+
+  @@index([committeeId])
+  @@map("committee_members")
+}
+
+// User's entries/slots in a committee
+model CommitteeEntry {
+  id           String  @id @default(cuid())
+  committeeId  String
+  userId       String
+  slotNumber   Int
+  isTaken      Boolean @default(false) // has received payout
+  takenInRound Int?    // which round was payout received
+  notes        String?
+
+  committee     Committee              @relation(fields: [committeeId], references: [id], onDelete: Cascade)
+  user          User                   @relation(fields: [userId], references: [id])
+  contributions CommitteeContribution[]
+  receivings    CommitteeReceiving[]
+
+  @@unique([committeeId, userId, slotNumber])
+  @@index([committeeId])
+  @@map("committee_entries")
+}
+
+// Monthly round (especially important for Waiyk)
+model CommitteeRound {
+  id              String   @id @default(cuid())
+  committeeId     String
+  roundNumber     Int
+  roundDate       DateTime
+  totalAmount     Decimal? @db.Decimal(18, 2) // committee pot for this round
+  expectedAmount  Decimal? @db.Decimal(18, 2)
+  winningBid      Decimal? @db.Decimal(18, 2) // Waiyk: winning bid amount
+  winningMember   String?  // name of winner
+  payoutAmount    Decimal? @db.Decimal(18, 2)
+  profitAmount    Decimal? @db.Decimal(18, 2) // Waiyk: total - winning bid
+  profitPerMember Decimal? @db.Decimal(18, 2) // Waiyk: profit / member count
+  memberCount     Int?     // active members in this round
+  notes           String?
+  createdAt       DateTime @default(now())
+
+  committee     Committee              @relation(fields: [committeeId], references: [id], onDelete: Cascade)
+  contributions CommitteeContribution[]
+  receivings    CommitteeReceiving[]
+
+  @@unique([committeeId, roundNumber])
+  @@index([committeeId])
+  @@map("committee_rounds")
+}
+
+model CommitteeContribution {
+  id               String   @id @default(cuid())
+  committeeId      String
+  entryId          String
+  roundId          String?
+  accountId        String
+  expectedAmount   Decimal  @db.Decimal(18, 2)
+  actualAmount     Decimal  @db.Decimal(18, 2)
+  profitDeduction  Decimal  @default(0) @db.Decimal(18, 2) // Waiyk profit share
+  status           String   @default("PENDING") // PAID, PENDING, SKIPPED
+  transactionDate  DateTime
+  notes            String?
+  createdAt        DateTime @default(now())
+
+  committee    Committee       @relation(fields: [committeeId], references: [id], onDelete: Cascade)
+  entry        CommitteeEntry  @relation(fields: [entryId], references: [id])
+  round        CommitteeRound? @relation(fields: [roundId], references: [id])
+  account      Account         @relation(fields: [accountId], references: [id])
+  transactions Transaction[]
+
+  @@index([committeeId])
+  @@index([entryId])
+  @@map("committee_contributions")
+}
+
+model CommitteeReceiving {
+  id              String   @id @default(cuid())
+  committeeId     String
+  entryId         String
+  roundId         String?
+  accountId       String
+  expectedAmount  Decimal? @db.Decimal(18, 2)
+  actualAmount    Decimal  @db.Decimal(18, 2)
+  transactionDate DateTime
+  notes           String?
+  createdAt       DateTime @default(now())
+
+  committee    Committee       @relation(fields: [committeeId], references: [id], onDelete: Cascade)
+  entry        CommitteeEntry  @relation(fields: [entryId], references: [id])
+  round        CommitteeRound? @relation(fields: [roundId], references: [id])
+  account      Account         @relation(fields: [accountId], references: [id])
+  transactions Transaction[]
+
+  @@index([committeeId])
+  @@index([entryId])
+  @@map("committee_receivings")
+}
+
+// ─── SAVINGS ─────────────────────────────────────────────────────
+
+model SavingsGoal {
+  id          String    @id @default(cuid())
+  userId      String
+  name        String
+  targetAmount Decimal  @db.Decimal(18, 2)
+  targetDate  DateTime?
+  notes       String?
+  isActive    Boolean   @default(true)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  user         User                @relation(fields: [userId], references: [id])
+  transactions SavingsTransaction[]
+
+  @@index([userId])
+  @@map("savings_goals")
+}
+
+model SavingsTransaction {
+  id              String   @id @default(cuid())
+  savingsGoalId   String
+  accountId       String
+  amount          Decimal  @db.Decimal(18, 2)
+  type            String   // DEPOSIT or WITHDRAWAL
+  transactionDate DateTime
+  notes           String?
+  createdAt       DateTime @default(now())
+
+  savingsGoal  SavingsGoal   @relation(fields: [savingsGoalId], references: [id], onDelete: Cascade)
+  account      Account       @relation(fields: [accountId], references: [id])
+  transactions Transaction[]
+
+  @@index([savingsGoalId])
+  @@map("savings_transactions")
+}
+
+// ─── INVESTMENTS ─────────────────────────────────────────────────
+
+model Investment {
+  id              String   @id @default(cuid())
+  userId          String
+  name            String
+  investmentType  String   // stocks, property, business, mutual_fund, gold, crypto, other
+  amountInvested  Decimal  @db.Decimal(18, 2)
+  currentValue    Decimal? @db.Decimal(18, 2)
+  accountId       String
+  investmentDate  DateTime
+  notes           String?
+  isActive        Boolean  @default(true)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  user         User          @relation(fields: [userId], references: [id])
+  account      Account       @relation(fields: [accountId], references: [id])
+  transactions Transaction[]
+
+  @@index([userId])
+  @@map("investments")
+}
+
+// ─── PLOTS / PROPERTY ────────────────────────────────────────────
+
+model Plot {
+  id             String   @id @default(cuid())
+  userId         String
+  name           String
+  totalPrice     Decimal  @db.Decimal(18, 2)
+  location       String?
+  notes          String?
+  isActive       Boolean  @default(true)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  user     User          @relation(fields: [userId], references: [id])
+  payments PlotPayment[]
+
+  @@index([userId])
+  @@map("plots")
+}
+
+model PlotPayment {
+  id              String   @id @default(cuid())
+  plotId          String
+  accountId       String
+  amount          Decimal  @db.Decimal(18, 2)
+  transactionDate DateTime
+  dueDate         DateTime?
+  notes           String?
+  createdAt       DateTime @default(now())
+
+  plot         Plot          @relation(fields: [plotId], references: [id], onDelete: Cascade)
+  account      Account       @relation(fields: [accountId], references: [id])
+  transactions Transaction[]
+
+  @@index([plotId])
+  @@map("plot_payments")
+}
+
+// ─── FINANCIAL TARGETS ───────────────────────────────────────────
+
+enum TargetType {
+  MAX_EXPENSE          // maximum spending on a category
+  MAX_TOTAL_EXPENSE    // maximum total spending
+  MIN_SAVINGS          // minimum savings
+  MIN_INCOME           // minimum income
+  CUSTOM
+}
+
+model FinancialTarget {
+  id          String     @id @default(cuid())
+  userId      String
+  name        String
+  type        TargetType
+  categoryId  String?    // for category-specific targets
+  amount      Decimal    @db.Decimal(18, 2)
+  month       Int        // 1-12
+  year        Int
+  notes       String?
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@unique([userId, type, categoryId, month, year])
+  @@index([userId, month, year])
+  @@map("financial_targets")
+}
