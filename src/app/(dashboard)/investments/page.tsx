@@ -9,7 +9,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { PageLoading, EmptyState } from '@/components/ui/loading';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/modal';
 import { formatCurrency } from '@/lib/utils';
-import { TrendingUp, Plus, ArrowUp, ArrowDown } from 'lucide-react';
+import { TrendingUp, Plus, ArrowUp, ArrowDown, Pencil, Trash2 } from 'lucide-react';
 
 interface Investment {
   id: string;
@@ -21,6 +21,8 @@ interface Investment {
   profitLossPercent: number;
   status: string;
   investmentDate: string;
+  notes?: string | null;
+  isActive: boolean;
 }
 
 export default function InvestmentsPage() {
@@ -30,6 +32,8 @@ export default function InvestmentsPage() {
   const [saving, setSaving] = useState(false);
   const [accounts, setAccounts] = useState<{ id: string; name: string }[]>([]);
   const [form, setForm] = useState({ name: '', investmentType: 'Stock', amountInvested: '', currentValue: '', investmentDate: new Date().toISOString().split('T')[0], accountId: '', notes: '' });
+  const [editing, setEditing] = useState<Investment | null>(null);
+  const [editForm, setEditForm] = useState({ name: '', currentValue: '', notes: '', isActive: true });
 
   function fetchInvestments() {
     fetch('/api/investments').then((r) => r.json()).then((res) => setInvestments(res.data || [])).catch(console.error).finally(() => setLoading(false));
@@ -51,6 +55,43 @@ export default function InvestmentsPage() {
       });
       if (res.ok) { setShowCreate(false); setForm({ name: '', investmentType: 'Stock', amountInvested: '', currentValue: '', investmentDate: new Date().toISOString().split('T')[0], accountId: '', notes: '' }); fetchInvestments(); }
     } finally { setSaving(false); }
+  }
+
+  function openEdit(inv: Investment) {
+    setEditing(inv);
+    setEditForm({
+      name: inv.name,
+      currentValue: inv.currentValue.toString(),
+      notes: inv.notes || '',
+      isActive: inv.isActive,
+    });
+  }
+
+  async function handleEdit(e: React.FormEvent) {
+    e.preventDefault();
+    if (!editing) return;
+    setSaving(true);
+    try {
+      const res = await fetch(`/api/investments/${editing.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: editForm.name,
+          currentValue: parseFloat(editForm.currentValue) || 0,
+          notes: editForm.notes || undefined,
+          isActive: editForm.isActive,
+        }),
+      });
+      if (res.ok) { setEditing(null); fetchInvestments(); }
+      else { const data = await res.json(); alert(data.error || 'Failed to update investment'); }
+    } finally { setSaving(false); }
+  }
+
+  async function handleDelete(inv: Investment) {
+    if (!confirm(`Delete "${inv.name}"? This cannot be undone.`)) return;
+    const res = await fetch(`/api/investments/${inv.id}`, { method: 'DELETE' });
+    if (res.ok) { fetchInvestments(); }
+    else { const data = await res.json(); alert(data.error || 'Failed to delete investment'); }
   }
 
   if (loading) return <PageLoading />;
@@ -86,6 +127,7 @@ export default function InvestmentsPage() {
                   <TableHead className="text-right">Current</TableHead>
                   <TableHead className="text-right">P/L</TableHead>
                   <TableHead>Status</TableHead>
+                  <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -103,7 +145,13 @@ export default function InvestmentsPage() {
                           {inv.profitLossPercent}%
                         </span>
                       </TableCell>
-                      <TableCell><Badge variant={inv.status === 'ACTIVE' ? 'success' : 'secondary'} className="text-xs">{inv.status}</Badge></TableCell>
+                      <TableCell><Badge variant={inv.isActive ? 'success' : 'secondary'} className="text-xs">{inv.isActive ? 'Active' : 'Inactive'}</Badge></TableCell>
+                      <TableCell className="text-right">
+                        <div className="flex justify-end gap-1">
+                          <Button variant="ghost" size="icon" onClick={() => openEdit(inv)}><Pencil className="h-4 w-4" /></Button>
+                          <Button variant="ghost" size="icon" onClick={() => handleDelete(inv)}><Trash2 className="h-4 w-4" /></Button>
+                        </div>
+                      </TableCell>
                     </TableRow>
                   );
                 })}
@@ -126,6 +174,22 @@ export default function InvestmentsPage() {
             <div className="space-y-2"><label className="text-sm font-medium">Account *</label><select className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm" value={form.accountId} onChange={(e) => setForm({ ...form, accountId: e.target.value })} required><option value="">Select account</option>{accounts.map((a) => <option key={a.id} value={a.id}>{a.name}</option>)}</select></div>
             <div className="space-y-2"><label className="text-sm font-medium">Date</label><Input type="date" value={form.investmentDate} onChange={(e) => setForm({ ...form, investmentDate: e.target.value })} /></div>
             <DialogFooter><Button type="button" variant="outline" onClick={() => setShowCreate(false)}>Cancel</Button><Button type="submit" disabled={saving}>{saving ? 'Saving...' : 'Add'}</Button></DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={!!editing} onOpenChange={(open) => !open && setEditing(null)}>
+        <DialogContent>
+          <DialogHeader><DialogTitle>Edit Investment</DialogTitle></DialogHeader>
+          <form onSubmit={handleEdit} className="space-y-4">
+            <div className="space-y-2"><label className="text-sm font-medium">Name *</label><Input value={editForm.name} onChange={(e) => setEditForm({ ...editForm, name: e.target.value })} required /></div>
+            <div className="space-y-2"><label className="text-sm font-medium">Current Value</label><Input type="number" step="0.01" value={editForm.currentValue} onChange={(e) => setEditForm({ ...editForm, currentValue: e.target.value })} /></div>
+            <div className="space-y-2"><label className="text-sm font-medium">Notes</label><Input value={editForm.notes} onChange={(e) => setEditForm({ ...editForm, notes: e.target.value })} placeholder="Optional" /></div>
+            <label className="flex items-center gap-2 text-sm font-medium">
+              <input type="checkbox" checked={editForm.isActive} onChange={(e) => setEditForm({ ...editForm, isActive: e.target.checked })} />
+              Active
+            </label>
+            <DialogFooter><Button type="button" variant="outline" onClick={() => setEditing(null)}>Cancel</Button><Button type="submit" disabled={saving}>{saving ? 'Saving...' : 'Save Changes'}</Button></DialogFooter>
           </form>
         </DialogContent>
       </Dialog>

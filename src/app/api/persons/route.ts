@@ -11,7 +11,7 @@ export async function GET() {
     const persons = await prisma.person.findMany({
       where: { userId: (session.user as { id: string }).id },
       include: {
-        _count: { select: { loans: true } },
+        _count: { select: { loans: true, committeeMembers: true, transactions: true } },
       },
       orderBy: { name: 'asc' },
     });

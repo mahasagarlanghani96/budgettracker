@@ -106,6 +106,7 @@ export async function POST(request: NextRequest) {
           description: `Loan ${validated.direction === 'GIVEN' ? 'given to' : 'taken from'} ${person.name}`,
           transactionDate: loanDate,
           personId: validated.personId,
+          loanId: loan.id,
         },
       });
 

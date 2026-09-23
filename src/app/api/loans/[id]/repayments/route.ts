@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { requireAuth } from '@/lib/auth';
-import { loanRepaymentSchema } from '@/lib/validations/schemas';
+import { loanRepaymentInputSchema } from '@/lib/validations/schemas';
+import { recalculateLoan } from '@/lib/ledger';
 
 // POST /api/loans/:id/repayments — record repayment for a specific loan
 export async function POST(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
@@ -9,7 +10,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     const session = await requireAuth();
     const { id: loanId } = await params;
     const body = await request.json();
-    const validated = loanRepaymentSchema.parse(body);
+    const validated = loanRepaymentInputSchema.parse(body);
 
     const userId = (session.user as { id: string }).id;
 
@@ -62,18 +63,11 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
           description: `Loan repayment ${loan.direction === 'GIVEN' ? 'from' : 'to'} ${loan.person.name}`,
           transactionDate: repaymentDate,
           personId: loan.personId,
+          loanRepaymentId: repayment.id,
         },
       });
 
-      // Update loan remaining amount
-      const newRemaining = loan.remainingAmount.toNumber() - validated.amount;
-      await tx.loan.update({
-        where: { id: loanId },
-        data: {
-          remainingAmount: Math.max(0, newRemaining),
-          status: newRemaining <= 0 ? 'SETTLED' : 'ACTIVE',
-        },
-      });
+      await recalculateLoan(tx, loanId);
 
       return repayment;
     });

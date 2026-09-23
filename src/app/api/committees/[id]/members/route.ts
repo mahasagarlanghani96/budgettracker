@@ -60,9 +60,11 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
         },
       });
 
-      // Create entries (slots) for the user
+      // Create entries (slots) for the user. Number from the highest existing
+      // slot, not the count — removing a member can leave gaps.
       const entries = [];
-      const nextSlot = currentEntries + 1;
+      const last = await tx.committeeEntry.findFirst({ where: { committeeId }, orderBy: { slotNumber: 'desc' } });
+      const nextSlot = (last?.slotNumber || 0) + 1;
       for (let i = 0; i < slots; i++) {
         const entry = await tx.committeeEntry.create({
           data: {

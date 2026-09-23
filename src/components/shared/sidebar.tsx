@@ -19,6 +19,8 @@ import {
   LogOut,
   Menu,
   X,
+  Contact,
+  Tags,
 } from 'lucide-react';
 import { signOut } from 'next-auth/react';
 import { useState } from 'react';
@@ -29,11 +31,13 @@ const navItems = [
   { href: '/transactions', label: 'Transactions', icon: ArrowLeftRight },
   { href: '/loans', label: 'Loans', icon: HandCoins },
   { href: '/committees', label: 'Committees', icon: Users },
+  { href: '/people', label: 'People', icon: Contact },
   { href: '/savings', label: 'Savings', icon: PiggyBank },
   { href: '/investments', label: 'Investments', icon: TrendingUp },
   { href: '/plots', label: 'Plots', icon: MapPin },
   { href: '/reports', label: 'Reports', icon: BarChart3 },
   { href: '/targets', label: 'Targets', icon: Target },
+  { href: '/categories', label: 'Categories', icon: Tags },
   { href: '/settings', label: 'Settings', icon: Settings },
 ];
 

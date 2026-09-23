@@ -8,8 +8,17 @@ import { Input } from '@/components/ui/input';
 import { Select } from '@/components/ui/select';
 import { PageLoading, EmptyState } from '@/components/ui/loading';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/modal';
-import { formatCurrency } from '@/lib/utils';
-import { MapPin, Plus, Banknote } from 'lucide-react';
+import { formatCurrency, formatDate } from '@/lib/utils';
+import { MapPin, Plus, Banknote, Pencil, Trash2, History } from 'lucide-react';
+
+interface PlotPayment {
+  id: string;
+  amount: { toString(): string };
+  accountId: string | null;
+  transactionDate: string;
+  dueDate?: string | null;
+  notes?: string | null;
+}
 
 interface Plot {
   id: string;
@@ -19,7 +28,8 @@ interface Plot {
   paidAmount: string;
   remainingAmount: string;
   progress: number;
-  status: string;
+  isActive: boolean;
+  notes?: string | null;
 }
 
 export default function PlotsPage() {
@@ -28,9 +38,16 @@ export default function PlotsPage() {
   const [loading, setLoading] = useState(true);
   const [showCreate, setShowCreate] = useState(false);
   const [showPayment, setShowPayment] = useState<string | null>(null);
+  const [editing, setEditing] = useState<Plot | null>(null);
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState({ name: '', location: '', totalPrice: '', notes: '' });
+  const [editForm, setEditForm] = useState({ name: '', location: '', totalPrice: '', notes: '', isActive: true });
   const [payForm, setPayForm] = useState({ amount: '', accountId: '', transactionDate: new Date().toISOString().split('T')[0], notes: '' });
+  const [historyPlot, setHistoryPlot] = useState<Plot | null>(null);
+  const [payments, setPayments] = useState<PlotPayment[]>([]);
+  const [historyLoading, setHistoryLoading] = useState(false);
+  const [editingPayment, setEditingPayment] = useState<PlotPayment | null>(null);
+  const [payEditForm, setPayEditForm] = useState({ amount: '', accountId: '', transactionDate: '', dueDate: '', notes: '' });
 
   function fetchPlots() {
     fetch('/api/plots').then((r) => r.json()).then((res) => setPlots(res.data || [])).catch(console.error).finally(() => setLoading(false));
@@ -57,15 +74,113 @@ export default function PlotsPage() {
   async function handlePayment(e: React.FormEvent) {
     e.preventDefault();
     if (!showPayment) return;
+    if (!payForm.accountId) { alert('Please select an account'); return; }
     setSaving(true);
     try {
       const res = await fetch(`/api/plots/${showPayment}/payments`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ amount: parseFloat(payForm.amount), accountId: payForm.accountId || undefined, transactionDate: payForm.transactionDate, notes: payForm.notes || undefined }),
+        body: JSON.stringify({ amount: parseFloat(payForm.amount), accountId: payForm.accountId, transactionDate: payForm.transactionDate, notes: payForm.notes || undefined }),
       });
       if (res.ok) { setShowPayment(null); setPayForm({ amount: '', accountId: '', transactionDate: new Date().toISOString().split('T')[0], notes: '' }); fetchPlots(); }
+      else { const d = await res.json(); alert(d.error || 'Failed to record payment'); }
     } finally { setSaving(false); }
+  }
+
+  function fetchHistory(plotId: string) {
+    setHistoryLoading(true);
+    fetch(`/api/plots/${plotId}`)
+      .then((r) => r.json())
+      .then((res) => setPayments(res.data?.payments || []))
+      .catch(console.error)
+      .finally(() => setHistoryLoading(false));
+  }
+
+  function openHistory(plot: Plot) {
+    setHistoryPlot(plot);
+    setEditingPayment(null);
+    setPayments([]);
+    fetchHistory(plot.id);
+  }
+
+  function openEditPayment(p: PlotPayment) {
+    setEditingPayment(p);
+    setPayEditForm({
+      amount: p.amount.toString(),
+      accountId: p.accountId || '',
+      transactionDate: p.transactionDate ? p.transactionDate.split('T')[0] : '',
+      dueDate: p.dueDate ? p.dueDate.split('T')[0] : '',
+      notes: p.notes || '',
+    });
+  }
+
+  async function handleEditPayment(e: React.FormEvent) {
+    e.preventDefault();
+    if (!historyPlot || !editingPayment) return;
+    if (!payEditForm.accountId) { alert('Please select an account'); return; }
+    setSaving(true);
+    try {
+      const res = await fetch(`/api/plots/${historyPlot.id}/payments/${editingPayment.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          amount: parseFloat(payEditForm.amount),
+          accountId: payEditForm.accountId,
+          transactionDate: payEditForm.transactionDate,
+          dueDate: payEditForm.dueDate || null,
+          notes: payEditForm.notes || undefined,
+        }),
+      });
+      if (res.ok) { setEditingPayment(null); fetchHistory(historyPlot.id); fetchPlots(); }
+      else { const d = await res.json(); alert(d.error || 'Failed to update payment'); }
+    } finally { setSaving(false); }
+  }
+
+  async function handleDeletePayment(p: PlotPayment) {
+    if (!historyPlot) return;
+    if (!confirm('Delete this payment? This cannot be undone.')) return;
+    const res = await fetch(`/api/plots/${historyPlot.id}/payments/${p.id}`, { method: 'DELETE' });
+    if (res.ok) { fetchHistory(historyPlot.id); fetchPlots(); }
+    else { const d = await res.json(); alert(d.error || 'Failed to delete payment'); }
+  }
+
+  function openEdit(plot: Plot) {
+    setEditing(plot);
+    setEditForm({
+      name: plot.name,
+      location: plot.location || '',
+      totalPrice: plot.totalPrice.toString(),
+      notes: plot.notes || '',
+      isActive: plot.isActive,
+    });
+  }
+
+  async function handleEdit(e: React.FormEvent) {
+    e.preventDefault();
+    if (!editing) return;
+    setSaving(true);
+    try {
+      const res = await fetch(`/api/plots/${editing.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: editForm.name,
+          location: editForm.location || undefined,
+          totalPrice: parseFloat(editForm.totalPrice),
+          notes: editForm.notes || undefined,
+          isActive: editForm.isActive,
+        }),
+      });
+      if (res.ok) { setEditing(null); fetchPlots(); }
+      else { const d = await res.json(); alert(d.error || 'Failed to update plot'); }
+    } finally { setSaving(false); }
+  }
+
+  async function handleDelete(plot: Plot) {
+    if (!confirm(`Delete "${plot.name}"? This cannot be undone.`)) return;
+    const res = await fetch(`/api/plots/${plot.id}`, { method: 'DELETE' });
+    if (res.ok) { fetchPlots(); }
+    else { const d = await res.json(); alert(d.error || 'Failed to delete plot'); }
   }
 
   if (loading) return <PageLoading />;
@@ -86,7 +201,11 @@ export default function PlotsPage() {
               <CardHeader className="pb-2">
                 <div className="flex items-center justify-between">
                   <CardTitle className="text-base">{plot.name}</CardTitle>
-                  <Badge variant={plot.status === 'ACTIVE' ? 'success' : 'secondary'} className="text-xs">{plot.status}</Badge>
+                  <div className="flex items-center gap-1">
+                    <Badge variant={plot.isActive ? 'success' : 'secondary'} className="text-xs">{plot.isActive ? 'Active' : 'Inactive'}</Badge>
+                    <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => openEdit(plot)}><Pencil className="h-3.5 w-3.5" /></Button>
+                    <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => handleDelete(plot)}><Trash2 className="h-3.5 w-3.5" /></Button>
+                  </div>
                 </div>
                 {plot.location && <p className="text-xs text-muted-foreground">{plot.location}</p>}
               </CardHeader>
@@ -104,11 +223,16 @@ export default function PlotsPage() {
                     <p className="text-xs text-muted-foreground">Remaining: {formatCurrency(plot.remainingAmount)}</p>
                   </div>
                 </div>
-                {plot.status === 'ACTIVE' && (
-                  <Button size="sm" className="w-full" onClick={() => setShowPayment(plot.id)}>
-                    <Banknote className="h-3 w-3 mr-1" /> Make Payment
+                <div className="flex gap-2">
+                  {plot.isActive && (
+                    <Button size="sm" className="flex-1" onClick={() => setShowPayment(plot.id)}>
+                      <Banknote className="h-3 w-3 mr-1" /> Make Payment
+                    </Button>
+                  )}
+                  <Button size="sm" variant="outline" className="flex-1" onClick={() => openHistory(plot)}>
+                    <History className="h-3 w-3 mr-1" /> History
                   </Button>
-                )}
+                </div>
               </CardContent>
             </Card>
           ))}
@@ -133,10 +257,65 @@ export default function PlotsPage() {
           <DialogHeader><DialogTitle>Make Payment</DialogTitle></DialogHeader>
           <form onSubmit={handlePayment} className="space-y-4">
             <div className="space-y-2"><label className="text-sm font-medium">Amount *</label><Input type="number" step="0.01" value={payForm.amount} onChange={(e) => setPayForm({ ...payForm, amount: e.target.value })} required /></div>
-            <div className="space-y-2"><label className="text-sm font-medium">Account</label><Select options={accounts.map((a) => ({ value: a.id, label: a.name }))} value={payForm.accountId} onChange={(e) => setPayForm({ ...payForm, accountId: e.target.value })} placeholder="Select account" /></div>
+            <div className="space-y-2"><label className="text-sm font-medium">Account *</label><Select options={accounts.map((a) => ({ value: a.id, label: a.name }))} value={payForm.accountId} onChange={(e) => setPayForm({ ...payForm, accountId: e.target.value })} placeholder="Select account" required /></div>
             <div className="space-y-2"><label className="text-sm font-medium">Date</label><Input type="date" value={payForm.transactionDate} onChange={(e) => setPayForm({ ...payForm, transactionDate: e.target.value })} /></div>
             <div className="space-y-2"><label className="text-sm font-medium">Notes</label><Input value={payForm.notes} onChange={(e) => setPayForm({ ...payForm, notes: e.target.value })} /></div>
             <DialogFooter><Button type="button" variant="outline" onClick={() => setShowPayment(null)}>Cancel</Button><Button type="submit" disabled={saving}>{saving ? 'Paying...' : 'Confirm'}</Button></DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Payment History Modal */}
+      <Dialog open={!!historyPlot} onOpenChange={(open) => { if (!open) { setHistoryPlot(null); setEditingPayment(null); } }}>
+        <DialogContent>
+          <DialogHeader><DialogTitle>{editingPayment ? 'Edit Payment' : `Payment History — ${historyPlot?.name ?? ''}`}</DialogTitle></DialogHeader>
+          {editingPayment ? (
+            <form onSubmit={handleEditPayment} className="space-y-4">
+              <div className="space-y-2"><label className="text-sm font-medium">Amount *</label><Input type="number" step="0.01" value={payEditForm.amount} onChange={(e) => setPayEditForm({ ...payEditForm, amount: e.target.value })} required /></div>
+              <div className="space-y-2"><label className="text-sm font-medium">Account *</label><Select options={accounts.map((a) => ({ value: a.id, label: a.name }))} value={payEditForm.accountId} onChange={(e) => setPayEditForm({ ...payEditForm, accountId: e.target.value })} placeholder="Select account" required /></div>
+              <div className="space-y-2"><label className="text-sm font-medium">Date *</label><Input type="date" value={payEditForm.transactionDate} onChange={(e) => setPayEditForm({ ...payEditForm, transactionDate: e.target.value })} required /></div>
+              <div className="space-y-2"><label className="text-sm font-medium">Due Date</label><Input type="date" value={payEditForm.dueDate} onChange={(e) => setPayEditForm({ ...payEditForm, dueDate: e.target.value })} /></div>
+              <div className="space-y-2"><label className="text-sm font-medium">Notes</label><Input value={payEditForm.notes} onChange={(e) => setPayEditForm({ ...payEditForm, notes: e.target.value })} placeholder="Optional" /></div>
+              <DialogFooter><Button type="button" variant="outline" onClick={() => setEditingPayment(null)}>Back</Button><Button type="submit" disabled={saving}>{saving ? 'Saving...' : 'Save Changes'}</Button></DialogFooter>
+            </form>
+          ) : historyLoading ? (
+            <p className="text-sm text-muted-foreground text-center py-4">Loading...</p>
+          ) : payments.length === 0 ? (
+            <p className="text-sm text-muted-foreground text-center py-4">No payments recorded yet</p>
+          ) : (
+            <div className="divide-y">
+              {payments.map((p) => (
+                <div key={p.id} className="flex items-center justify-between gap-2 py-2">
+                  <div className="min-w-0">
+                    <p className="text-sm font-medium tabular-nums">{formatCurrency(p.amount.toString())}</p>
+                    <p className="text-xs text-muted-foreground">{formatDate(p.transactionDate)}{p.dueDate ? ` · Due ${formatDate(p.dueDate)}` : ''}</p>
+                    {p.notes && <p className="text-xs text-muted-foreground truncate">{p.notes}</p>}
+                  </div>
+                  <div className="flex items-center gap-1 shrink-0">
+                    <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => openEditPayment(p)}><Pencil className="h-3.5 w-3.5" /></Button>
+                    <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => handleDeletePayment(p)}><Trash2 className="h-3.5 w-3.5" /></Button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit Plot Modal */}
+      <Dialog open={!!editing} onOpenChange={(open) => !open && setEditing(null)}>
+        <DialogContent>
+          <DialogHeader><DialogTitle>Edit Plot</DialogTitle></DialogHeader>
+          <form onSubmit={handleEdit} className="space-y-4">
+            <div className="space-y-2"><label className="text-sm font-medium">Name *</label><Input value={editForm.name} onChange={(e) => setEditForm({ ...editForm, name: e.target.value })} required /></div>
+            <div className="space-y-2"><label className="text-sm font-medium">Location</label><Input value={editForm.location} onChange={(e) => setEditForm({ ...editForm, location: e.target.value })} /></div>
+            <div className="space-y-2"><label className="text-sm font-medium">Total Price *</label><Input type="number" step="0.01" value={editForm.totalPrice} onChange={(e) => setEditForm({ ...editForm, totalPrice: e.target.value })} required /></div>
+            <div className="space-y-2"><label className="text-sm font-medium">Notes</label><Input value={editForm.notes} onChange={(e) => setEditForm({ ...editForm, notes: e.target.value })} /></div>
+            <label className="flex items-center gap-2 text-sm font-medium">
+              <input type="checkbox" checked={editForm.isActive} onChange={(e) => setEditForm({ ...editForm, isActive: e.target.checked })} />
+              Active
+            </label>
+            <DialogFooter><Button type="button" variant="outline" onClick={() => setEditing(null)}>Cancel</Button><Button type="submit" disabled={saving}>{saving ? 'Saving...' : 'Save Changes'}</Button></DialogFooter>
           </form>
         </DialogContent>
       </Dialog>

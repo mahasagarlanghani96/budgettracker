@@ -82,3 +82,42 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }
+
+// DELETE /api/committees/:id — refuse if contributions/receivings/rounds exist
+export async function DELETE(_request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  try {
+    const session = await requireAuth();
+    const { id } = await params;
+    const userId = (session.user as { id: string }).id;
+
+    const existing = await prisma.committee.findFirst({
+      where: { id, userId },
+      include: {
+        _count: { select: { rounds: true, contributions: true, receivings: true } },
+      },
+    });
+
+    if (!existing) {
+      return NextResponse.json({ error: 'Committee not found' }, { status: 404 });
+    }
+
+    const total = existing._count.rounds + existing._count.contributions + existing._count.receivings;
+    if (total > 0) {
+      return NextResponse.json(
+        { error: `Cannot delete a committee with ${existing._count.rounds} round(s) and ${existing._count.contributions + existing._count.receivings} contribution/receiving record(s). Remove them first or mark the committee as cancelled.` },
+        { status: 400 }
+      );
+    }
+
+    // Cascade deletes members and entries (onDelete: Cascade in schema)
+    await prisma.committee.delete({ where: { id } });
+
+    return NextResponse.json({ data: { success: true } });
+  } catch (error: unknown) {
+    if (error instanceof Error && error.message === 'Unauthorized') {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+    console.error('DELETE /api/committees/[id] error:', error);
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+  }
+}

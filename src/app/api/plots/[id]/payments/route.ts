@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { requireAuth } from '@/lib/auth';
-import { plotPaymentSchema } from '@/lib/validations/schemas';
+import { plotPaymentInputSchema } from '@/lib/validations/schemas';
 
 // POST /api/plots/:id/payments
 export async function POST(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
@@ -9,7 +9,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     const session = await requireAuth();
     const { id: plotId } = await params;
     const body = await request.json();
-    const validated = plotPaymentSchema.parse(body);
+    const validated = plotPaymentInputSchema.parse(body);
     const userId = (session.user as { id: string }).id;
 
     const plot = await prisma.plot.findFirst({
@@ -18,6 +18,11 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
 
     if (!plot) {
       return NextResponse.json({ error: 'Plot not found' }, { status: 404 });
+    }
+
+    const account = await prisma.account.findFirst({ where: { id: validated.accountId, userId } });
+    if (!account) {
+      return NextResponse.json({ error: 'Account not found' }, { status: 404 });
     }
 
     const paymentDate = validated.transactionDate ? new Date(validated.transactionDate) : new Date();
@@ -43,6 +48,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
           amount: validated.amount,
           description: `Plot payment: ${plot.name}`,
           transactionDate: paymentDate,
+          plotPaymentId: payment.id,
         },
       });
 

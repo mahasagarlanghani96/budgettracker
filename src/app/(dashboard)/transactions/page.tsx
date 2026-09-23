@@ -9,8 +9,13 @@ import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { PageLoading, EmptyState } from '@/components/ui/loading';
 import { formatCurrency, formatDate } from '@/lib/utils';
-import { Plus, Search, ArrowLeftRight } from 'lucide-react';
+import { Plus, Search, ArrowLeftRight, Pencil, Trash2, Lock } from 'lucide-react';
 import Link from 'next/link';
+
+// Only plain ledger entries (no linked Loan/Committee/Savings/Investment/Plot
+// record) can be edited or deleted from this generic list — see the edit page
+// for why editing the others here would desync their linked record.
+const EDITABLE_TYPES = ['INCOME', 'EXPENSE', 'TRANSFER', 'OTHER'];
 
 const typeOptions = [
   { value: '', label: 'All Types' },
@@ -73,6 +78,17 @@ export default function TransactionsPage() {
   }, [page, filters]);
 
   useEffect(() => { fetchTransactions(); }, [fetchTransactions]);
+
+  async function handleDelete(tx: Transaction) {
+    if (!confirm('Delete this transaction? This cannot be undone.')) return;
+    const res = await fetch(`/api/transactions/${tx.id}`, { method: 'DELETE' });
+    if (res.ok) {
+      fetchTransactions();
+    } else {
+      const data = await res.json();
+      alert(data.error || 'Failed to delete transaction');
+    }
+  }
 
   return (
     <div className="space-y-6">
@@ -139,28 +155,46 @@ export default function TransactionsPage() {
                     <TableHead>Account</TableHead>
                     <TableHead>Type</TableHead>
                     <TableHead className="text-right">Amount</TableHead>
+                    <TableHead className="text-right">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {transactions.map((tx) => (
-                    <TableRow key={tx.id}>
-                      <TableCell className="text-sm whitespace-nowrap">{formatDate(tx.transactionDate)}</TableCell>
-                      <TableCell className="text-sm max-w-[200px] truncate">{tx.description || '—'}</TableCell>
-                      <TableCell className="text-sm">{tx.category?.name || '—'}</TableCell>
-                      <TableCell className="text-sm">
-                        {tx.sourceAccount?.name}
-                        {tx.destAccount && <span className="text-muted-foreground"> → {tx.destAccount.name}</span>}
-                      </TableCell>
-                      <TableCell>
-                        <Badge variant={typeBadgeVariant[tx.type] || 'outline'} className="text-xs">
-                          {tx.type.replace(/_/g, ' ')}
-                        </Badge>
-                      </TableCell>
-                      <TableCell className="text-right font-medium tabular-nums whitespace-nowrap">
-                        {formatCurrency(tx.amount.toString())}
-                      </TableCell>
-                    </TableRow>
-                  ))}
+                  {transactions.map((tx) => {
+                    const editable = EDITABLE_TYPES.includes(tx.type);
+                    return (
+                      <TableRow key={tx.id}>
+                        <TableCell className="text-sm whitespace-nowrap">{formatDate(tx.transactionDate)}</TableCell>
+                        <TableCell className="text-sm max-w-[200px] truncate">{tx.description || '—'}</TableCell>
+                        <TableCell className="text-sm">{tx.category?.name || '—'}</TableCell>
+                        <TableCell className="text-sm">
+                          {tx.sourceAccount?.name}
+                          {tx.destAccount && <span className="text-muted-foreground"> → {tx.destAccount.name}</span>}
+                        </TableCell>
+                        <TableCell>
+                          <Badge variant={typeBadgeVariant[tx.type] || 'outline'} className="text-xs">
+                            {tx.type.replace(/_/g, ' ')}
+                          </Badge>
+                        </TableCell>
+                        <TableCell className="text-right font-medium tabular-nums whitespace-nowrap">
+                          {formatCurrency(tx.amount.toString())}
+                        </TableCell>
+                        <TableCell className="text-right">
+                          {editable ? (
+                            <div className="flex justify-end gap-1">
+                              <Link href={`/transactions/${tx.id}/edit`}>
+                                <Button variant="ghost" size="icon"><Pencil className="h-4 w-4" /></Button>
+                              </Link>
+                              <Button variant="ghost" size="icon" onClick={() => handleDelete(tx)}><Trash2 className="h-4 w-4" /></Button>
+                            </div>
+                          ) : (
+                            <span title="Linked to a Loan/Committee/Savings/Investment/Plot record — edit from there" className="inline-flex justify-end text-muted-foreground">
+                              <Lock className="h-4 w-4" />
+                            </span>
+                          )}
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
                 </TableBody>
               </Table>
             </CardContent>

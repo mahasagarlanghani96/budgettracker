@@ -205,3 +205,31 @@ export const categorySchema = z.object({
   group: z.enum(['INCOME', 'EXPENSE']),
   icon: z.string().optional(),
 });
+
+// ─── Nested-route inputs ─────────────────────────────────────────
+// Routes nested under a parent (/loans/:id/repayments, ...) take the parent id
+// and the loan's person from the URL/record, not from the request body.
+
+export const loanRepaymentInputSchema = loanRepaymentSchema.omit({ personId: true, loanId: true });
+export const plotPaymentInputSchema = plotPaymentSchema.omit({ plotId: true });
+export const savingsTransactionInputSchema = savingsTransactionSchema.omit({ savingsGoalId: true });
+
+export const committeeMemberSchema = z.object({
+  name: z.string().min(1, 'Member name is required'),
+  personId: z.string().optional().nullable(),
+  slots: z.number().int().positive('Slots must be at least 1').default(1),
+  isUser: z.boolean().default(false),
+  notes: z.string().optional(),
+});
+
+export const committeeRoundUpdateSchema = z.object({
+  roundDate: z.string().min(1, 'Date is required'),
+  winningBid: z.number().positive().optional().nullable(),
+  winningMember: z.string().optional().nullable(),
+  notes: z.string().optional(),
+});
+
+// ─── Updates ─────────────────────────────────────────────────────
+
+export const personUpdateSchema = personSchema.extend({ isActive: z.boolean().optional() });
+export const categoryUpdateSchema = categorySchema.extend({ isActive: z.boolean().optional() });

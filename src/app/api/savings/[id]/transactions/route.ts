@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { requireAuth } from '@/lib/auth';
-import { savingsTransactionSchema } from '@/lib/validations/schemas';
+import { savingsTransactionInputSchema } from '@/lib/validations/schemas';
 
 // POST /api/savings/:id/transactions — deposit or withdraw
 export async function POST(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
@@ -9,7 +9,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     const session = await requireAuth();
     const { id: goalId } = await params;
     const body = await request.json();
-    const validated = savingsTransactionSchema.parse(body);
+    const validated = savingsTransactionInputSchema.parse(body);
     const userId = (session.user as { id: string }).id;
 
     const goal = await prisma.savingsGoal.findFirst({
@@ -18,6 +18,11 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
 
     if (!goal) {
       return NextResponse.json({ error: 'Savings goal not found' }, { status: 404 });
+    }
+
+    const account = await prisma.account.findFirst({ where: { id: validated.accountId, userId } });
+    if (!account) {
+      return NextResponse.json({ error: 'Account not found' }, { status: 404 });
     }
 
     const txDate = validated.transactionDate ? new Date(validated.transactionDate) : new Date();
@@ -44,6 +49,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
           amount: validated.amount,
           description: `Savings ${validated.type.toLowerCase()}: ${goal.name}`,
           transactionDate: txDate,
+          savingsTransId: savingsTx.id,
         },
       });
 

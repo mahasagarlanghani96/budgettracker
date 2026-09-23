@@ -78,3 +78,56 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }
+
+// DELETE /api/loans/:id — refuse if any repayments exist; soft-delete linked ledger rows
+export async function DELETE(_request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  try {
+    const session = await requireAuth();
+    const { id } = await params;
+    const userId = (session.user as { id: string }).id;
+
+    const existing = await prisma.loan.findFirst({
+      where: { id, userId },
+      include: { _count: { select: { repayments: true } } },
+    });
+
+    if (!existing) {
+      return NextResponse.json({ error: 'Loan not found' }, { status: 404 });
+    }
+
+    if (existing._count.repayments > 0) {
+      return NextResponse.json(
+        { error: `Cannot delete a loan with ${existing._count.repayments} repayment(s). Remove all repayments first.` },
+        { status: 400 }
+      );
+    }
+
+    await prisma.$transaction(async (tx: any) => {
+      // Soft-delete the initial loan transaction
+      await tx.transaction.updateMany({
+        where: { loanId: id, userId, isDeleted: false },
+        data: { isDeleted: true, deletedAt: new Date() },
+      });
+      const type = existing.direction === 'GIVEN' ? 'LOAN_GIVEN' : 'LOAN_TAKEN';
+      await tx.transaction.updateMany({
+        where: {
+          userId, type, loanId: null, isDeleted: false,
+          amount: existing.amount.toString(),
+          sourceAccountId: existing.accountId,
+          transactionDate: existing.transactionDate,
+          personId: existing.personId,
+        },
+        data: { isDeleted: true, deletedAt: new Date() },
+      });
+      await tx.loan.delete({ where: { id } });
+    });
+
+    return NextResponse.json({ data: { success: true } });
+  } catch (error: unknown) {
+    if (error instanceof Error && error.message === 'Unauthorized') {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+    console.error('DELETE /api/loans/[id] error:', error);
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+  }
+}
