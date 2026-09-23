@@ -1,13 +1,18 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Select } from '@/components/ui/select';
 import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
 import { PageLoading, EmptyState } from '@/components/ui/loading';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/modal';
+import { FormField } from '@/components/forms/FormField';
+import { AdvancedSection } from '@/components/forms/AdvancedSection';
+import { useResourceForm } from '@/hooks/useResourceForm';
+import { loanSchema } from '@/lib/validations/schemas';
 import { formatCurrency, formatDate } from '@/lib/utils';
 import { HandCoins, Plus, ArrowUpRight, ArrowDownRight } from 'lucide-react';
 import Link from 'next/link';
@@ -26,6 +31,20 @@ interface Loan {
   account?: { name: string } | null;
 }
 
+const today = new Date().toISOString().split('T')[0];
+
+const initialForm = {
+  personId: '',
+  direction: 'GIVEN',
+  amount: 0,
+  accountId: '',
+  transactionDate: today,
+  dueDate: '',
+  interestRate: null as number | null,
+  notes: '',
+  isPrivate: true,
+};
+
 export default function LoansPage() {
   const [loans, setLoans] = useState<Loan[]>([]);
   const [loading, setLoading] = useState(true);
@@ -33,12 +52,8 @@ export default function LoansPage() {
   const [showCreate, setShowCreate] = useState(false);
   const [persons, setPersons] = useState<Array<{ id: string; name: string }>>([]);
   const [accounts, setAccounts] = useState<Array<{ id: string; name: string }>>([]);
-  const [creating, setCreating] = useState(false);
-  const [form, setForm] = useState({
-    personId: '', accountId: '', direction: 'GIVEN', amount: '', notes: '', transactionDate: new Date().toISOString().split('T')[0], dueDate: '',
-  });
 
-  function fetchLoans() {
+  const fetchLoans = useCallback(() => {
     const params = new URLSearchParams();
     if (filter.direction) params.set('direction', filter.direction);
     if (filter.status) params.set('status', filter.status);
@@ -48,9 +63,9 @@ export default function LoansPage() {
       .then((res) => setLoans(res.data || []))
       .catch(console.error)
       .finally(() => setLoading(false));
-  }
+  }, [filter]);
 
-  useEffect(() => { fetchLoans(); }, [filter]);
+  useEffect(() => { fetchLoans(); }, [fetchLoans]);
 
   useEffect(() => {
     Promise.all([
@@ -62,31 +77,21 @@ export default function LoansPage() {
     });
   }, []);
 
-  async function handleCreate(e: React.FormEvent) {
-    e.preventDefault();
-    setCreating(true);
-    try {
-      const res = await fetch('/api/loans', {
+  const { form, errors, serverError, saving, setField, handleSubmit, reset } = useResourceForm({
+    schema: loanSchema,
+    initial: initialForm,
+    onSubmit: (data) =>
+      fetch('/api/loans', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          ...form,
-          amount: parseFloat(form.amount),
-          accountId: form.accountId || undefined,
-          dueDate: form.dueDate || undefined,
-        }),
-      });
-      if (res.ok) {
-        setShowCreate(false);
-        fetchLoans();
-      } else {
-        const data = await res.json();
-        alert(data.error || 'Failed to create loan');
-      }
-    } finally {
-      setCreating(false);
-    }
-  }
+        body: JSON.stringify(data),
+      }),
+    onSuccess: () => {
+      setShowCreate(false);
+      reset();
+      fetchLoans();
+    },
+  });
 
   const totalReceivable = loans.filter((l) => l.direction === 'GIVEN' && l.status === 'ACTIVE').reduce((s, l) => s + parseFloat(l.remainingAmount), 0);
   const totalPayable = loans.filter((l) => l.direction === 'TAKEN' && l.status === 'ACTIVE').reduce((s, l) => s + parseFloat(l.remainingAmount), 0);
@@ -187,56 +192,97 @@ export default function LoansPage() {
       <Dialog open={showCreate} onOpenChange={setShowCreate}>
         <DialogContent>
           <DialogHeader><DialogTitle>New Loan</DialogTitle></DialogHeader>
-          <form onSubmit={handleCreate} className="space-y-4">
-            <div className="grid gap-4 sm:grid-cols-2">
-              <div className="space-y-2">
-                <label className="text-sm font-medium">Direction *</label>
-                <Select
-                  options={[{ value: 'GIVEN', label: 'Given (You lent)' }, { value: 'TAKEN', label: 'Taken (You borrowed)' }]}
-                  value={form.direction}
-                  onChange={(e) => setForm({ ...form, direction: e.target.value })}
-                />
-              </div>
-              <div className="space-y-2">
-                <label className="text-sm font-medium">Amount *</label>
-                <Input type="number" step="0.01" value={form.amount} onChange={(e) => setForm({ ...form, amount: e.target.value })} required />
-              </div>
-            </div>
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Person *</label>
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <FormField label="Person" required error={errors.personId}>
               <Select
                 options={persons.map((p) => ({ value: p.id, label: p.name }))}
-                value={form.personId}
-                onChange={(e) => setForm({ ...form, personId: e.target.value })}
+                value={form.personId as string}
+                onChange={(e) => setField('personId', e.target.value)}
                 placeholder="Select person"
               />
+            </FormField>
+
+            <div className="grid gap-4 sm:grid-cols-2">
+              <FormField label="Direction" required error={errors.direction}>
+                <Select
+                  options={[{ value: 'GIVEN', label: 'Given (You lent)' }, { value: 'TAKEN', label: 'Taken (You borrowed)' }]}
+                  value={form.direction as string}
+                  onChange={(e) => setField('direction', e.target.value)}
+                />
+              </FormField>
+              <FormField label="Amount" required error={errors.amount}>
+                <Input
+                  type="number"
+                  step="0.01"
+                  value={form.amount as number || ''}
+                  onChange={(e) => setField('amount', parseFloat(e.target.value) || 0)}
+                />
+              </FormField>
             </div>
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Account</label>
+
+            <FormField label="Account" required error={errors.accountId}>
               <Select
                 options={accounts.map((a) => ({ value: a.id, label: a.name }))}
-                value={form.accountId}
-                onChange={(e) => setForm({ ...form, accountId: e.target.value })}
-                placeholder="Select account (optional)"
+                value={form.accountId as string}
+                onChange={(e) => setField('accountId', e.target.value)}
+                placeholder="Select account"
               />
-            </div>
+            </FormField>
+
             <div className="grid gap-4 sm:grid-cols-2">
-              <div className="space-y-2">
-                <label className="text-sm font-medium">Date</label>
-                <Input type="date" value={form.transactionDate} onChange={(e) => setForm({ ...form, transactionDate: e.target.value })} />
-              </div>
-              <div className="space-y-2">
-                <label className="text-sm font-medium">Due Date</label>
-                <Input type="date" value={form.dueDate} onChange={(e) => setForm({ ...form, dueDate: e.target.value })} />
-              </div>
+              <FormField label="Date" required error={errors.transactionDate}>
+                <Input
+                  type="date"
+                  value={form.transactionDate as string}
+                  onChange={(e) => setField('transactionDate', e.target.value)}
+                />
+              </FormField>
+              <FormField label="Due Date" error={errors.dueDate}>
+                <Input
+                  type="date"
+                  value={(form.dueDate as string) || ''}
+                  onChange={(e) => setField('dueDate', e.target.value || null)}
+                />
+              </FormField>
             </div>
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Description</label>
-              <Input value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} />
-            </div>
+
+            <FormField label="Interest Rate (%)" error={errors.interestRate}>
+              <Input
+                type="number"
+                step="0.01"
+                value={form.interestRate != null ? (form.interestRate as number) : ''}
+                onChange={(e) => setField('interestRate', e.target.value ? parseFloat(e.target.value) : null)}
+                placeholder="Optional"
+              />
+            </FormField>
+
+            <FormField label="Notes" error={errors.notes}>
+              <Textarea
+                value={(form.notes as string) || ''}
+                onChange={(e) => setField('notes', e.target.value)}
+                placeholder="Optional"
+              />
+            </FormField>
+
+            <AdvancedSection>
+              <FormField label="Private">
+                <label className="flex items-center gap-2 text-sm">
+                  <input
+                    type="checkbox"
+                    checked={form.isPrivate as boolean}
+                    onChange={(e) => setField('isPrivate', e.target.checked)}
+                  />
+                  Keep this loan private
+                </label>
+              </FormField>
+            </AdvancedSection>
+
+            {serverError && (
+              <p className="text-sm text-destructive bg-destructive/10 rounded-md px-3 py-2">{serverError}</p>
+            )}
             <DialogFooter>
               <Button type="button" variant="outline" onClick={() => setShowCreate(false)}>Cancel</Button>
-              <Button type="submit" disabled={creating}>{creating ? 'Creating...' : 'Create Loan'}</Button>
+              <Button type="submit" disabled={saving}>{saving ? 'Creating...' : 'Create Loan'}</Button>
             </DialogFooter>
           </form>
         </DialogContent>

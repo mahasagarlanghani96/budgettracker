@@ -233,3 +233,35 @@ export const committeeRoundUpdateSchema = z.object({
 
 export const personUpdateSchema = personSchema.extend({ isActive: z.boolean().optional() });
 export const categoryUpdateSchema = categorySchema.extend({ isActive: z.boolean().optional() });
+export const accountUpdateSchema = accountSchema.extend({ isActive: z.boolean().optional() });
+
+export const investmentUpdateSchema = investmentSchema.extend({ isActive: z.boolean().optional() });
+
+export const loanUpdateSchema = z.object({
+  status: z.enum(['ACTIVE', 'SETTLED', 'WRITTEN_OFF', 'CANCELLED']).optional(),
+  dueDate: z.string().optional().nullable(),
+  interestRate: z.number().optional().nullable(),
+  notes: z.string().optional(),
+  isPrivate: z.boolean().optional(),
+});
+
+export const committeeUpdateSchema = z.object({
+  name: z.string().min(1, 'Committee name is required'),
+  type: z.enum(['NORMAL', 'WAIYK']).optional(),
+  status: z.enum(['ACTIVE', 'COMPLETED', 'CANCELLED']).optional(),
+  startDate: z.string().optional(),
+  endDate: z.string().optional().nullable(),
+  memberCount: z.number().int().positive().optional(),
+  monthlyContribution: z.number().positive().optional(),
+  totalAmount: z.number().positive().optional().nullable(),
+  notes: z.string().optional(),
+  isPrivate: z.boolean().optional(),
+});
+
+export const savingsGoalUpdateSchema = savingsGoalSchema.extend({
+  isActive: z.boolean().optional(),
+});
+
+export const plotUpdateSchema = plotSchema.extend({
+  isActive: z.boolean().optional(),
+});

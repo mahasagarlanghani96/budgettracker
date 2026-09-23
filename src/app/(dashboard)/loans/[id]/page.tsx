@@ -1,15 +1,19 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Select } from '@/components/ui/select';
+import { Textarea } from '@/components/ui/textarea';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/modal';
 import { PageLoading } from '@/components/ui/loading';
+import { FormField } from '@/components/forms/FormField';
+import { useResourceForm } from '@/hooks/useResourceForm';
+import { loanUpdateSchema, loanRepaymentInputSchema } from '@/lib/validations/schemas';
 import { formatCurrency, formatDate } from '@/lib/utils';
 import { ArrowLeft, Plus, Pencil, Trash2 } from 'lucide-react';
 import Link from 'next/link';
@@ -21,6 +25,8 @@ const loanStatusOptions = [
   { value: 'CANCELLED', label: 'Cancelled' },
 ];
 
+const today = new Date().toISOString().split('T')[0];
+
 export default function LoanDetailPage() {
   const { id } = useParams<{ id: string }>();
   const router = useRouter();
@@ -29,137 +35,115 @@ export default function LoanDetailPage() {
   const [showRepayment, setShowRepayment] = useState(false);
   const [showEdit, setShowEdit] = useState(false);
   const [accounts, setAccounts] = useState<Array<{ id: string; name: string }>>([]);
-  const [saving, setSaving] = useState(false);
-  const [repayForm, setRepayForm] = useState({ amount: '', accountId: '', transactionDate: new Date().toISOString().split('T')[0], notes: '' });
-  const [editForm, setEditForm] = useState({ status: 'ACTIVE', dueDate: '', interestRate: '', notes: '' });
   const [editingRepayment, setEditingRepayment] = useState<string | null>(null);
-  const [repayEditForm, setRepayEditForm] = useState({ amount: '', accountId: '', transactionDate: '', notes: '' });
+  const [settleError, setSettleError] = useState<string | null>(null);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
+  const [deleteRepayError, setDeleteRepayError] = useState<string | null>(null);
 
-  function fetchLoan() {
+  const fetchLoan = useCallback(() => {
     fetch(`/api/loans/${id}`)
       .then((r) => r.json())
       .then((res) => setLoan(res.data))
       .catch(console.error)
       .finally(() => setLoading(false));
-  }
+  }, [id]);
 
   useEffect(() => {
     fetchLoan();
     fetch('/api/accounts').then((r) => r.json()).then((res) => setAccounts(res.data || []));
-  }, [id]);
+  }, [id, fetchLoan]);
 
-  async function handleRepayment(e: React.FormEvent) {
-    e.preventDefault();
-    if (!repayForm.accountId) { alert('Please select an account'); return; }
-    setSaving(true);
-    try {
-      const res = await fetch(`/api/loans/${id}/repayments`, {
+  // Edit loan form
+  const editForm = useResourceForm({
+    schema: loanUpdateSchema,
+    initial: { status: 'ACTIVE', dueDate: '', interestRate: null as number | null, notes: '', isPrivate: true },
+    onSubmit: (data) =>
+      fetch(`/api/loans/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data),
+      }),
+    onSuccess: () => { setShowEdit(false); fetchLoan(); },
+  });
+
+  // Add repayment form
+  const repayForm = useResourceForm({
+    schema: loanRepaymentInputSchema,
+    initial: { amount: 0, accountId: '', transactionDate: today, notes: '' },
+    onSubmit: (data) =>
+      fetch(`/api/loans/${id}/repayments`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          amount: parseFloat(repayForm.amount),
-          accountId: repayForm.accountId,
-          transactionDate: repayForm.transactionDate,
-          notes: repayForm.notes || undefined,
-        }),
-      });
-      if (res.ok) {
-        setShowRepayment(false);
-        setRepayForm({ amount: '', accountId: '', transactionDate: new Date().toISOString().split('T')[0], notes: '' });
-        fetchLoan();
-      } else {
-        const d = await res.json();
-        alert(d.error || 'Failed to record repayment');
-      }
-    } finally {
-      setSaving(false);
-    }
-  }
+        body: JSON.stringify(data),
+      }),
+    onSuccess: () => {
+      setShowRepayment(false);
+      repayForm.reset();
+      fetchLoan();
+    },
+  });
 
-  async function handleSettle() {
-    if (!confirm('Mark this loan as settled?')) return;
-    const res = await fetch(`/api/loans/${id}`, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ status: 'SETTLED' }),
-    });
-    if (res.ok) { fetchLoan(); }
-    else { const d = await res.json(); alert(d.error || 'Failed to settle loan'); }
-  }
-
-  async function handleDelete() {
-    if (!confirm('Delete this loan? This cannot be undone.')) return;
-    const res = await fetch(`/api/loans/${id}`, { method: 'DELETE' });
-    if (res.ok) { router.push('/loans'); }
-    else { const d = await res.json(); alert(d.error || 'Failed to delete loan'); }
-  }
+  // Edit repayment form
+  const repayEditForm = useResourceForm({
+    schema: loanRepaymentInputSchema,
+    initial: { amount: 0, accountId: '', transactionDate: '', notes: '' },
+    onSubmit: (data) =>
+      fetch(`/api/loans/${id}/repayments/${editingRepayment}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data),
+      }),
+    onSuccess: () => { setEditingRepayment(null); fetchLoan(); },
+  });
 
   function openEdit() {
     if (!loan) return;
-    setEditForm({
+    editForm.setForm({
       status: loan.status as string,
       dueDate: loan.dueDate ? (loan.dueDate as string).split('T')[0] : '',
-      interestRate: loan.interestRate ? (loan.interestRate as { toString(): string }).toString() : '',
+      interestRate: loan.interestRate != null ? parseFloat((loan.interestRate as { toString(): string }).toString()) : null,
       notes: (loan.notes as string) || '',
+      isPrivate: (loan.isPrivate as boolean) ?? true,
     });
     setShowEdit(true);
   }
 
-  async function handleEdit(e: React.FormEvent) {
-    e.preventDefault();
-    setSaving(true);
-    try {
-      const res = await fetch(`/api/loans/${id}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          status: editForm.status,
-          dueDate: editForm.dueDate || undefined,
-          interestRate: editForm.interestRate ? parseFloat(editForm.interestRate) : undefined,
-          notes: editForm.notes || undefined,
-        }),
-      });
-      if (res.ok) { setShowEdit(false); fetchLoan(); }
-      else { const d = await res.json(); alert(d.error || 'Failed to update loan'); }
-    } finally { setSaving(false); }
-  }
-
   function openEditRepayment(r: Record<string, unknown>) {
     setEditingRepayment(r.id as string);
-    setRepayEditForm({
-      amount: (r.amount as { toString(): string }).toString(),
+    repayEditForm.setForm({
+      amount: parseFloat((r.amount as { toString(): string }).toString()) || 0,
       accountId: (r.accountId as string) || '',
       transactionDate: r.transactionDate ? (r.transactionDate as string).split('T')[0] : '',
       notes: (r.notes as string) || '',
     });
   }
 
-  async function handleEditRepayment(e: React.FormEvent) {
-    e.preventDefault();
-    if (!editingRepayment) return;
-    if (!repayEditForm.accountId) { alert('Please select an account'); return; }
-    setSaving(true);
-    try {
-      const res = await fetch(`/api/loans/${id}/repayments/${editingRepayment}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          amount: parseFloat(repayEditForm.amount),
-          accountId: repayEditForm.accountId,
-          transactionDate: repayEditForm.transactionDate,
-          notes: repayEditForm.notes || undefined,
-        }),
-      });
-      if (res.ok) { setEditingRepayment(null); fetchLoan(); }
-      else { const d = await res.json(); alert(d.error || 'Failed to update repayment'); }
-    } finally { setSaving(false); }
+  async function handleSettle() {
+    if (!confirm('Mark this loan as settled?')) return;
+    setSettleError(null);
+    const res = await fetch(`/api/loans/${id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ status: 'SETTLED' }),
+    });
+    if (res.ok) { fetchLoan(); }
+    else { const d = await res.json(); setSettleError(d.error || 'Failed to settle loan'); }
+  }
+
+  async function handleDelete() {
+    if (!confirm('Delete this loan? This cannot be undone.')) return;
+    setDeleteError(null);
+    const res = await fetch(`/api/loans/${id}`, { method: 'DELETE' });
+    if (res.ok) { router.push('/loans'); }
+    else { const d = await res.json(); setDeleteError(d.error || 'Failed to delete loan'); }
   }
 
   async function handleDeleteRepayment(repaymentId: string) {
     if (!confirm('Delete this repayment? This cannot be undone.')) return;
+    setDeleteRepayError(null);
     const res = await fetch(`/api/loans/${id}/repayments/${repaymentId}`, { method: 'DELETE' });
     if (res.ok) { fetchLoan(); }
-    else { const d = await res.json(); alert(d.error || 'Failed to delete repayment'); }
+    else { const d = await res.json(); setDeleteRepayError(d.error || 'Failed to delete repayment'); }
   }
 
   if (loading) return <PageLoading />;
@@ -191,6 +175,16 @@ export default function LoanDetailPage() {
           )}
         </div>
       </div>
+
+      {deleteError && (
+        <p className="text-sm text-destructive bg-destructive/10 rounded-md px-3 py-2">{deleteError}</p>
+      )}
+      {settleError && (
+        <p className="text-sm text-destructive bg-destructive/10 rounded-md px-3 py-2">{settleError}</p>
+      )}
+      {deleteRepayError && (
+        <p className="text-sm text-destructive bg-destructive/10 rounded-md px-3 py-2">{deleteRepayError}</p>
+      )}
 
       <div className="grid gap-4 sm:grid-cols-3">
         <Card><CardContent className="pt-6"><p className="text-xs text-muted-foreground">Total Amount</p><p className="text-2xl font-bold tabular-nums">{formatCurrency((loan.amount as { toString(): string }).toString())}</p></CardContent></Card>
@@ -241,36 +235,51 @@ export default function LoanDetailPage() {
         </CardContent>
       </Card>
 
-      {/* Repayment Modal */}
+      {/* Add Repayment Modal */}
       <Dialog open={showRepayment} onOpenChange={setShowRepayment}>
         <DialogContent>
           <DialogHeader><DialogTitle>Record Repayment</DialogTitle></DialogHeader>
-          <form onSubmit={handleRepayment} className="space-y-4">
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Amount *</label>
-              <Input type="number" step="0.01" value={repayForm.amount} onChange={(e) => setRepayForm({ ...repayForm, amount: e.target.value })} required />
-            </div>
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Account *</label>
+          <form onSubmit={repayForm.handleSubmit} className="space-y-4">
+            <FormField label="Amount" required error={repayForm.errors.amount}>
+              <Input
+                type="number"
+                step="0.01"
+                value={repayForm.form.amount as number || ''}
+                onChange={(e) => repayForm.setField('amount', parseFloat(e.target.value) || 0)}
+              />
+            </FormField>
+
+            <FormField label="Account" required error={repayForm.errors.accountId}>
               <Select
                 options={accountOptions}
-                value={repayForm.accountId}
-                onChange={(e) => setRepayForm({ ...repayForm, accountId: e.target.value })}
+                value={repayForm.form.accountId as string}
+                onChange={(e) => repayForm.setField('accountId', e.target.value)}
                 placeholder="Select account"
-                required
               />
-            </div>
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Date</label>
-              <Input type="date" value={repayForm.transactionDate} onChange={(e) => setRepayForm({ ...repayForm, transactionDate: e.target.value })} />
-            </div>
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Notes</label>
-              <Input value={repayForm.notes} onChange={(e) => setRepayForm({ ...repayForm, notes: e.target.value })} />
-            </div>
+            </FormField>
+
+            <FormField label="Date" required error={repayForm.errors.transactionDate}>
+              <Input
+                type="date"
+                value={repayForm.form.transactionDate as string}
+                onChange={(e) => repayForm.setField('transactionDate', e.target.value)}
+              />
+            </FormField>
+
+            <FormField label="Notes" error={repayForm.errors.notes}>
+              <Textarea
+                value={(repayForm.form.notes as string) || ''}
+                onChange={(e) => repayForm.setField('notes', e.target.value)}
+                placeholder="Optional"
+              />
+            </FormField>
+
+            {repayForm.serverError && (
+              <p className="text-sm text-destructive bg-destructive/10 rounded-md px-3 py-2">{repayForm.serverError}</p>
+            )}
             <DialogFooter>
               <Button type="button" variant="outline" onClick={() => setShowRepayment(false)}>Cancel</Button>
-              <Button type="submit" disabled={saving}>{saving ? 'Saving...' : 'Record Repayment'}</Button>
+              <Button type="submit" disabled={repayForm.saving}>{repayForm.saving ? 'Saving...' : 'Record Repayment'}</Button>
             </DialogFooter>
           </form>
         </DialogContent>
@@ -280,32 +289,47 @@ export default function LoanDetailPage() {
       <Dialog open={!!editingRepayment} onOpenChange={(open) => !open && setEditingRepayment(null)}>
         <DialogContent>
           <DialogHeader><DialogTitle>Edit Repayment</DialogTitle></DialogHeader>
-          <form onSubmit={handleEditRepayment} className="space-y-4">
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Amount *</label>
-              <Input type="number" step="0.01" value={repayEditForm.amount} onChange={(e) => setRepayEditForm({ ...repayEditForm, amount: e.target.value })} required />
-            </div>
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Account *</label>
+          <form onSubmit={repayEditForm.handleSubmit} className="space-y-4">
+            <FormField label="Amount" required error={repayEditForm.errors.amount}>
+              <Input
+                type="number"
+                step="0.01"
+                value={repayEditForm.form.amount as number || ''}
+                onChange={(e) => repayEditForm.setField('amount', parseFloat(e.target.value) || 0)}
+              />
+            </FormField>
+
+            <FormField label="Account" required error={repayEditForm.errors.accountId}>
               <Select
                 options={accountOptions}
-                value={repayEditForm.accountId}
-                onChange={(e) => setRepayEditForm({ ...repayEditForm, accountId: e.target.value })}
+                value={repayEditForm.form.accountId as string}
+                onChange={(e) => repayEditForm.setField('accountId', e.target.value)}
                 placeholder="Select account"
-                required
               />
-            </div>
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Date *</label>
-              <Input type="date" value={repayEditForm.transactionDate} onChange={(e) => setRepayEditForm({ ...repayEditForm, transactionDate: e.target.value })} required />
-            </div>
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Notes</label>
-              <Input value={repayEditForm.notes} onChange={(e) => setRepayEditForm({ ...repayEditForm, notes: e.target.value })} placeholder="Optional" />
-            </div>
+            </FormField>
+
+            <FormField label="Date" required error={repayEditForm.errors.transactionDate}>
+              <Input
+                type="date"
+                value={repayEditForm.form.transactionDate as string}
+                onChange={(e) => repayEditForm.setField('transactionDate', e.target.value)}
+              />
+            </FormField>
+
+            <FormField label="Notes" error={repayEditForm.errors.notes}>
+              <Textarea
+                value={(repayEditForm.form.notes as string) || ''}
+                onChange={(e) => repayEditForm.setField('notes', e.target.value)}
+                placeholder="Optional"
+              />
+            </FormField>
+
+            {repayEditForm.serverError && (
+              <p className="text-sm text-destructive bg-destructive/10 rounded-md px-3 py-2">{repayEditForm.serverError}</p>
+            )}
             <DialogFooter>
               <Button type="button" variant="outline" onClick={() => setEditingRepayment(null)}>Cancel</Button>
-              <Button type="submit" disabled={saving}>{saving ? 'Saving...' : 'Save Changes'}</Button>
+              <Button type="submit" disabled={repayEditForm.saving}>{repayEditForm.saving ? 'Saving...' : 'Save Changes'}</Button>
             </DialogFooter>
           </form>
         </DialogContent>
@@ -315,26 +339,58 @@ export default function LoanDetailPage() {
       <Dialog open={showEdit} onOpenChange={setShowEdit}>
         <DialogContent>
           <DialogHeader><DialogTitle>Edit Loan</DialogTitle></DialogHeader>
-          <form onSubmit={handleEdit} className="space-y-4">
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Status</label>
-              <Select options={loanStatusOptions} value={editForm.status} onChange={(e) => setEditForm({ ...editForm, status: e.target.value })} />
-            </div>
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Due Date</label>
-              <Input type="date" value={editForm.dueDate} onChange={(e) => setEditForm({ ...editForm, dueDate: e.target.value })} />
-            </div>
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Interest Rate (%)</label>
-              <Input type="number" step="0.01" value={editForm.interestRate} onChange={(e) => setEditForm({ ...editForm, interestRate: e.target.value })} placeholder="Optional" />
-            </div>
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Notes</label>
-              <Input value={editForm.notes} onChange={(e) => setEditForm({ ...editForm, notes: e.target.value })} placeholder="Optional" />
-            </div>
+          <form onSubmit={editForm.handleSubmit} className="space-y-4">
+            <FormField label="Status" error={editForm.errors.status}>
+              <Select
+                options={loanStatusOptions}
+                value={editForm.form.status as string}
+                onChange={(e) => editForm.setField('status', e.target.value)}
+              />
+            </FormField>
+
+            <FormField label="Due Date" error={editForm.errors.dueDate}>
+              <Input
+                type="date"
+                value={(editForm.form.dueDate as string) || ''}
+                onChange={(e) => editForm.setField('dueDate', e.target.value || null)}
+              />
+            </FormField>
+
+            <FormField label="Interest Rate (%)" error={editForm.errors.interestRate}>
+              <Input
+                type="number"
+                step="0.01"
+                value={editForm.form.interestRate != null ? (editForm.form.interestRate as number) : ''}
+                onChange={(e) => editForm.setField('interestRate', e.target.value ? parseFloat(e.target.value) : null)}
+                placeholder="Optional"
+              />
+            </FormField>
+
+            <FormField label="Notes" error={editForm.errors.notes}>
+              <Textarea
+                value={(editForm.form.notes as string) || ''}
+                onChange={(e) => editForm.setField('notes', e.target.value)}
+                placeholder="Optional"
+              />
+            </FormField>
+
+            <FormField label="Private" error={editForm.errors.isPrivate}>
+              <label className="flex items-center gap-2 text-sm">
+                <input
+                  type="checkbox"
+                  checked={(editForm.form.isPrivate as boolean) ?? true}
+                  onChange={(e) => editForm.setField('isPrivate', e.target.checked)}
+                />
+                Keep this loan private
+              </label>
+            </FormField>
+
+            {editForm.serverError && (
+              <p className="text-sm text-destructive bg-destructive/10 rounded-md px-3 py-2">{editForm.serverError}</p>
+            )}
             <DialogFooter>
               <Button type="button" variant="outline" onClick={() => setShowEdit(false)}>Cancel</Button>
-              <Button type="submit" disabled={saving}>{saving ? 'Saving...' : 'Save Changes'}</Button>
+              <Button type="submit" disabled={editForm.saving}>{editForm.saving ? 'Saving...' : 'Save Changes'}</Button>
             </DialogFooter>
           </form>
         </DialogContent>

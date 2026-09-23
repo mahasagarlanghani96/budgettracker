@@ -1,13 +1,18 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select } from '@/components/ui/select';
+import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { PageLoading, EmptyState } from '@/components/ui/loading';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/modal';
+import { FormField } from '@/components/forms/FormField';
+import { AdvancedSection } from '@/components/forms/AdvancedSection';
+import { useResourceForm } from '@/hooks/useResourceForm';
+import { accountSchema } from '@/lib/validations/schemas';
 import { formatCurrency } from '@/lib/utils';
 import { Plus, Wallet, Landmark, CreditCard, PiggyBank } from 'lucide-react';
 import Link from 'next/link';
@@ -41,50 +46,48 @@ interface Account {
   isActive: boolean;
 }
 
+const today = new Date().toISOString().split('T')[0];
+
+const initialForm = {
+  name: '',
+  accountType: 'CASH',
+  openingBalance: 0,
+  openingDate: today,
+  notes: '',
+  currency: 'PKR',
+  isShared: false,
+};
+
 export default function AccountsPage() {
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [loading, setLoading] = useState(true);
   const [showCreate, setShowCreate] = useState(false);
-  const [creating, setCreating] = useState(false);
-  const [form, setForm] = useState({
-    name: '', accountType: 'CASH', bankName: '', accountNumber: '', openingBalance: '0',
-  });
 
-  function fetchAccounts() {
+  const fetchAccounts = useCallback(() => {
     fetch('/api/accounts')
       .then((r) => r.json())
       .then((res) => setAccounts(res.data || []))
       .catch(console.error)
       .finally(() => setLoading(false));
-  }
+  }, []);
 
-  useEffect(() => { fetchAccounts(); }, []);
+  useEffect(() => { fetchAccounts(); }, [fetchAccounts]);
 
-  async function handleCreate(e: React.FormEvent) {
-    e.preventDefault();
-    setCreating(true);
-    try {
-      const res = await fetch('/api/accounts', {
+  const { form, errors, serverError, saving, setField, handleSubmit, reset } = useResourceForm({
+    schema: accountSchema,
+    initial: initialForm,
+    onSubmit: (data) =>
+      fetch('/api/accounts', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          name: form.name,
-          accountType: form.accountType,
-          openingBalance: parseFloat(form.openingBalance) || 0,
-          notes: [form.bankName, form.accountNumber].filter(Boolean).join(' — ') || undefined,
-        }),
-      });
-      if (res.ok) {
-        setShowCreate(false);
-        setForm({ name: '', accountType: 'CASH', bankName: '', accountNumber: '', openingBalance: '0' });
-        fetchAccounts();
-      }
-    } catch (err) {
-      console.error(err);
-    } finally {
-      setCreating(false);
-    }
-  }
+        body: JSON.stringify(data),
+      }),
+    onSuccess: () => {
+      setShowCreate(false);
+      reset();
+      fetchAccounts();
+    },
+  });
 
   if (loading) return <PageLoading />;
 
@@ -152,52 +155,74 @@ export default function AccountsPage() {
           <DialogHeader>
             <DialogTitle>Add Account</DialogTitle>
           </DialogHeader>
-          <form onSubmit={handleCreate} className="space-y-4">
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Account Name *</label>
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <FormField label="Account Name" required error={errors.name}>
               <Input
-                value={form.name}
-                onChange={(e) => setForm({ ...form, name: e.target.value })}
+                value={form.name as string}
+                onChange={(e) => setField('name', e.target.value)}
                 placeholder="e.g., Cash Wallet, Meezan Bank"
-                required
               />
-            </div>
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Type *</label>
+            </FormField>
+
+            <FormField label="Type" required error={errors.accountType}>
               <Select
                 options={accountTypeOptions}
-                value={form.accountType}
-                onChange={(e) => setForm({ ...form, accountType: e.target.value })}
+                value={form.accountType as string}
+                onChange={(e) => setField('accountType', e.target.value)}
               />
-            </div>
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Bank Name</label>
-              <Input
-                value={form.bankName}
-                onChange={(e) => setForm({ ...form, bankName: e.target.value })}
-                placeholder="Optional"
-              />
-            </div>
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Account Number</label>
-              <Input
-                value={form.accountNumber}
-                onChange={(e) => setForm({ ...form, accountNumber: e.target.value })}
-                placeholder="Optional"
-              />
-            </div>
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Opening Balance</label>
+            </FormField>
+
+            <FormField label="Opening Balance" required error={errors.openingBalance}>
               <Input
                 type="number"
                 step="0.01"
-                value={form.openingBalance}
-                onChange={(e) => setForm({ ...form, openingBalance: e.target.value })}
+                value={form.openingBalance as number}
+                onChange={(e) => setField('openingBalance', parseFloat(e.target.value) || 0)}
               />
-            </div>
+            </FormField>
+
+            <FormField label="Opening Date" error={errors.openingDate}>
+              <Input
+                type="date"
+                value={form.openingDate as string}
+                onChange={(e) => setField('openingDate', e.target.value)}
+              />
+            </FormField>
+
+            <FormField label="Notes" error={errors.notes}>
+              <Textarea
+                value={form.notes as string}
+                onChange={(e) => setField('notes', e.target.value)}
+                placeholder="Optional"
+              />
+            </FormField>
+
+            <AdvancedSection>
+              <FormField label="Currency" error={errors.currency}>
+                <Input
+                  value={form.currency as string}
+                  onChange={(e) => setField('currency', e.target.value)}
+                />
+              </FormField>
+
+              <FormField label="Shared Account">
+                <label className="flex items-center gap-2 text-sm">
+                  <input
+                    type="checkbox"
+                    checked={form.isShared as boolean}
+                    onChange={(e) => setField('isShared', e.target.checked)}
+                  />
+                  Allow other users to see this account
+                </label>
+              </FormField>
+            </AdvancedSection>
+
+            {serverError && (
+              <p className="text-sm text-destructive bg-destructive/10 rounded-md px-3 py-2">{serverError}</p>
+            )}
             <DialogFooter>
               <Button type="button" variant="outline" onClick={() => setShowCreate(false)}>Cancel</Button>
-              <Button type="submit" disabled={creating}>{creating ? 'Creating...' : 'Create Account'}</Button>
+              <Button type="submit" disabled={saving}>{saving ? 'Creating...' : 'Create Account'}</Button>
             </DialogFooter>
           </form>
         </DialogContent>

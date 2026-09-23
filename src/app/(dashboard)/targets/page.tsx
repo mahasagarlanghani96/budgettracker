@@ -6,8 +6,12 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Select } from '@/components/ui/select';
+import { Textarea } from '@/components/ui/textarea';
 import { PageLoading, EmptyState } from '@/components/ui/loading';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/modal';
+import { FormField } from '@/components/forms/FormField';
+import { useResourceForm } from '@/hooks/useResourceForm';
+import { targetSchema } from '@/lib/validations/schemas';
 import { formatCurrency } from '@/lib/utils';
 import { Target, Plus, Pencil, Trash2 } from 'lucide-react';
 
@@ -30,76 +34,73 @@ const targetTypeOptions = [
   { value: 'MAX_TOTAL_EXPENSE', label: 'Max Total Expense' },
   { value: 'MIN_INCOME', label: 'Min Income' },
   { value: 'MIN_SAVINGS', label: 'Min Savings' },
+  { value: 'CUSTOM', label: 'Custom' },
+];
+
+const monthOptions = [
+  { value: '1', label: 'January' },
+  { value: '2', label: 'February' },
+  { value: '3', label: 'March' },
+  { value: '4', label: 'April' },
+  { value: '5', label: 'May' },
+  { value: '6', label: 'June' },
+  { value: '7', label: 'July' },
+  { value: '8', label: 'August' },
+  { value: '9', label: 'September' },
+  { value: '10', label: 'October' },
+  { value: '11', label: 'November' },
+  { value: '12', label: 'December' },
 ];
 
 export default function TargetsPage() {
   const [targets, setTargets] = useState<FinancialTarget[]>([]);
+  const [categories, setCategories] = useState<{ id: string; name: string }[]>([]);
   const [loading, setLoading] = useState(true);
   const [showCreate, setShowCreate] = useState(false);
   const [editing, setEditing] = useState<FinancialTarget | null>(null);
-  const [saving, setSaving] = useState(false);
-  const [form, setForm] = useState({ name: '', type: 'MAX_EXPENSE', amount: '', month: String(new Date().getMonth() + 1), year: String(new Date().getFullYear()), categoryId: '' });
-  const [editForm, setEditForm] = useState({ name: '', type: 'MAX_EXPENSE', amount: '', month: '', year: '', notes: '' });
 
   function fetchTargets() {
     fetch('/api/targets').then((r) => r.json()).then((res) => setTargets(res.data || [])).catch(console.error).finally(() => setLoading(false));
   }
 
-  useEffect(() => { fetchTargets(); }, []);
+  useEffect(() => {
+    fetchTargets();
+    fetch('/api/categories').then((r) => r.json()).then((res) => setCategories(res.data || [])).catch(console.error);
+  }, []);
 
-  async function handleCreate(e: React.FormEvent) {
-    e.preventDefault();
-    setSaving(true);
-    try {
-      const res = await fetch('/api/targets', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ...form, amount: parseFloat(form.amount), month: parseInt(form.month), year: parseInt(form.year), categoryId: form.categoryId || undefined }),
-      });
-      if (res.ok) { setShowCreate(false); setForm({ name: '', type: 'MAX_EXPENSE', amount: '', month: String(new Date().getMonth() + 1), year: String(new Date().getFullYear()), categoryId: '' }); fetchTargets(); }
-    } finally { setSaving(false); }
-  }
+  // Create form
+  const createForm = useResourceForm({
+    schema: targetSchema,
+    initial: { name: '', type: 'MAX_EXPENSE', categoryId: null, amount: '', month: new Date().getMonth() + 1, year: new Date().getFullYear(), notes: '' },
+    onSubmit: (data) => fetch('/api/targets', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) }),
+    onSuccess: () => { setShowCreate(false); createForm.reset(); fetchTargets(); },
+  });
+
+  // Edit form
+  const editFormHook = useResourceForm({
+    schema: targetSchema,
+    initial: { name: '', type: 'MAX_EXPENSE', categoryId: null, amount: '', month: 1, year: new Date().getFullYear(), notes: '' },
+    onSubmit: (data) => fetch(`/api/targets/${editing!.id}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) }),
+    onSuccess: () => { setEditing(null); fetchTargets(); },
+  });
 
   function openEdit(t: FinancialTarget) {
     setEditing(t);
-    setEditForm({
+    editFormHook.setForm({
       name: t.name,
       type: t.type,
-      amount: t.amount.toString(),
-      month: String(t.month),
-      year: String(t.year),
+      categoryId: t.categoryId || null,
+      amount: parseFloat(t.amount.toString()),
+      month: t.month,
+      year: t.year,
       notes: t.notes || '',
     });
-  }
-
-  async function handleEdit(e: React.FormEvent) {
-    e.preventDefault();
-    if (!editing) return;
-    setSaving(true);
-    try {
-      const res = await fetch(`/api/targets/${editing.id}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          name: editForm.name,
-          type: editForm.type,
-          amount: parseFloat(editForm.amount),
-          month: parseInt(editForm.month),
-          year: parseInt(editForm.year),
-          categoryId: editing.categoryId || undefined,
-          notes: editForm.notes || undefined,
-        }),
-      });
-      if (res.ok) { setEditing(null); fetchTargets(); }
-      else { const d = await res.json(); alert(d.error || 'Failed to update target'); }
-    } finally { setSaving(false); }
   }
 
   async function handleDelete(t: FinancialTarget) {
     if (!confirm(`Delete "${t.name}"? This cannot be undone.`)) return;
     const res = await fetch(`/api/targets/${t.id}`, { method: 'DELETE' });
-    if (res.ok) { fetchTargets(); }
-    else { const d = await res.json(); alert(d.error || 'Failed to delete target'); }
+    if (res.ok) fetchTargets();
   }
 
   const typeLabels: Record<string, string> = {
@@ -107,9 +108,12 @@ export default function TargetsPage() {
     MAX_TOTAL_EXPENSE: 'Max Total Expense',
     MIN_INCOME: 'Min Income',
     MIN_SAVINGS: 'Min Savings',
+    CUSTOM: 'Custom',
   };
 
   if (loading) return <PageLoading />;
+
+  const categoryOptions = categories.map((c) => ({ value: c.id, label: c.name }));
 
   return (
     <div className="space-y-6">
@@ -163,38 +167,43 @@ export default function TargetsPage() {
         </div>
       )}
 
-      <Dialog open={showCreate} onOpenChange={setShowCreate}>
+      {/* Create Target Modal */}
+      <Dialog open={showCreate} onOpenChange={(open) => { setShowCreate(open); if (!open) createForm.reset(); }}>
         <DialogContent>
           <DialogHeader><DialogTitle>New Financial Target</DialogTitle></DialogHeader>
-          <form onSubmit={handleCreate} className="space-y-4">
-            <div className="space-y-2"><label className="text-sm font-medium">Name *</label><Input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} required placeholder="e.g., Monthly Grocery Limit" /></div>
+          <form onSubmit={createForm.handleSubmit} className="space-y-4">
+            <FormField label="Name" required error={createForm.errors.name}>
+              <Input value={createForm.form.name as string} onChange={(e) => createForm.setField('name', e.target.value)} placeholder="e.g., Monthly Grocery Limit" />
+            </FormField>
             <div className="grid gap-4 sm:grid-cols-2">
-              <div className="space-y-2">
-                <label className="text-sm font-medium">Type *</label>
-                <Select
-                  options={[
-                    { value: 'MAX_EXPENSE', label: 'Max Expense (Category)' },
-                    { value: 'MAX_TOTAL_EXPENSE', label: 'Max Total Expense' },
-                    { value: 'MIN_INCOME', label: 'Min Income' },
-                    { value: 'MIN_SAVINGS', label: 'Min Savings' },
-                  ]}
-                  value={form.type}
-                  onChange={(e) => setForm({ ...form, type: e.target.value })}
-                />
-              </div>
-              <div className="space-y-2">
-                <label className="text-sm font-medium">Month</label>
-                <Input type="number" min="1" max="12" value={form.month} onChange={(e) => setForm({ ...form, month: e.target.value })} />
-              </div>
+              <FormField label="Type" required error={createForm.errors.type}>
+                <Select options={targetTypeOptions} value={createForm.form.type as string} onChange={(e) => createForm.setField('type', e.target.value)} />
+              </FormField>
+              <FormField label="Month" required error={createForm.errors.month}>
+                <Select options={monthOptions} value={String(createForm.form.month)} onChange={(e) => createForm.setField('month', Number(e.target.value))} />
+              </FormField>
             </div>
+            {createForm.form.type === 'MAX_EXPENSE' && (
+              <FormField label="Category" error={createForm.errors.categoryId}>
+                <Select options={categoryOptions} value={(createForm.form.categoryId as string | null) ?? ''} onChange={(e) => createForm.setField('categoryId', e.target.value || null)} placeholder="Select category" />
+              </FormField>
+            )}
             <div className="grid gap-4 sm:grid-cols-2">
-              <div className="space-y-2">
-                <label className="text-sm font-medium">Year</label>
-                <Input type="number" min="2000" max="2100" value={form.year} onChange={(e) => setForm({ ...form, year: e.target.value })} />
-              </div>
+              <FormField label="Year" required error={createForm.errors.year}>
+                <Input type="number" min={2020} max={2100} value={createForm.form.year as number} onChange={(e) => createForm.setField('year', e.target.value === '' ? '' : Number(e.target.value))} />
+              </FormField>
+              <FormField label="Amount" required error={createForm.errors.amount}>
+                <Input type="number" step="0.01" value={createForm.form.amount as string | number} onChange={(e) => createForm.setField('amount', e.target.value === '' ? '' : Number(e.target.value))} />
+              </FormField>
             </div>
-            <div className="space-y-2"><label className="text-sm font-medium">Amount *</label><Input type="number" step="0.01" value={form.amount} onChange={(e) => setForm({ ...form, amount: e.target.value })} required /></div>
-            <DialogFooter><Button type="button" variant="outline" onClick={() => setShowCreate(false)}>Cancel</Button><Button type="submit" disabled={saving}>{saving ? 'Creating...' : 'Create'}</Button></DialogFooter>
+            <FormField label="Notes" error={createForm.errors.notes}>
+              <Textarea value={createForm.form.notes as string} onChange={(e) => createForm.setField('notes', e.target.value)} placeholder="Optional" />
+            </FormField>
+            {createForm.serverError && <p className="text-sm text-destructive bg-destructive/10 rounded-md px-3 py-2">{createForm.serverError}</p>}
+            <DialogFooter>
+              <Button type="button" variant="outline" onClick={() => setShowCreate(false)}>Cancel</Button>
+              <Button type="submit" disabled={createForm.saving}>{createForm.saving ? 'Creating...' : 'Create'}</Button>
+            </DialogFooter>
           </form>
         </DialogContent>
       </Dialog>
@@ -203,27 +212,39 @@ export default function TargetsPage() {
       <Dialog open={!!editing} onOpenChange={(open) => !open && setEditing(null)}>
         <DialogContent>
           <DialogHeader><DialogTitle>Edit Financial Target</DialogTitle></DialogHeader>
-          <form onSubmit={handleEdit} className="space-y-4">
-            <div className="space-y-2"><label className="text-sm font-medium">Name *</label><Input value={editForm.name} onChange={(e) => setEditForm({ ...editForm, name: e.target.value })} required /></div>
+          <form onSubmit={editFormHook.handleSubmit} className="space-y-4">
+            <FormField label="Name" required error={editFormHook.errors.name}>
+              <Input value={editFormHook.form.name as string} onChange={(e) => editFormHook.setField('name', e.target.value)} />
+            </FormField>
             <div className="grid gap-4 sm:grid-cols-2">
-              <div className="space-y-2">
-                <label className="text-sm font-medium">Type *</label>
-                <Select options={targetTypeOptions} value={editForm.type} onChange={(e) => setEditForm({ ...editForm, type: e.target.value })} />
-              </div>
-              <div className="space-y-2">
-                <label className="text-sm font-medium">Month</label>
-                <Input type="number" min="1" max="12" value={editForm.month} onChange={(e) => setEditForm({ ...editForm, month: e.target.value })} />
-              </div>
+              <FormField label="Type" required error={editFormHook.errors.type}>
+                <Select options={targetTypeOptions} value={editFormHook.form.type as string} onChange={(e) => editFormHook.setField('type', e.target.value)} />
+              </FormField>
+              <FormField label="Month" required error={editFormHook.errors.month}>
+                <Select options={monthOptions} value={String(editFormHook.form.month)} onChange={(e) => editFormHook.setField('month', Number(e.target.value))} />
+              </FormField>
             </div>
+            {editFormHook.form.type === 'MAX_EXPENSE' && (
+              <FormField label="Category" error={editFormHook.errors.categoryId}>
+                <Select options={categoryOptions} value={(editFormHook.form.categoryId as string | null) ?? ''} onChange={(e) => editFormHook.setField('categoryId', e.target.value || null)} placeholder="Select category" />
+              </FormField>
+            )}
             <div className="grid gap-4 sm:grid-cols-2">
-              <div className="space-y-2">
-                <label className="text-sm font-medium">Year</label>
-                <Input type="number" min="2000" max="2100" value={editForm.year} onChange={(e) => setEditForm({ ...editForm, year: e.target.value })} />
-              </div>
+              <FormField label="Year" required error={editFormHook.errors.year}>
+                <Input type="number" min={2020} max={2100} value={editFormHook.form.year as number} onChange={(e) => editFormHook.setField('year', e.target.value === '' ? '' : Number(e.target.value))} />
+              </FormField>
+              <FormField label="Amount" required error={editFormHook.errors.amount}>
+                <Input type="number" step="0.01" value={editFormHook.form.amount as string | number} onChange={(e) => editFormHook.setField('amount', e.target.value === '' ? '' : Number(e.target.value))} />
+              </FormField>
             </div>
-            <div className="space-y-2"><label className="text-sm font-medium">Amount *</label><Input type="number" step="0.01" value={editForm.amount} onChange={(e) => setEditForm({ ...editForm, amount: e.target.value })} required /></div>
-            <div className="space-y-2"><label className="text-sm font-medium">Notes</label><Input value={editForm.notes} onChange={(e) => setEditForm({ ...editForm, notes: e.target.value })} placeholder="Optional" /></div>
-            <DialogFooter><Button type="button" variant="outline" onClick={() => setEditing(null)}>Cancel</Button><Button type="submit" disabled={saving}>{saving ? 'Saving...' : 'Save Changes'}</Button></DialogFooter>
+            <FormField label="Notes" error={editFormHook.errors.notes}>
+              <Textarea value={editFormHook.form.notes as string} onChange={(e) => editFormHook.setField('notes', e.target.value)} placeholder="Optional" />
+            </FormField>
+            {editFormHook.serverError && <p className="text-sm text-destructive bg-destructive/10 rounded-md px-3 py-2">{editFormHook.serverError}</p>}
+            <DialogFooter>
+              <Button type="button" variant="outline" onClick={() => setEditing(null)}>Cancel</Button>
+              <Button type="submit" disabled={editFormHook.saving}>{editFormHook.saving ? 'Saving...' : 'Save Changes'}</Button>
+            </DialogFooter>
           </form>
         </DialogContent>
       </Dialog>

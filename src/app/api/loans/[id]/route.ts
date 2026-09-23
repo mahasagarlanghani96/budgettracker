@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { requireAuth } from '@/lib/auth';
+import { loanUpdateSchema } from '@/lib/validations/schemas';
 import Decimal from 'decimal.js';
 
 // GET /api/loans/:id
@@ -51,6 +52,7 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
     const session = await requireAuth();
     const { id } = await params;
     const body = await request.json();
+    const validated = loanUpdateSchema.parse(body);
 
     const existing = await prisma.loan.findFirst({
       where: { id, userId: (session.user as { id: string }).id },
@@ -63,10 +65,11 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
     const loan = await prisma.loan.update({
       where: { id },
       data: {
-        status: body.status,
-        notes: body.notes,
-        dueDate: body.dueDate ? new Date(body.dueDate) : undefined,
-        interestRate: body.interestRate,
+        status: validated.status,
+        notes: validated.notes,
+        dueDate: validated.dueDate ? new Date(validated.dueDate) : validated.dueDate === null ? null : undefined,
+        interestRate: validated.interestRate,
+        isPrivate: validated.isPrivate,
       },
     });
 

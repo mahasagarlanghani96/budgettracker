@@ -6,8 +6,12 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Select } from '@/components/ui/select';
+import { Textarea } from '@/components/ui/textarea';
 import { PageLoading, EmptyState } from '@/components/ui/loading';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/modal';
+import { FormField } from '@/components/forms/FormField';
+import { useResourceForm } from '@/hooks/useResourceForm';
+import { savingsGoalSchema, savingsGoalUpdateSchema, savingsTransactionInputSchema } from '@/lib/validations/schemas';
 import { formatCurrency, formatDate } from '@/lib/utils';
 import { PiggyBank, Plus, ArrowDownToLine, ArrowUpFromLine, Pencil, Trash2, History } from 'lucide-react';
 
@@ -33,6 +37,8 @@ interface SavingsGoal {
   notes?: string | null;
 }
 
+const today = new Date().toISOString().split('T')[0];
+
 export default function SavingsPage() {
   const [goals, setGoals] = useState<SavingsGoal[]>([]);
   const [accounts, setAccounts] = useState<Array<{ id: string; name: string }>>([]);
@@ -40,15 +46,10 @@ export default function SavingsPage() {
   const [showCreate, setShowCreate] = useState(false);
   const [showDeposit, setShowDeposit] = useState<string | null>(null);
   const [editing, setEditing] = useState<SavingsGoal | null>(null);
-  const [saving, setSaving] = useState(false);
-  const [form, setForm] = useState({ name: '', targetAmount: '', targetDate: '' });
-  const [editForm, setEditForm] = useState({ name: '', targetAmount: '', targetDate: '', notes: '', isActive: true });
-  const [txForm, setTxForm] = useState({ type: 'DEPOSIT', amount: '', accountId: '', transactionDate: new Date().toISOString().split('T')[0], notes: '' });
   const [historyGoal, setHistoryGoal] = useState<SavingsGoal | null>(null);
   const [transactions, setTransactions] = useState<SavingsTx[]>([]);
   const [historyLoading, setHistoryLoading] = useState(false);
   const [editingTx, setEditingTx] = useState<SavingsTx | null>(null);
-  const [txEditForm, setTxEditForm] = useState({ type: 'DEPOSIT', amount: '', accountId: '', transactionDate: '', notes: '' });
 
   function fetchGoals() {
     fetch('/api/savings').then((r) => r.json()).then((res) => setGoals(res.data || [])).catch(console.error).finally(() => setLoading(false));
@@ -59,34 +60,37 @@ export default function SavingsPage() {
     fetch('/api/accounts').then((r) => r.json()).then((res) => setAccounts(res.data || []));
   }, []);
 
-  async function handleCreate(e: React.FormEvent) {
-    e.preventDefault();
-    setSaving(true);
-    try {
-      const res = await fetch('/api/savings', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name: form.name, targetAmount: parseFloat(form.targetAmount), targetDate: form.targetDate || undefined }),
-      });
-      if (res.ok) { setShowCreate(false); setForm({ name: '', targetAmount: '', targetDate: '' }); fetchGoals(); }
-    } finally { setSaving(false); }
-  }
+  // Create goal form
+  const createForm = useResourceForm({
+    schema: savingsGoalSchema,
+    initial: { name: '', targetAmount: '', targetDate: null, notes: '' },
+    onSubmit: (data) => fetch('/api/savings', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) }),
+    onSuccess: () => { setShowCreate(false); createForm.reset(); fetchGoals(); },
+  });
 
-  async function handleTransaction(e: React.FormEvent) {
-    e.preventDefault();
-    if (!showDeposit) return;
-    if (!txForm.accountId) { alert('Please select an account'); return; }
-    setSaving(true);
-    try {
-      const res = await fetch(`/api/savings/${showDeposit}/transactions`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ...txForm, amount: parseFloat(txForm.amount), accountId: txForm.accountId, notes: txForm.notes || undefined }),
-      });
-      if (res.ok) { setShowDeposit(null); setTxForm({ type: 'DEPOSIT', amount: '', accountId: '', transactionDate: new Date().toISOString().split('T')[0], notes: '' }); fetchGoals(); }
-      else { const d = await res.json(); alert(d.error || 'Failed to record transaction'); }
-    } finally { setSaving(false); }
-  }
+  // Edit goal form
+  const editFormHook = useResourceForm({
+    schema: savingsGoalUpdateSchema,
+    initial: { name: '', targetAmount: '', targetDate: null, notes: '', isActive: true },
+    onSubmit: (data) => fetch(`/api/savings/${editing!.id}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) }),
+    onSuccess: () => { setEditing(null); fetchGoals(); },
+  });
+
+  // Deposit/Withdraw form
+  const txForm = useResourceForm({
+    schema: savingsTransactionInputSchema,
+    initial: { type: 'DEPOSIT', amount: '', accountId: '', transactionDate: today, notes: '' },
+    onSubmit: (data) => fetch(`/api/savings/${showDeposit!}/transactions`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) }),
+    onSuccess: () => { setShowDeposit(null); txForm.reset(); fetchGoals(); },
+  });
+
+  // Edit transaction form
+  const txEditFormHook = useResourceForm({
+    schema: savingsTransactionInputSchema,
+    initial: { type: 'DEPOSIT', amount: '', accountId: '', transactionDate: '', notes: '' },
+    onSubmit: (data) => fetch(`/api/savings/${historyGoal!.id}/transactions/${editingTx!.id}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) }),
+    onSuccess: () => { setEditingTx(null); fetchHistory(historyGoal!.id); fetchGoals(); },
+  });
 
   function fetchHistory(goalId: string) {
     setHistoryLoading(true);
@@ -106,35 +110,13 @@ export default function SavingsPage() {
 
   function openEditTx(tx: SavingsTx) {
     setEditingTx(tx);
-    setTxEditForm({
+    txEditFormHook.setForm({
       type: tx.type,
-      amount: tx.amount.toString(),
+      amount: parseFloat(tx.amount.toString()),
       accountId: tx.accountId || '',
       transactionDate: tx.transactionDate ? tx.transactionDate.split('T')[0] : '',
       notes: tx.notes || '',
     });
-  }
-
-  async function handleEditTx(e: React.FormEvent) {
-    e.preventDefault();
-    if (!historyGoal || !editingTx) return;
-    if (!txEditForm.accountId) { alert('Please select an account'); return; }
-    setSaving(true);
-    try {
-      const res = await fetch(`/api/savings/${historyGoal.id}/transactions/${editingTx.id}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          type: txEditForm.type,
-          amount: parseFloat(txEditForm.amount),
-          accountId: txEditForm.accountId,
-          transactionDate: txEditForm.transactionDate,
-          notes: txEditForm.notes || undefined,
-        }),
-      });
-      if (res.ok) { setEditingTx(null); fetchHistory(historyGoal.id); fetchGoals(); }
-      else { const d = await res.json(); alert(d.error || 'Failed to update transaction'); }
-    } finally { setSaving(false); }
   }
 
   async function handleDeleteTx(tx: SavingsTx) {
@@ -142,49 +124,28 @@ export default function SavingsPage() {
     if (!confirm('Delete this transaction? This cannot be undone.')) return;
     const res = await fetch(`/api/savings/${historyGoal.id}/transactions/${tx.id}`, { method: 'DELETE' });
     if (res.ok) { fetchHistory(historyGoal.id); fetchGoals(); }
-    else { const d = await res.json(); alert(d.error || 'Failed to delete transaction'); }
   }
 
   function openEdit(goal: SavingsGoal) {
     setEditing(goal);
-    setEditForm({
+    editFormHook.setForm({
       name: goal.name,
-      targetAmount: goal.targetAmount.toString(),
-      targetDate: goal.targetDate ? goal.targetDate.split('T')[0] : '',
+      targetAmount: parseFloat(goal.targetAmount.toString()),
+      targetDate: goal.targetDate ? goal.targetDate.split('T')[0] : null,
       notes: goal.notes || '',
       isActive: goal.isActive,
     });
   }
 
-  async function handleEdit(e: React.FormEvent) {
-    e.preventDefault();
-    if (!editing) return;
-    setSaving(true);
-    try {
-      const res = await fetch(`/api/savings/${editing.id}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          name: editForm.name,
-          targetAmount: parseFloat(editForm.targetAmount),
-          targetDate: editForm.targetDate || null,
-          notes: editForm.notes || undefined,
-          isActive: editForm.isActive,
-        }),
-      });
-      if (res.ok) { setEditing(null); fetchGoals(); }
-      else { const d = await res.json(); alert(d.error || 'Failed to update goal'); }
-    } finally { setSaving(false); }
-  }
-
   async function handleDelete(goal: SavingsGoal) {
     if (!confirm(`Delete "${goal.name}"? This cannot be undone.`)) return;
     const res = await fetch(`/api/savings/${goal.id}`, { method: 'DELETE' });
-    if (res.ok) { fetchGoals(); }
-    else { const d = await res.json(); alert(d.error || 'Failed to delete goal'); }
+    if (res.ok) fetchGoals();
   }
 
   if (loading) return <PageLoading />;
+
+  const accountOptions = accounts.map((a) => ({ value: a.id, label: a.name }));
 
   return (
     <div className="space-y-6">
@@ -222,10 +183,10 @@ export default function SavingsPage() {
                 </div>
                 {goal.isActive && (
                   <div className="flex gap-2">
-                    <Button size="sm" className="flex-1" onClick={() => { setShowDeposit(goal.id); setTxForm({ ...txForm, type: 'DEPOSIT' }); }}>
+                    <Button size="sm" className="flex-1" onClick={() => { setShowDeposit(goal.id); txForm.setForm({ ...txForm.form, type: 'DEPOSIT' }); }}>
                       <ArrowDownToLine className="h-3 w-3 mr-1" /> Deposit
                     </Button>
-                    <Button size="sm" variant="outline" className="flex-1" onClick={() => { setShowDeposit(goal.id); setTxForm({ ...txForm, type: 'WITHDRAWAL' }); }}>
+                    <Button size="sm" variant="outline" className="flex-1" onClick={() => { setShowDeposit(goal.id); txForm.setForm({ ...txForm.form, type: 'WITHDRAWAL' }); }}>
                       <ArrowUpFromLine className="h-3 w-3 mr-1" /> Withdraw
                     </Button>
                   </div>
@@ -240,28 +201,56 @@ export default function SavingsPage() {
       )}
 
       {/* Create Goal Modal */}
-      <Dialog open={showCreate} onOpenChange={setShowCreate}>
+      <Dialog open={showCreate} onOpenChange={(open) => { setShowCreate(open); if (!open) createForm.reset(); }}>
         <DialogContent>
           <DialogHeader><DialogTitle>New Savings Goal</DialogTitle></DialogHeader>
-          <form onSubmit={handleCreate} className="space-y-4">
-            <div className="space-y-2"><label className="text-sm font-medium">Name *</label><Input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} required placeholder="e.g., Emergency Fund" /></div>
-            <div className="space-y-2"><label className="text-sm font-medium">Target Amount *</label><Input type="number" step="0.01" value={form.targetAmount} onChange={(e) => setForm({ ...form, targetAmount: e.target.value })} required /></div>
-            <div className="space-y-2"><label className="text-sm font-medium">Target Date</label><Input type="date" value={form.targetDate} onChange={(e) => setForm({ ...form, targetDate: e.target.value })} /></div>
-            <DialogFooter><Button type="button" variant="outline" onClick={() => setShowCreate(false)}>Cancel</Button><Button type="submit" disabled={saving}>{saving ? 'Creating...' : 'Create'}</Button></DialogFooter>
+          <form onSubmit={createForm.handleSubmit} className="space-y-4">
+            <FormField label="Name" required error={createForm.errors.name}>
+              <Input value={createForm.form.name as string} onChange={(e) => createForm.setField('name', e.target.value)} placeholder="e.g., Emergency Fund" />
+            </FormField>
+            <FormField label="Target Amount" required error={createForm.errors.targetAmount}>
+              <Input type="number" step="0.01" value={createForm.form.targetAmount as string | number} onChange={(e) => createForm.setField('targetAmount', e.target.value === '' ? '' : Number(e.target.value))} />
+            </FormField>
+            <FormField label="Target Date" error={createForm.errors.targetDate}>
+              <Input type="date" value={(createForm.form.targetDate as string | null) ?? ''} onChange={(e) => createForm.setField('targetDate', e.target.value || null)} />
+            </FormField>
+            <FormField label="Notes" error={createForm.errors.notes}>
+              <Textarea value={createForm.form.notes as string} onChange={(e) => createForm.setField('notes', e.target.value)} placeholder="Optional" />
+            </FormField>
+            {createForm.serverError && <p className="text-sm text-destructive bg-destructive/10 rounded-md px-3 py-2">{createForm.serverError}</p>}
+            <DialogFooter>
+              <Button type="button" variant="outline" onClick={() => setShowCreate(false)}>Cancel</Button>
+              <Button type="submit" disabled={createForm.saving}>{createForm.saving ? 'Creating...' : 'Create'}</Button>
+            </DialogFooter>
           </form>
         </DialogContent>
       </Dialog>
 
       {/* Deposit/Withdraw Modal */}
-      <Dialog open={!!showDeposit} onOpenChange={() => setShowDeposit(null)}>
+      <Dialog open={!!showDeposit} onOpenChange={(open) => { if (!open) { setShowDeposit(null); txForm.reset(); } }}>
         <DialogContent>
-          <DialogHeader><DialogTitle>{txForm.type === 'DEPOSIT' ? 'Deposit' : 'Withdraw'}</DialogTitle></DialogHeader>
-          <form onSubmit={handleTransaction} className="space-y-4">
-            <div className="space-y-2"><label className="text-sm font-medium">Type</label><Select options={txTypeOptions} value={txForm.type} onChange={(e) => setTxForm({ ...txForm, type: e.target.value })} /></div>
-            <div className="space-y-2"><label className="text-sm font-medium">Amount *</label><Input type="number" step="0.01" value={txForm.amount} onChange={(e) => setTxForm({ ...txForm, amount: e.target.value })} required /></div>
-            <div className="space-y-2"><label className="text-sm font-medium">Account *</label><Select options={accounts.map((a) => ({ value: a.id, label: a.name }))} value={txForm.accountId} onChange={(e) => setTxForm({ ...txForm, accountId: e.target.value })} placeholder="Select account" required /></div>
-            <div className="space-y-2"><label className="text-sm font-medium">Date</label><Input type="date" value={txForm.transactionDate} onChange={(e) => setTxForm({ ...txForm, transactionDate: e.target.value })} /></div>
-            <DialogFooter><Button type="button" variant="outline" onClick={() => setShowDeposit(null)}>Cancel</Button><Button type="submit" disabled={saving}>{saving ? 'Saving...' : 'Confirm'}</Button></DialogFooter>
+          <DialogHeader><DialogTitle>{txForm.form.type === 'DEPOSIT' ? 'Deposit' : 'Withdraw'}</DialogTitle></DialogHeader>
+          <form onSubmit={txForm.handleSubmit} className="space-y-4">
+            <FormField label="Type" required error={txForm.errors.type}>
+              <Select options={txTypeOptions} value={txForm.form.type as string} onChange={(e) => txForm.setField('type', e.target.value)} />
+            </FormField>
+            <FormField label="Amount" required error={txForm.errors.amount}>
+              <Input type="number" step="0.01" value={txForm.form.amount as string | number} onChange={(e) => txForm.setField('amount', e.target.value === '' ? '' : Number(e.target.value))} />
+            </FormField>
+            <FormField label="Account" required error={txForm.errors.accountId}>
+              <Select options={accountOptions} value={txForm.form.accountId as string} onChange={(e) => txForm.setField('accountId', e.target.value)} placeholder="Select account" />
+            </FormField>
+            <FormField label="Date" required error={txForm.errors.transactionDate}>
+              <Input type="date" value={txForm.form.transactionDate as string} onChange={(e) => txForm.setField('transactionDate', e.target.value)} />
+            </FormField>
+            <FormField label="Notes" error={txForm.errors.notes}>
+              <Textarea value={txForm.form.notes as string} onChange={(e) => txForm.setField('notes', e.target.value)} placeholder="Optional" />
+            </FormField>
+            {txForm.serverError && <p className="text-sm text-destructive bg-destructive/10 rounded-md px-3 py-2">{txForm.serverError}</p>}
+            <DialogFooter>
+              <Button type="button" variant="outline" onClick={() => setShowDeposit(null)}>Cancel</Button>
+              <Button type="submit" disabled={txForm.saving}>{txForm.saving ? 'Saving...' : 'Confirm'}</Button>
+            </DialogFooter>
           </form>
         </DialogContent>
       </Dialog>
@@ -271,13 +260,27 @@ export default function SavingsPage() {
         <DialogContent>
           <DialogHeader><DialogTitle>{editingTx ? 'Edit Transaction' : `History — ${historyGoal?.name ?? ''}`}</DialogTitle></DialogHeader>
           {editingTx ? (
-            <form onSubmit={handleEditTx} className="space-y-4">
-              <div className="space-y-2"><label className="text-sm font-medium">Type</label><Select options={txTypeOptions} value={txEditForm.type} onChange={(e) => setTxEditForm({ ...txEditForm, type: e.target.value })} /></div>
-              <div className="space-y-2"><label className="text-sm font-medium">Amount *</label><Input type="number" step="0.01" value={txEditForm.amount} onChange={(e) => setTxEditForm({ ...txEditForm, amount: e.target.value })} required /></div>
-              <div className="space-y-2"><label className="text-sm font-medium">Account *</label><Select options={accounts.map((a) => ({ value: a.id, label: a.name }))} value={txEditForm.accountId} onChange={(e) => setTxEditForm({ ...txEditForm, accountId: e.target.value })} placeholder="Select account" required /></div>
-              <div className="space-y-2"><label className="text-sm font-medium">Date *</label><Input type="date" value={txEditForm.transactionDate} onChange={(e) => setTxEditForm({ ...txEditForm, transactionDate: e.target.value })} required /></div>
-              <div className="space-y-2"><label className="text-sm font-medium">Notes</label><Input value={txEditForm.notes} onChange={(e) => setTxEditForm({ ...txEditForm, notes: e.target.value })} placeholder="Optional" /></div>
-              <DialogFooter><Button type="button" variant="outline" onClick={() => setEditingTx(null)}>Back</Button><Button type="submit" disabled={saving}>{saving ? 'Saving...' : 'Save Changes'}</Button></DialogFooter>
+            <form onSubmit={txEditFormHook.handleSubmit} className="space-y-4">
+              <FormField label="Type" required error={txEditFormHook.errors.type}>
+                <Select options={txTypeOptions} value={txEditFormHook.form.type as string} onChange={(e) => txEditFormHook.setField('type', e.target.value)} />
+              </FormField>
+              <FormField label="Amount" required error={txEditFormHook.errors.amount}>
+                <Input type="number" step="0.01" value={txEditFormHook.form.amount as string | number} onChange={(e) => txEditFormHook.setField('amount', e.target.value === '' ? '' : Number(e.target.value))} />
+              </FormField>
+              <FormField label="Account" required error={txEditFormHook.errors.accountId}>
+                <Select options={accountOptions} value={txEditFormHook.form.accountId as string} onChange={(e) => txEditFormHook.setField('accountId', e.target.value)} placeholder="Select account" />
+              </FormField>
+              <FormField label="Date" required error={txEditFormHook.errors.transactionDate}>
+                <Input type="date" value={txEditFormHook.form.transactionDate as string} onChange={(e) => txEditFormHook.setField('transactionDate', e.target.value)} />
+              </FormField>
+              <FormField label="Notes" error={txEditFormHook.errors.notes}>
+                <Textarea value={txEditFormHook.form.notes as string} onChange={(e) => txEditFormHook.setField('notes', e.target.value)} placeholder="Optional" />
+              </FormField>
+              {txEditFormHook.serverError && <p className="text-sm text-destructive bg-destructive/10 rounded-md px-3 py-2">{txEditFormHook.serverError}</p>}
+              <DialogFooter>
+                <Button type="button" variant="outline" onClick={() => setEditingTx(null)}>Back</Button>
+                <Button type="submit" disabled={txEditFormHook.saving}>{txEditFormHook.saving ? 'Saving...' : 'Save Changes'}</Button>
+              </DialogFooter>
             </form>
           ) : historyLoading ? (
             <p className="text-sm text-muted-foreground text-center py-4">Loading...</p>
@@ -310,16 +313,28 @@ export default function SavingsPage() {
       <Dialog open={!!editing} onOpenChange={(open) => !open && setEditing(null)}>
         <DialogContent>
           <DialogHeader><DialogTitle>Edit Savings Goal</DialogTitle></DialogHeader>
-          <form onSubmit={handleEdit} className="space-y-4">
-            <div className="space-y-2"><label className="text-sm font-medium">Name *</label><Input value={editForm.name} onChange={(e) => setEditForm({ ...editForm, name: e.target.value })} required /></div>
-            <div className="space-y-2"><label className="text-sm font-medium">Target Amount *</label><Input type="number" step="0.01" value={editForm.targetAmount} onChange={(e) => setEditForm({ ...editForm, targetAmount: e.target.value })} required /></div>
-            <div className="space-y-2"><label className="text-sm font-medium">Target Date</label><Input type="date" value={editForm.targetDate} onChange={(e) => setEditForm({ ...editForm, targetDate: e.target.value })} /></div>
-            <div className="space-y-2"><label className="text-sm font-medium">Notes</label><Input value={editForm.notes} onChange={(e) => setEditForm({ ...editForm, notes: e.target.value })} placeholder="Optional" /></div>
+          <form onSubmit={editFormHook.handleSubmit} className="space-y-4">
+            <FormField label="Name" required error={editFormHook.errors.name}>
+              <Input value={editFormHook.form.name as string} onChange={(e) => editFormHook.setField('name', e.target.value)} />
+            </FormField>
+            <FormField label="Target Amount" required error={editFormHook.errors.targetAmount}>
+              <Input type="number" step="0.01" value={editFormHook.form.targetAmount as string | number} onChange={(e) => editFormHook.setField('targetAmount', e.target.value === '' ? '' : Number(e.target.value))} />
+            </FormField>
+            <FormField label="Target Date" error={editFormHook.errors.targetDate}>
+              <Input type="date" value={(editFormHook.form.targetDate as string | null) ?? ''} onChange={(e) => editFormHook.setField('targetDate', e.target.value || null)} />
+            </FormField>
+            <FormField label="Notes" error={editFormHook.errors.notes}>
+              <Textarea value={editFormHook.form.notes as string} onChange={(e) => editFormHook.setField('notes', e.target.value)} placeholder="Optional" />
+            </FormField>
             <label className="flex items-center gap-2 text-sm font-medium">
-              <input type="checkbox" checked={editForm.isActive} onChange={(e) => setEditForm({ ...editForm, isActive: e.target.checked })} />
+              <input type="checkbox" checked={editFormHook.form.isActive as boolean} onChange={(e) => editFormHook.setField('isActive', e.target.checked)} />
               Active
             </label>
-            <DialogFooter><Button type="button" variant="outline" onClick={() => setEditing(null)}>Cancel</Button><Button type="submit" disabled={saving}>{saving ? 'Saving...' : 'Save Changes'}</Button></DialogFooter>
+            {editFormHook.serverError && <p className="text-sm text-destructive bg-destructive/10 rounded-md px-3 py-2">{editFormHook.serverError}</p>}
+            <DialogFooter>
+              <Button type="button" variant="outline" onClick={() => setEditing(null)}>Cancel</Button>
+              <Button type="submit" disabled={editFormHook.saving}>{editFormHook.saving ? 'Saving...' : 'Save Changes'}</Button>
+            </DialogFooter>
           </form>
         </DialogContent>
       </Dialog>

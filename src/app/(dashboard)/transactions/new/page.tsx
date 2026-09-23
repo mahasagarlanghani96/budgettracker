@@ -2,90 +2,88 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select } from '@/components/ui/select';
+import { Textarea } from '@/components/ui/textarea';
+import { FormField } from '@/components/forms/FormField';
+import { AdvancedSection } from '@/components/forms/AdvancedSection';
+import { useResourceForm } from '@/hooks/useResourceForm';
+import { transactionSchema } from '@/lib/validations/schemas';
 import { ArrowLeft } from 'lucide-react';
 import Link from 'next/link';
 
 const transactionTypes = [
-  { value: 'EXPENSE', label: 'Expense' },
   { value: 'INCOME', label: 'Income' },
+  { value: 'EXPENSE', label: 'Expense' },
   { value: 'TRANSFER', label: 'Transfer' },
+  { value: 'OTHER', label: 'Other' },
 ];
+
+const emptyForm = {
+  type: 'EXPENSE',
+  amount: '',
+  sourceAccountId: '',
+  destAccountId: '',
+  categoryId: '',
+  personId: '',
+  description: '',
+  transactionDate: new Date().toISOString().split('T')[0],
+  notes: '',
+  transactionTime: '',
+  taxAmount: '',
+  taxPercent: '',
+  expectedAmount: '',
+  isPrivate: true,
+};
 
 export default function NewTransactionPage() {
   const router = useRouter();
   const [accounts, setAccounts] = useState<Array<{ id: string; name: string }>>([]);
   const [categories, setCategories] = useState<Array<{ id: string; name: string; type: string }>>([]);
-  const [saving, setSaving] = useState(false);
-  const [form, setForm] = useState({
-    type: 'EXPENSE',
-    sourceAccountId: '',
-    destAccountId: '',
-    categoryId: '',
-    amount: '',
-    description: '',
-    transactionDate: new Date().toISOString().split('T')[0],
-    notes: '',
+  const [persons, setPersons] = useState<Array<{ id: string; name: string }>>([]);
+
+  const { form, errors, serverError, saving, setField, handleSubmit } = useResourceForm({
+    schema: transactionSchema,
+    initial: emptyForm,
+    onSubmit: (data) => {
+      const payload = { ...data };
+      // Clean optional empty strings / zeroes that the schema allows but the API may not want
+      if (!payload.destAccountId) delete payload.destAccountId;
+      if (!payload.categoryId) delete payload.categoryId;
+      if (!payload.personId) delete payload.personId;
+      if (!payload.transactionTime) delete payload.transactionTime;
+      if (!payload.taxAmount) delete payload.taxAmount;
+      if (!payload.taxPercent) delete payload.taxPercent;
+      if (!payload.expectedAmount) delete payload.expectedAmount;
+      return fetch('/api/transactions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+    },
+    onSuccess: () => router.push('/transactions'),
   });
 
   useEffect(() => {
     Promise.all([
       fetch('/api/accounts').then((r) => r.json()),
       fetch('/api/categories').then((r) => r.json()),
-    ]).then(([accRes, catRes]) => {
+      fetch('/api/persons').then((r) => r.json()),
+    ]).then(([accRes, catRes, perRes]) => {
       setAccounts(accRes.data || []);
       setCategories(catRes.data || []);
+      setPersons(perRes.data || []);
       if (accRes.data?.[0]) {
-        setForm((f) => ({ ...f, sourceAccountId: accRes.data[0].id }));
+        setField('sourceAccountId', accRes.data[0].id);
       }
     });
-  }, []);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const filteredCategories = categories.filter(
-    (c) => form.type === 'TRANSFER' || c.type === (form.type === 'INCOME' ? 'INCOME' : 'EXPENSE')
+    (c) => (form.type as string) === 'TRANSFER' || c.type === ((form.type as string) === 'INCOME' ? 'INCOME' : 'EXPENSE')
   );
-
-  async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault();
-    setSaving(true);
-    try {
-      const payload: Record<string, unknown> = {
-        type: form.type,
-        sourceAccountId: form.sourceAccountId,
-        amount: parseFloat(form.amount),
-        description: form.description,
-        transactionDate: form.transactionDate,
-        notes: form.notes || undefined,
-      };
-
-      if (form.type !== 'TRANSFER' && form.categoryId) {
-        payload.categoryId = form.categoryId;
-      }
-      if (form.type === 'TRANSFER' && form.destAccountId) {
-        payload.destAccountId = form.destAccountId;
-      }
-
-      const res = await fetch('/api/transactions', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
-      });
-
-      if (res.ok) {
-        router.push('/transactions');
-      } else {
-        const data = await res.json();
-        alert(data.error || 'Failed to create transaction');
-      }
-    } catch (err) {
-      console.error(err);
-    } finally {
-      setSaving(false);
-    }
-  }
 
   return (
     <div className="max-w-2xl mx-auto space-y-6">
@@ -100,96 +98,148 @@ export default function NewTransactionPage() {
         <CardContent className="pt-6">
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="grid gap-4 sm:grid-cols-2">
-              <div className="space-y-2">
-                <label className="text-sm font-medium">Type *</label>
+              <FormField label="Type" required error={errors.type}>
                 <Select
                   options={transactionTypes}
-                  value={form.type}
-                  onChange={(e) => setForm({ ...form, type: e.target.value, categoryId: '' })}
+                  value={form.type as string}
+                  onChange={(e) => { setField('type', e.target.value); setField('categoryId', ''); }}
                 />
-              </div>
-              <div className="space-y-2">
-                <label className="text-sm font-medium">Amount *</label>
+              </FormField>
+
+              <FormField label="Amount" required error={errors.amount}>
                 <Input
                   type="number"
                   step="0.01"
                   min="0.01"
-                  value={form.amount}
-                  onChange={(e) => setForm({ ...form, amount: e.target.value })}
+                  value={form.amount as string}
+                  onChange={(e) => setField('amount', e.target.value ? parseFloat(e.target.value) : '')}
                   placeholder="0.00"
-                  required
                 />
-              </div>
+              </FormField>
             </div>
 
             <div className="grid gap-4 sm:grid-cols-2">
-              <div className="space-y-2">
-                <label className="text-sm font-medium">
-                  {form.type === 'TRANSFER' ? 'From Account' : 'Account'} *
-                </label>
+              <FormField label={(form.type as string) === 'TRANSFER' ? 'From Account' : 'Account'} required error={errors.sourceAccountId}>
                 <Select
                   options={accounts.map((a) => ({ value: a.id, label: a.name }))}
-                  value={form.sourceAccountId}
-                  onChange={(e) => setForm({ ...form, sourceAccountId: e.target.value })}
+                  value={form.sourceAccountId as string}
+                  onChange={(e) => setField('sourceAccountId', e.target.value)}
                   placeholder="Select account"
                 />
-              </div>
+              </FormField>
 
-              {form.type === 'TRANSFER' ? (
-                <div className="space-y-2">
-                  <label className="text-sm font-medium">To Account *</label>
+              {(form.type as string) === 'TRANSFER' ? (
+                <FormField label="To Account" error={errors.destAccountId}>
                   <Select
                     options={accounts
-                      .filter((a) => a.id !== form.sourceAccountId)
+                      .filter((a) => a.id !== (form.sourceAccountId as string))
                       .map((a) => ({ value: a.id, label: a.name }))}
-                    value={form.destAccountId}
-                    onChange={(e) => setForm({ ...form, destAccountId: e.target.value })}
+                    value={form.destAccountId as string}
+                    onChange={(e) => setField('destAccountId', e.target.value)}
                     placeholder="Select destination"
                   />
-                </div>
+                </FormField>
               ) : (
-                <div className="space-y-2">
-                  <label className="text-sm font-medium">Category</label>
+                <FormField label="Category" error={errors.categoryId}>
                   <Select
                     options={filteredCategories.map((c) => ({ value: c.id, label: c.name }))}
-                    value={form.categoryId}
-                    onChange={(e) => setForm({ ...form, categoryId: e.target.value })}
+                    value={form.categoryId as string}
+                    onChange={(e) => setField('categoryId', e.target.value)}
                     placeholder="Select category"
                   />
-                </div>
+                </FormField>
               )}
             </div>
 
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Description</label>
+            <FormField label="Person" error={errors.personId}>
+              <Select
+                options={persons.map((p) => ({ value: p.id, label: p.name }))}
+                value={form.personId as string}
+                onChange={(e) => setField('personId', e.target.value)}
+                placeholder="Select person (optional)"
+              />
+            </FormField>
+
+            <FormField label="Description" error={errors.description}>
               <Input
-                value={form.description}
-                onChange={(e) => setForm({ ...form, description: e.target.value })}
+                value={form.description as string}
+                onChange={(e) => setField('description', e.target.value)}
                 placeholder="What was this for?"
               />
-            </div>
+            </FormField>
 
-            <div className="grid gap-4 sm:grid-cols-2">
-              <div className="space-y-2">
-                <label className="text-sm font-medium">Date *</label>
-                <Input
-                  type="date"
-                  value={form.transactionDate}
-                  onChange={(e) => setForm({ ...form, transactionDate: e.target.value })}
-                  required
-                />
-              </div>
-            </div>
+            <FormField label="Date" required error={errors.transactionDate}>
+              <Input
+                type="date"
+                value={form.transactionDate as string}
+                onChange={(e) => setField('transactionDate', e.target.value)}
+              />
+            </FormField>
 
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Notes</label>
-              <textarea
-                className="flex min-h-[80px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-                value={form.notes}
-                onChange={(e) => setForm({ ...form, notes: e.target.value })}
+            <FormField label="Notes" error={errors.notes}>
+              <Textarea
+                value={form.notes as string}
+                onChange={(e) => setField('notes', e.target.value)}
                 placeholder="Additional notes..."
               />
-            </div>
+            </FormField>
+
+            <AdvancedSection>
+              <FormField label="Transaction Time" error={errors.transactionTime}>
+                <Input
+                  type="time"
+                  value={form.transactionTime as string}
+                  onChange={(e) => setField('transactionTime', e.target.value)}
+                />
+              </FormField>
+
+              <div className="grid gap-4 sm:grid-cols-2">
+                <FormField label="Tax Amount" error={errors.taxAmount}>
+                  <Input
+                    type="number"
+                    step="0.01"
+                    value={form.taxAmount as string}
+                    onChange={(e) => setField('taxAmount', e.target.value ? parseFloat(e.target.value) : '')}
+                    placeholder="0.00"
+                  />
+                </FormField>
+
+                <FormField label="Tax Percent" error={errors.taxPercent}>
+                  <Input
+                    type="number"
+                    step="0.01"
+                    value={form.taxPercent as string}
+                    onChange={(e) => setField('taxPercent', e.target.value ? parseFloat(e.target.value) : '')}
+                    placeholder="0.00"
+                  />
+                </FormField>
+              </div>
+
+              <FormField label="Expected Amount" error={errors.expectedAmount}>
+                <Input
+                  type="number"
+                  step="0.01"
+                  value={form.expectedAmount as string}
+                  onChange={(e) => setField('expectedAmount', e.target.value ? parseFloat(e.target.value) : '')}
+                  placeholder="0.00"
+                />
+              </FormField>
+
+              <FormField label="Private" error={errors.isPrivate}>
+                <label className="flex items-center gap-2 text-sm">
+                  <input
+                    type="checkbox"
+                    checked={form.isPrivate as boolean}
+                    onChange={(e) => setField('isPrivate', e.target.checked)}
+                  />
+                  Mark as private
+                </label>
+              </FormField>
+            </AdvancedSection>
+
+            {serverError && (
+              <p className="text-sm text-destructive bg-destructive/10 rounded-md px-3 py-2">{serverError}</p>
+            )}
 
             <div className="flex gap-3 justify-end pt-2">
               <Link href="/transactions">

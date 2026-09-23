@@ -9,7 +9,7 @@ import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { PageLoading, EmptyState } from '@/components/ui/loading';
 import { formatCurrency, formatDate } from '@/lib/utils';
-import { Plus, Search, ArrowLeftRight, Pencil, Trash2, Lock } from 'lucide-react';
+import { Plus, Search, ArrowLeftRight, Pencil, Trash2, Lock, AlertCircle } from 'lucide-react';
 import Link from 'next/link';
 
 // Only plain ledger entries (no linked Loan/Committee/Savings/Investment/Plot
@@ -79,14 +79,17 @@ export default function TransactionsPage() {
 
   useEffect(() => { fetchTransactions(); }, [fetchTransactions]);
 
+  const [deleteError, setDeleteError] = useState<string | null>(null);
+
   async function handleDelete(tx: Transaction) {
     if (!confirm('Delete this transaction? This cannot be undone.')) return;
+    setDeleteError(null);
     const res = await fetch(`/api/transactions/${tx.id}`, { method: 'DELETE' });
     if (res.ok) {
       fetchTransactions();
     } else {
       const data = await res.json();
-      alert(data.error || 'Failed to delete transaction');
+      setDeleteError(data.error || 'Failed to delete transaction');
     }
   }
 
@@ -132,6 +135,13 @@ export default function TransactionsPage() {
           </div>
         </CardContent>
       </Card>
+
+      {deleteError && (
+        <div className="flex items-center gap-2 text-sm text-destructive bg-destructive/10 rounded-md px-3 py-2">
+          <AlertCircle className="h-4 w-4 shrink-0" />
+          {deleteError}
+        </div>
+      )}
 
       {loading ? (
         <PageLoading />

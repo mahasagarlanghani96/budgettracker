@@ -6,8 +6,12 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Select } from '@/components/ui/select';
+import { Textarea } from '@/components/ui/textarea';
 import { PageLoading, EmptyState } from '@/components/ui/loading';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/modal';
+import { FormField } from '@/components/forms/FormField';
+import { useResourceForm } from '@/hooks/useResourceForm';
+import { plotSchema, plotUpdateSchema, plotPaymentInputSchema } from '@/lib/validations/schemas';
 import { formatCurrency, formatDate } from '@/lib/utils';
 import { MapPin, Plus, Banknote, Pencil, Trash2, History } from 'lucide-react';
 
@@ -32,6 +36,8 @@ interface Plot {
   notes?: string | null;
 }
 
+const today = new Date().toISOString().split('T')[0];
+
 export default function PlotsPage() {
   const [plots, setPlots] = useState<Plot[]>([]);
   const [accounts, setAccounts] = useState<Array<{ id: string; name: string }>>([]);
@@ -39,15 +45,10 @@ export default function PlotsPage() {
   const [showCreate, setShowCreate] = useState(false);
   const [showPayment, setShowPayment] = useState<string | null>(null);
   const [editing, setEditing] = useState<Plot | null>(null);
-  const [saving, setSaving] = useState(false);
-  const [form, setForm] = useState({ name: '', location: '', totalPrice: '', notes: '' });
-  const [editForm, setEditForm] = useState({ name: '', location: '', totalPrice: '', notes: '', isActive: true });
-  const [payForm, setPayForm] = useState({ amount: '', accountId: '', transactionDate: new Date().toISOString().split('T')[0], notes: '' });
   const [historyPlot, setHistoryPlot] = useState<Plot | null>(null);
   const [payments, setPayments] = useState<PlotPayment[]>([]);
   const [historyLoading, setHistoryLoading] = useState(false);
   const [editingPayment, setEditingPayment] = useState<PlotPayment | null>(null);
-  const [payEditForm, setPayEditForm] = useState({ amount: '', accountId: '', transactionDate: '', dueDate: '', notes: '' });
 
   function fetchPlots() {
     fetch('/api/plots').then((r) => r.json()).then((res) => setPlots(res.data || [])).catch(console.error).finally(() => setLoading(false));
@@ -58,34 +59,37 @@ export default function PlotsPage() {
     fetch('/api/accounts').then((r) => r.json()).then((res) => setAccounts(res.data || []));
   }, []);
 
-  async function handleCreate(e: React.FormEvent) {
-    e.preventDefault();
-    setSaving(true);
-    try {
-      const res = await fetch('/api/plots', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name: form.name, location: form.location, totalPrice: parseFloat(form.totalPrice), notes: form.notes || undefined }),
-      });
-      if (res.ok) { setShowCreate(false); setForm({ name: '', location: '', totalPrice: '', notes: '' }); fetchPlots(); }
-    } finally { setSaving(false); }
-  }
+  // Create plot form
+  const createForm = useResourceForm({
+    schema: plotSchema,
+    initial: { name: '', totalPrice: '', location: '', notes: '' },
+    onSubmit: (data) => fetch('/api/plots', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) }),
+    onSuccess: () => { setShowCreate(false); createForm.reset(); fetchPlots(); },
+  });
 
-  async function handlePayment(e: React.FormEvent) {
-    e.preventDefault();
-    if (!showPayment) return;
-    if (!payForm.accountId) { alert('Please select an account'); return; }
-    setSaving(true);
-    try {
-      const res = await fetch(`/api/plots/${showPayment}/payments`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ amount: parseFloat(payForm.amount), accountId: payForm.accountId, transactionDate: payForm.transactionDate, notes: payForm.notes || undefined }),
-      });
-      if (res.ok) { setShowPayment(null); setPayForm({ amount: '', accountId: '', transactionDate: new Date().toISOString().split('T')[0], notes: '' }); fetchPlots(); }
-      else { const d = await res.json(); alert(d.error || 'Failed to record payment'); }
-    } finally { setSaving(false); }
-  }
+  // Edit plot form
+  const editFormHook = useResourceForm({
+    schema: plotUpdateSchema,
+    initial: { name: '', totalPrice: '', location: '', notes: '', isActive: true },
+    onSubmit: (data) => fetch(`/api/plots/${editing!.id}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) }),
+    onSuccess: () => { setEditing(null); fetchPlots(); },
+  });
+
+  // Make payment form
+  const payForm = useResourceForm({
+    schema: plotPaymentInputSchema,
+    initial: { accountId: '', amount: '', transactionDate: today, dueDate: null, notes: '' },
+    onSubmit: (data) => fetch(`/api/plots/${showPayment!}/payments`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) }),
+    onSuccess: () => { setShowPayment(null); payForm.reset(); fetchPlots(); },
+  });
+
+  // Edit payment form
+  const payEditFormHook = useResourceForm({
+    schema: plotPaymentInputSchema,
+    initial: { accountId: '', amount: '', transactionDate: '', dueDate: null, notes: '' },
+    onSubmit: (data) => fetch(`/api/plots/${historyPlot!.id}/payments/${editingPayment!.id}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) }),
+    onSuccess: () => { setEditingPayment(null); fetchHistory(historyPlot!.id); fetchPlots(); },
+  });
 
   function fetchHistory(plotId: string) {
     setHistoryLoading(true);
@@ -105,35 +109,13 @@ export default function PlotsPage() {
 
   function openEditPayment(p: PlotPayment) {
     setEditingPayment(p);
-    setPayEditForm({
-      amount: p.amount.toString(),
+    payEditFormHook.setForm({
+      amount: parseFloat(p.amount.toString()),
       accountId: p.accountId || '',
       transactionDate: p.transactionDate ? p.transactionDate.split('T')[0] : '',
-      dueDate: p.dueDate ? p.dueDate.split('T')[0] : '',
+      dueDate: p.dueDate ? p.dueDate.split('T')[0] : null,
       notes: p.notes || '',
     });
-  }
-
-  async function handleEditPayment(e: React.FormEvent) {
-    e.preventDefault();
-    if (!historyPlot || !editingPayment) return;
-    if (!payEditForm.accountId) { alert('Please select an account'); return; }
-    setSaving(true);
-    try {
-      const res = await fetch(`/api/plots/${historyPlot.id}/payments/${editingPayment.id}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          amount: parseFloat(payEditForm.amount),
-          accountId: payEditForm.accountId,
-          transactionDate: payEditForm.transactionDate,
-          dueDate: payEditForm.dueDate || null,
-          notes: payEditForm.notes || undefined,
-        }),
-      });
-      if (res.ok) { setEditingPayment(null); fetchHistory(historyPlot.id); fetchPlots(); }
-      else { const d = await res.json(); alert(d.error || 'Failed to update payment'); }
-    } finally { setSaving(false); }
   }
 
   async function handleDeletePayment(p: PlotPayment) {
@@ -141,49 +123,28 @@ export default function PlotsPage() {
     if (!confirm('Delete this payment? This cannot be undone.')) return;
     const res = await fetch(`/api/plots/${historyPlot.id}/payments/${p.id}`, { method: 'DELETE' });
     if (res.ok) { fetchHistory(historyPlot.id); fetchPlots(); }
-    else { const d = await res.json(); alert(d.error || 'Failed to delete payment'); }
   }
 
   function openEdit(plot: Plot) {
     setEditing(plot);
-    setEditForm({
+    editFormHook.setForm({
       name: plot.name,
       location: plot.location || '',
-      totalPrice: plot.totalPrice.toString(),
+      totalPrice: parseFloat(plot.totalPrice.toString()),
       notes: plot.notes || '',
       isActive: plot.isActive,
     });
   }
 
-  async function handleEdit(e: React.FormEvent) {
-    e.preventDefault();
-    if (!editing) return;
-    setSaving(true);
-    try {
-      const res = await fetch(`/api/plots/${editing.id}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          name: editForm.name,
-          location: editForm.location || undefined,
-          totalPrice: parseFloat(editForm.totalPrice),
-          notes: editForm.notes || undefined,
-          isActive: editForm.isActive,
-        }),
-      });
-      if (res.ok) { setEditing(null); fetchPlots(); }
-      else { const d = await res.json(); alert(d.error || 'Failed to update plot'); }
-    } finally { setSaving(false); }
-  }
-
   async function handleDelete(plot: Plot) {
     if (!confirm(`Delete "${plot.name}"? This cannot be undone.`)) return;
     const res = await fetch(`/api/plots/${plot.id}`, { method: 'DELETE' });
-    if (res.ok) { fetchPlots(); }
-    else { const d = await res.json(); alert(d.error || 'Failed to delete plot'); }
+    if (res.ok) fetchPlots();
   }
 
   if (loading) return <PageLoading />;
+
+  const accountOptions = accounts.map((a) => ({ value: a.id, label: a.name }));
 
   return (
     <div className="space-y-6">
@@ -239,28 +200,57 @@ export default function PlotsPage() {
         </div>
       )}
 
-      <Dialog open={showCreate} onOpenChange={setShowCreate}>
+      {/* Create Plot Modal */}
+      <Dialog open={showCreate} onOpenChange={(open) => { setShowCreate(open); if (!open) createForm.reset(); }}>
         <DialogContent>
           <DialogHeader><DialogTitle>Add Plot</DialogTitle></DialogHeader>
-          <form onSubmit={handleCreate} className="space-y-4">
-            <div className="space-y-2"><label className="text-sm font-medium">Name *</label><Input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} required placeholder="e.g., DHA Phase 6 Plot" /></div>
-            <div className="space-y-2"><label className="text-sm font-medium">Location</label><Input value={form.location} onChange={(e) => setForm({ ...form, location: e.target.value })} placeholder="e.g., DHA Phase 6, Karachi" /></div>
-            <div className="space-y-2"><label className="text-sm font-medium">Total Price *</label><Input type="number" step="0.01" value={form.totalPrice} onChange={(e) => setForm({ ...form, totalPrice: e.target.value })} required /></div>
-            <div className="space-y-2"><label className="text-sm font-medium">Notes</label><Input value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} /></div>
-            <DialogFooter><Button type="button" variant="outline" onClick={() => setShowCreate(false)}>Cancel</Button><Button type="submit" disabled={saving}>{saving ? 'Saving...' : 'Add'}</Button></DialogFooter>
+          <form onSubmit={createForm.handleSubmit} className="space-y-4">
+            <FormField label="Name" required error={createForm.errors.name}>
+              <Input value={createForm.form.name as string} onChange={(e) => createForm.setField('name', e.target.value)} placeholder="e.g., DHA Phase 6 Plot" />
+            </FormField>
+            <FormField label="Total Price" required error={createForm.errors.totalPrice}>
+              <Input type="number" step="0.01" value={createForm.form.totalPrice as string | number} onChange={(e) => createForm.setField('totalPrice', e.target.value === '' ? '' : Number(e.target.value))} />
+            </FormField>
+            <FormField label="Location" error={createForm.errors.location}>
+              <Input value={createForm.form.location as string} onChange={(e) => createForm.setField('location', e.target.value)} placeholder="e.g., DHA Phase 6, Karachi" />
+            </FormField>
+            <FormField label="Notes" error={createForm.errors.notes}>
+              <Textarea value={createForm.form.notes as string} onChange={(e) => createForm.setField('notes', e.target.value)} placeholder="Optional" />
+            </FormField>
+            {createForm.serverError && <p className="text-sm text-destructive bg-destructive/10 rounded-md px-3 py-2">{createForm.serverError}</p>}
+            <DialogFooter>
+              <Button type="button" variant="outline" onClick={() => setShowCreate(false)}>Cancel</Button>
+              <Button type="submit" disabled={createForm.saving}>{createForm.saving ? 'Saving...' : 'Add'}</Button>
+            </DialogFooter>
           </form>
         </DialogContent>
       </Dialog>
 
-      <Dialog open={!!showPayment} onOpenChange={() => setShowPayment(null)}>
+      {/* Make Payment Modal */}
+      <Dialog open={!!showPayment} onOpenChange={(open) => { if (!open) { setShowPayment(null); payForm.reset(); } }}>
         <DialogContent>
           <DialogHeader><DialogTitle>Make Payment</DialogTitle></DialogHeader>
-          <form onSubmit={handlePayment} className="space-y-4">
-            <div className="space-y-2"><label className="text-sm font-medium">Amount *</label><Input type="number" step="0.01" value={payForm.amount} onChange={(e) => setPayForm({ ...payForm, amount: e.target.value })} required /></div>
-            <div className="space-y-2"><label className="text-sm font-medium">Account *</label><Select options={accounts.map((a) => ({ value: a.id, label: a.name }))} value={payForm.accountId} onChange={(e) => setPayForm({ ...payForm, accountId: e.target.value })} placeholder="Select account" required /></div>
-            <div className="space-y-2"><label className="text-sm font-medium">Date</label><Input type="date" value={payForm.transactionDate} onChange={(e) => setPayForm({ ...payForm, transactionDate: e.target.value })} /></div>
-            <div className="space-y-2"><label className="text-sm font-medium">Notes</label><Input value={payForm.notes} onChange={(e) => setPayForm({ ...payForm, notes: e.target.value })} /></div>
-            <DialogFooter><Button type="button" variant="outline" onClick={() => setShowPayment(null)}>Cancel</Button><Button type="submit" disabled={saving}>{saving ? 'Paying...' : 'Confirm'}</Button></DialogFooter>
+          <form onSubmit={payForm.handleSubmit} className="space-y-4">
+            <FormField label="Amount" required error={payForm.errors.amount}>
+              <Input type="number" step="0.01" value={payForm.form.amount as string | number} onChange={(e) => payForm.setField('amount', e.target.value === '' ? '' : Number(e.target.value))} />
+            </FormField>
+            <FormField label="Account" required error={payForm.errors.accountId}>
+              <Select options={accountOptions} value={payForm.form.accountId as string} onChange={(e) => payForm.setField('accountId', e.target.value)} placeholder="Select account" />
+            </FormField>
+            <FormField label="Date" required error={payForm.errors.transactionDate}>
+              <Input type="date" value={payForm.form.transactionDate as string} onChange={(e) => payForm.setField('transactionDate', e.target.value)} />
+            </FormField>
+            <FormField label="Due Date" error={payForm.errors.dueDate}>
+              <Input type="date" value={(payForm.form.dueDate as string | null) ?? ''} onChange={(e) => payForm.setField('dueDate', e.target.value || null)} />
+            </FormField>
+            <FormField label="Notes" error={payForm.errors.notes}>
+              <Textarea value={payForm.form.notes as string} onChange={(e) => payForm.setField('notes', e.target.value)} placeholder="Optional" />
+            </FormField>
+            {payForm.serverError && <p className="text-sm text-destructive bg-destructive/10 rounded-md px-3 py-2">{payForm.serverError}</p>}
+            <DialogFooter>
+              <Button type="button" variant="outline" onClick={() => setShowPayment(null)}>Cancel</Button>
+              <Button type="submit" disabled={payForm.saving}>{payForm.saving ? 'Paying...' : 'Confirm'}</Button>
+            </DialogFooter>
           </form>
         </DialogContent>
       </Dialog>
@@ -270,13 +260,27 @@ export default function PlotsPage() {
         <DialogContent>
           <DialogHeader><DialogTitle>{editingPayment ? 'Edit Payment' : `Payment History — ${historyPlot?.name ?? ''}`}</DialogTitle></DialogHeader>
           {editingPayment ? (
-            <form onSubmit={handleEditPayment} className="space-y-4">
-              <div className="space-y-2"><label className="text-sm font-medium">Amount *</label><Input type="number" step="0.01" value={payEditForm.amount} onChange={(e) => setPayEditForm({ ...payEditForm, amount: e.target.value })} required /></div>
-              <div className="space-y-2"><label className="text-sm font-medium">Account *</label><Select options={accounts.map((a) => ({ value: a.id, label: a.name }))} value={payEditForm.accountId} onChange={(e) => setPayEditForm({ ...payEditForm, accountId: e.target.value })} placeholder="Select account" required /></div>
-              <div className="space-y-2"><label className="text-sm font-medium">Date *</label><Input type="date" value={payEditForm.transactionDate} onChange={(e) => setPayEditForm({ ...payEditForm, transactionDate: e.target.value })} required /></div>
-              <div className="space-y-2"><label className="text-sm font-medium">Due Date</label><Input type="date" value={payEditForm.dueDate} onChange={(e) => setPayEditForm({ ...payEditForm, dueDate: e.target.value })} /></div>
-              <div className="space-y-2"><label className="text-sm font-medium">Notes</label><Input value={payEditForm.notes} onChange={(e) => setPayEditForm({ ...payEditForm, notes: e.target.value })} placeholder="Optional" /></div>
-              <DialogFooter><Button type="button" variant="outline" onClick={() => setEditingPayment(null)}>Back</Button><Button type="submit" disabled={saving}>{saving ? 'Saving...' : 'Save Changes'}</Button></DialogFooter>
+            <form onSubmit={payEditFormHook.handleSubmit} className="space-y-4">
+              <FormField label="Amount" required error={payEditFormHook.errors.amount}>
+                <Input type="number" step="0.01" value={payEditFormHook.form.amount as string | number} onChange={(e) => payEditFormHook.setField('amount', e.target.value === '' ? '' : Number(e.target.value))} />
+              </FormField>
+              <FormField label="Account" required error={payEditFormHook.errors.accountId}>
+                <Select options={accountOptions} value={payEditFormHook.form.accountId as string} onChange={(e) => payEditFormHook.setField('accountId', e.target.value)} placeholder="Select account" />
+              </FormField>
+              <FormField label="Date" required error={payEditFormHook.errors.transactionDate}>
+                <Input type="date" value={payEditFormHook.form.transactionDate as string} onChange={(e) => payEditFormHook.setField('transactionDate', e.target.value)} />
+              </FormField>
+              <FormField label="Due Date" error={payEditFormHook.errors.dueDate}>
+                <Input type="date" value={(payEditFormHook.form.dueDate as string | null) ?? ''} onChange={(e) => payEditFormHook.setField('dueDate', e.target.value || null)} />
+              </FormField>
+              <FormField label="Notes" error={payEditFormHook.errors.notes}>
+                <Textarea value={payEditFormHook.form.notes as string} onChange={(e) => payEditFormHook.setField('notes', e.target.value)} placeholder="Optional" />
+              </FormField>
+              {payEditFormHook.serverError && <p className="text-sm text-destructive bg-destructive/10 rounded-md px-3 py-2">{payEditFormHook.serverError}</p>}
+              <DialogFooter>
+                <Button type="button" variant="outline" onClick={() => setEditingPayment(null)}>Back</Button>
+                <Button type="submit" disabled={payEditFormHook.saving}>{payEditFormHook.saving ? 'Saving...' : 'Save Changes'}</Button>
+              </DialogFooter>
             </form>
           ) : historyLoading ? (
             <p className="text-sm text-muted-foreground text-center py-4">Loading...</p>
@@ -306,16 +310,28 @@ export default function PlotsPage() {
       <Dialog open={!!editing} onOpenChange={(open) => !open && setEditing(null)}>
         <DialogContent>
           <DialogHeader><DialogTitle>Edit Plot</DialogTitle></DialogHeader>
-          <form onSubmit={handleEdit} className="space-y-4">
-            <div className="space-y-2"><label className="text-sm font-medium">Name *</label><Input value={editForm.name} onChange={(e) => setEditForm({ ...editForm, name: e.target.value })} required /></div>
-            <div className="space-y-2"><label className="text-sm font-medium">Location</label><Input value={editForm.location} onChange={(e) => setEditForm({ ...editForm, location: e.target.value })} /></div>
-            <div className="space-y-2"><label className="text-sm font-medium">Total Price *</label><Input type="number" step="0.01" value={editForm.totalPrice} onChange={(e) => setEditForm({ ...editForm, totalPrice: e.target.value })} required /></div>
-            <div className="space-y-2"><label className="text-sm font-medium">Notes</label><Input value={editForm.notes} onChange={(e) => setEditForm({ ...editForm, notes: e.target.value })} /></div>
+          <form onSubmit={editFormHook.handleSubmit} className="space-y-4">
+            <FormField label="Name" required error={editFormHook.errors.name}>
+              <Input value={editFormHook.form.name as string} onChange={(e) => editFormHook.setField('name', e.target.value)} />
+            </FormField>
+            <FormField label="Total Price" required error={editFormHook.errors.totalPrice}>
+              <Input type="number" step="0.01" value={editFormHook.form.totalPrice as string | number} onChange={(e) => editFormHook.setField('totalPrice', e.target.value === '' ? '' : Number(e.target.value))} />
+            </FormField>
+            <FormField label="Location" error={editFormHook.errors.location}>
+              <Input value={editFormHook.form.location as string} onChange={(e) => editFormHook.setField('location', e.target.value)} />
+            </FormField>
+            <FormField label="Notes" error={editFormHook.errors.notes}>
+              <Textarea value={editFormHook.form.notes as string} onChange={(e) => editFormHook.setField('notes', e.target.value)} placeholder="Optional" />
+            </FormField>
             <label className="flex items-center gap-2 text-sm font-medium">
-              <input type="checkbox" checked={editForm.isActive} onChange={(e) => setEditForm({ ...editForm, isActive: e.target.checked })} />
+              <input type="checkbox" checked={editFormHook.form.isActive as boolean} onChange={(e) => editFormHook.setField('isActive', e.target.checked)} />
               Active
             </label>
-            <DialogFooter><Button type="button" variant="outline" onClick={() => setEditing(null)}>Cancel</Button><Button type="submit" disabled={saving}>{saving ? 'Saving...' : 'Save Changes'}</Button></DialogFooter>
+            {editFormHook.serverError && <p className="text-sm text-destructive bg-destructive/10 rounded-md px-3 py-2">{editFormHook.serverError}</p>}
+            <DialogFooter>
+              <Button type="button" variant="outline" onClick={() => setEditing(null)}>Cancel</Button>
+              <Button type="submit" disabled={editFormHook.saving}>{editFormHook.saving ? 'Saving...' : 'Save Changes'}</Button>
+            </DialogFooter>
           </form>
         </DialogContent>
       </Dialog>

@@ -1,15 +1,20 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Select } from '@/components/ui/select';
+import { Textarea } from '@/components/ui/textarea';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { PageLoading } from '@/components/ui/loading';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/modal';
+import { FormField } from '@/components/forms/FormField';
+import { AdvancedSection } from '@/components/forms/AdvancedSection';
+import { useResourceForm } from '@/hooks/useResourceForm';
+import { accountUpdateSchema } from '@/lib/validations/schemas';
 import { formatCurrency, formatDate } from '@/lib/utils';
 import { ArrowLeft, Pencil, Trash2 } from 'lucide-react';
 import Link from 'next/link';
@@ -29,64 +34,66 @@ export default function AccountDetailPage() {
   const [account, setAccount] = useState<Record<string, unknown> | null>(null);
   const [loading, setLoading] = useState(true);
   const [showEdit, setShowEdit] = useState(false);
-  const [saving, setSaving] = useState(false);
-  const [editForm, setEditForm] = useState({ name: '', accountType: 'CASH', openingBalance: '0', notes: '' });
+  const [deleteError, setDeleteError] = useState<string | null>(null);
 
-  function fetchAccount() {
+  const fetchAccount = useCallback(() => {
     fetch(`/api/accounts/${id}`)
       .then((r) => r.json())
       .then((res) => setAccount(res.data))
       .catch(console.error)
       .finally(() => setLoading(false));
-  }
+  }, [id]);
 
-  useEffect(() => { fetchAccount(); }, [id]);
+  useEffect(() => { fetchAccount(); }, [fetchAccount]);
+
+  const editForm = useResourceForm({
+    schema: accountUpdateSchema,
+    initial: {
+      name: '',
+      accountType: 'CASH',
+      openingBalance: 0,
+      openingDate: '',
+      notes: '',
+      currency: 'PKR',
+      isShared: false,
+      isActive: true,
+    },
+    onSubmit: (data) =>
+      fetch(`/api/accounts/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data),
+      }),
+    onSuccess: () => {
+      setShowEdit(false);
+      fetchAccount();
+    },
+  });
 
   function openEdit() {
     if (!account) return;
-    setEditForm({
+    editForm.setForm({
       name: account.name as string,
       accountType: account.accountType as string,
-      openingBalance: (account.openingBalance as { toString(): string }).toString(),
+      openingBalance: parseFloat((account.openingBalance as { toString(): string }).toString()) || 0,
+      openingDate: account.openingDate ? (account.openingDate as string).split('T')[0] : '',
       notes: (account.notes as string) || '',
+      currency: (account.currency as string) || 'PKR',
+      isShared: (account.isShared as boolean) || false,
+      isActive: (account.isActive as boolean) ?? true,
     });
     setShowEdit(true);
   }
 
-  async function handleEdit(e: React.FormEvent) {
-    e.preventDefault();
-    setSaving(true);
-    try {
-      const res = await fetch(`/api/accounts/${id}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          name: editForm.name,
-          accountType: editForm.accountType,
-          openingBalance: parseFloat(editForm.openingBalance) || 0,
-          notes: editForm.notes || undefined,
-        }),
-      });
-      if (res.ok) {
-        setShowEdit(false);
-        fetchAccount();
-      } else {
-        const data = await res.json();
-        alert(data.error || 'Failed to update account');
-      }
-    } finally {
-      setSaving(false);
-    }
-  }
-
   async function handleDelete() {
     if (!confirm('Are you sure you want to delete this account?')) return;
+    setDeleteError(null);
     const res = await fetch(`/api/accounts/${id}`, { method: 'DELETE' });
     if (res.ok) {
       router.push('/accounts');
     } else {
       const data = await res.json();
-      alert(data.error || 'Failed to delete');
+      setDeleteError(data.error || 'Failed to delete');
     }
   }
 
@@ -112,6 +119,10 @@ export default function AccountDetailPage() {
           <Trash2 className="h-4 w-4 mr-1" /> Delete
         </Button>
       </div>
+
+      {deleteError && (
+        <p className="text-sm text-destructive bg-destructive/10 rounded-md px-3 py-2">{deleteError}</p>
+      )}
 
       <div className="grid gap-4 sm:grid-cols-2">
         <Card>
@@ -169,43 +180,84 @@ export default function AccountDetailPage() {
           <DialogHeader>
             <DialogTitle>Edit Account</DialogTitle>
           </DialogHeader>
-          <form onSubmit={handleEdit} className="space-y-4">
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Account Name *</label>
+          <form onSubmit={editForm.handleSubmit} className="space-y-4">
+            <FormField label="Account Name" required error={editForm.errors.name}>
               <Input
-                value={editForm.name}
-                onChange={(e) => setEditForm({ ...editForm, name: e.target.value })}
-                required
+                value={editForm.form.name as string}
+                onChange={(e) => editForm.setField('name', e.target.value)}
               />
-            </div>
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Type *</label>
+            </FormField>
+
+            <FormField label="Type" required error={editForm.errors.accountType}>
               <Select
                 options={accountTypeOptions}
-                value={editForm.accountType}
-                onChange={(e) => setEditForm({ ...editForm, accountType: e.target.value })}
+                value={editForm.form.accountType as string}
+                onChange={(e) => editForm.setField('accountType', e.target.value)}
               />
-            </div>
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Opening Balance</label>
+            </FormField>
+
+            <FormField label="Opening Balance" required error={editForm.errors.openingBalance}>
               <Input
                 type="number"
                 step="0.01"
-                value={editForm.openingBalance}
-                onChange={(e) => setEditForm({ ...editForm, openingBalance: e.target.value })}
+                value={editForm.form.openingBalance as number}
+                onChange={(e) => editForm.setField('openingBalance', parseFloat(e.target.value) || 0)}
               />
-            </div>
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Notes</label>
+            </FormField>
+
+            <FormField label="Opening Date" error={editForm.errors.openingDate}>
               <Input
-                value={editForm.notes}
-                onChange={(e) => setEditForm({ ...editForm, notes: e.target.value })}
+                type="date"
+                value={editForm.form.openingDate as string}
+                onChange={(e) => editForm.setField('openingDate', e.target.value)}
+              />
+            </FormField>
+
+            <FormField label="Notes" error={editForm.errors.notes}>
+              <Textarea
+                value={editForm.form.notes as string}
+                onChange={(e) => editForm.setField('notes', e.target.value)}
                 placeholder="Optional"
               />
-            </div>
+            </FormField>
+
+            <FormField label="Active">
+              <label className="flex items-center gap-2 text-sm">
+                <input
+                  type="checkbox"
+                  checked={editForm.form.isActive as boolean}
+                  onChange={(e) => editForm.setField('isActive', e.target.checked)}
+                />
+                Account is active
+              </label>
+            </FormField>
+
+            <AdvancedSection>
+              <FormField label="Currency" error={editForm.errors.currency}>
+                <Input
+                  value={editForm.form.currency as string}
+                  onChange={(e) => editForm.setField('currency', e.target.value)}
+                />
+              </FormField>
+
+              <FormField label="Shared Account">
+                <label className="flex items-center gap-2 text-sm">
+                  <input
+                    type="checkbox"
+                    checked={editForm.form.isShared as boolean}
+                    onChange={(e) => editForm.setField('isShared', e.target.checked)}
+                  />
+                  Allow other users to see this account
+                </label>
+              </FormField>
+            </AdvancedSection>
+
+            {editForm.serverError && (
+              <p className="text-sm text-destructive bg-destructive/10 rounded-md px-3 py-2">{editForm.serverError}</p>
+            )}
             <DialogFooter>
               <Button type="button" variant="outline" onClick={() => setShowEdit(false)}>Cancel</Button>
-              <Button type="submit" disabled={saving}>{saving ? 'Saving...' : 'Save Changes'}</Button>
+              <Button type="submit" disabled={editForm.saving}>{editForm.saving ? 'Saving...' : 'Save Changes'}</Button>
             </DialogFooter>
           </form>
         </DialogContent>

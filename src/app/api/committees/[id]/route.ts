@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { requireAuth } from '@/lib/auth';
+import { committeeUpdateSchema } from '@/lib/validations/schemas';
 
 // GET /api/committees/:id
 export async function GET(_request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
@@ -56,6 +57,7 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
     const session = await requireAuth();
     const { id } = await params;
     const body = await request.json();
+    const validated = committeeUpdateSchema.parse(body);
 
     const existing = await prisma.committee.findFirst({
       where: { id, userId: (session.user as { id: string }).id },
@@ -68,9 +70,16 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
     const committee = await prisma.committee.update({
       where: { id },
       data: {
-        name: body.name,
-        status: body.status,
-        notes: body.notes,
+        name: validated.name,
+        type: validated.type,
+        status: validated.status,
+        startDate: validated.startDate ? new Date(validated.startDate) : undefined,
+        endDate: validated.endDate ? new Date(validated.endDate) : validated.endDate === null ? null : undefined,
+        memberCount: validated.memberCount,
+        monthlyContribution: validated.monthlyContribution,
+        totalAmount: validated.totalAmount,
+        notes: validated.notes,
+        isPrivate: validated.isPrivate,
       },
     });
 
@@ -78,6 +87,9 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
   } catch (error: unknown) {
     if (error instanceof Error && error.message === 'Unauthorized') {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+    if (error && typeof error === 'object' && 'issues' in error) {
+      return NextResponse.json({ error: 'Validation failed', details: (error as { issues: unknown }).issues }, { status: 400 });
     }
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }

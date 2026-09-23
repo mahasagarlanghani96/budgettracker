@@ -1,18 +1,28 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Select } from '@/components/ui/select';
+import { Textarea } from '@/components/ui/textarea';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/modal';
 import { PageLoading } from '@/components/ui/loading';
+import { FormField } from '@/components/forms/FormField';
+import { AdvancedSection } from '@/components/forms/AdvancedSection';
+import { useResourceForm } from '@/hooks/useResourceForm';
+import { committeeUpdateSchema, committeeMemberSchema, committeeRoundUpdateSchema } from '@/lib/validations/schemas';
 import { formatCurrency, formatDate } from '@/lib/utils';
 import { ArrowLeft, Plus, UserPlus, Pencil, Trash2 } from 'lucide-react';
 import Link from 'next/link';
+
+const committeeTypeOptions = [
+  { value: 'NORMAL', label: 'Normal' },
+  { value: 'WAIYK', label: 'Waiyk' },
+];
 
 const committeeStatusOptions = [
   { value: 'ACTIVE', label: 'Active' },
@@ -29,162 +39,175 @@ export default function CommitteeDetailPage() {
   const [showAddMember, setShowAddMember] = useState(false);
   const [showAddRound, setShowAddRound] = useState(false);
   const [showEdit, setShowEdit] = useState(false);
-  const [memberForm, setMemberForm] = useState({ personId: '', name: '', slots: '1', isUser: false });
-  const [roundForm, setRoundForm] = useState({ roundDate: new Date().toISOString().split('T')[0], winningBid: '', notes: '' });
-  const [editForm, setEditForm] = useState({ name: '', status: 'ACTIVE', notes: '' });
   const [editingMember, setEditingMember] = useState<string | null>(null);
-  const [memberEditForm, setMemberEditForm] = useState({ personId: '', name: '', slots: '1', isUser: false, notes: '' });
   const [editingRound, setEditingRound] = useState<string | null>(null);
-  const [roundEditForm, setRoundEditForm] = useState({ roundDate: '', winningBid: '', winningMember: '', notes: '' });
-  const [saving, setSaving] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
 
-  function fetchCommittee() {
+  const fetchCommittee = useCallback(() => {
     fetch(`/api/committees/${id}`)
       .then((r) => r.json())
       .then((res) => setCommittee(res.data))
       .catch(console.error)
       .finally(() => setLoading(false));
-  }
+  }, [id]);
 
   useEffect(() => {
     fetchCommittee();
     fetch('/api/persons').then((r) => r.json()).then((res) => setPersons(res.data || []));
-  }, [id]);
+  }, [fetchCommittee]);
 
-  async function handleAddMember(e: React.FormEvent) {
-    e.preventDefault();
-    setSaving(true);
-    try {
-      const res = await fetch(`/api/committees/${id}/members`, {
-        method: 'POST',
+  // --- Edit Committee Form ---
+  const editForm = useResourceForm({
+    schema: committeeUpdateSchema,
+    initial: { name: '', type: 'NORMAL', status: 'ACTIVE', startDate: '', endDate: '', memberCount: '', monthlyContribution: '', totalAmount: '', notes: '', isPrivate: true },
+    onSubmit: (data) => {
+      const payload = { ...data };
+      if (!payload.endDate) payload.endDate = null;
+      if (!payload.totalAmount) payload.totalAmount = null;
+      return fetch(`/api/committees/${id}`, {
+        method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ personId: memberForm.personId, name: memberForm.name, slots: parseInt(memberForm.slots), isUser: memberForm.isUser }),
+        body: JSON.stringify(payload),
       });
-      if (res.ok) { setShowAddMember(false); fetchCommittee(); }
-      else { const d = await res.json(); alert(d.error || 'Failed to add member'); }
-    } finally { setSaving(false); }
-  }
-
-  async function handleAddRound(e: React.FormEvent) {
-    e.preventDefault();
-    setSaving(true);
-    try {
-      const res = await fetch(`/api/committees/${id}/rounds`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ roundDate: roundForm.roundDate, winningBid: roundForm.winningBid ? parseFloat(roundForm.winningBid) : undefined, notes: roundForm.notes || undefined }),
-      });
-      if (res.ok) { setShowAddRound(false); setRoundForm({ roundDate: new Date().toISOString().split('T')[0], winningBid: '', notes: '' }); fetchCommittee(); }
-      else { const d = await res.json(); alert(d.error || 'Failed to create round'); }
-    } finally { setSaving(false); }
-  }
+    },
+    onSuccess: () => { setShowEdit(false); fetchCommittee(); },
+  });
 
   function openEdit() {
     if (!committee) return;
-    setEditForm({
+    editForm.reset({
       name: committee.name as string,
-      status: committee.status as string,
+      type: (committee.type as string) || 'NORMAL',
+      status: (committee.status as string) || 'ACTIVE',
+      startDate: committee.startDate ? (committee.startDate as string).split('T')[0] : '',
+      endDate: committee.endDate ? (committee.endDate as string).split('T')[0] : '',
+      memberCount: committee.memberCount ?? '',
+      monthlyContribution: committee.monthlyContribution ?? '',
+      totalAmount: committee.totalAmount ?? '',
       notes: (committee.notes as string) || '',
+      isPrivate: committee.isPrivate ?? true,
     });
     setShowEdit(true);
   }
 
-  async function handleEdit(e: React.FormEvent) {
-    e.preventDefault();
-    setSaving(true);
-    try {
-      const res = await fetch(`/api/committees/${id}`, {
+  // --- Add Member Form ---
+  const addMemberForm = useResourceForm({
+    schema: committeeMemberSchema,
+    initial: { personId: '', name: '', slots: 1, isUser: false, notes: '' },
+    onSubmit: (data) =>
+      fetch(`/api/committees/${id}/members`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data),
+      }),
+    onSuccess: () => { setShowAddMember(false); addMemberForm.reset(); fetchCommittee(); },
+  });
+
+  // --- Edit Member Form ---
+  const editMemberForm = useResourceForm({
+    schema: committeeMemberSchema,
+    initial: { personId: '', name: '', slots: 1, isUser: false, notes: '' },
+    onSubmit: (data) =>
+      fetch(`/api/committees/${id}/members/${editingMember}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name: editForm.name, status: editForm.status, notes: editForm.notes || undefined }),
-      });
-      if (res.ok) { setShowEdit(false); fetchCommittee(); }
-      else { const d = await res.json(); alert(d.error || 'Failed to update committee'); }
-    } finally { setSaving(false); }
-  }
-
-  async function handleDelete() {
-    if (!confirm('Delete this committee? This cannot be undone.')) return;
-    const res = await fetch(`/api/committees/${id}`, { method: 'DELETE' });
-    if (res.ok) { router.push('/committees'); }
-    else { const d = await res.json(); alert(d.error || 'Failed to delete committee'); }
-  }
+        body: JSON.stringify({ ...data, personId: data.personId || null }),
+      }),
+    onSuccess: () => { setEditingMember(null); fetchCommittee(); },
+  });
 
   function openEditMember(m: Record<string, unknown>) {
     setEditingMember(m.id as string);
-    setMemberEditForm({
+    editMemberForm.reset({
       personId: (m.personId as string) || '',
       name: m.name as string,
-      slots: String(m.slots ?? 1),
+      slots: m.slots ?? 1,
       isUser: !!m.isUser,
       notes: (m.notes as string) || '',
     });
   }
 
-  async function handleEditMember(e: React.FormEvent) {
-    e.preventDefault();
-    if (!editingMember) return;
-    setSaving(true);
-    try {
-      const res = await fetch(`/api/committees/${id}/members/${editingMember}`, {
+  // --- Add Round Form ---
+  const addRoundForm = useResourceForm({
+    schema: committeeRoundUpdateSchema,
+    initial: { roundDate: new Date().toISOString().split('T')[0], winningBid: '', winningMember: '', notes: '' },
+    onSubmit: (data) => {
+      const payload: Record<string, unknown> = { roundDate: data.roundDate, notes: data.notes || undefined };
+      if (data.winningBid) payload.winningBid = data.winningBid;
+      if (data.winningMember) payload.winningMember = data.winningMember;
+      return fetch(`/api/committees/${id}/rounds`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+    },
+    onSuccess: () => { setShowAddRound(false); addRoundForm.reset({ roundDate: new Date().toISOString().split('T')[0], winningBid: '', winningMember: '', notes: '' }); fetchCommittee(); },
+  });
+
+  // --- Edit Round Form ---
+  const editRoundForm = useResourceForm({
+    schema: committeeRoundUpdateSchema,
+    initial: { roundDate: '', winningBid: '', winningMember: '', notes: '' },
+    onSubmit: (data) => {
+      const payload: Record<string, unknown> = {
+        roundDate: data.roundDate,
+        winningMember: data.winningMember || null,
+        notes: data.notes || undefined,
+      };
+      if (committee?.type === 'WAIYK') {
+        payload.winningBid = data.winningBid ? data.winningBid : null;
+      }
+      return fetch(`/api/committees/${id}/rounds/${editingRound}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          name: memberEditForm.name,
-          personId: memberEditForm.personId || null,
-          slots: parseInt(memberEditForm.slots),
-          isUser: memberEditForm.isUser,
-          notes: memberEditForm.notes || undefined,
-        }),
+        body: JSON.stringify(payload),
       });
-      if (res.ok) { setEditingMember(null); fetchCommittee(); }
-      else { const d = await res.json(); alert(d.error || 'Failed to update member'); }
-    } finally { setSaving(false); }
-  }
-
-  async function handleDeleteMember(m: Record<string, unknown>) {
-    if (!confirm(`Remove "${m.name as string}" from this committee?`)) return;
-    const res = await fetch(`/api/committees/${id}/members/${m.id as string}`, { method: 'DELETE' });
-    if (res.ok) { fetchCommittee(); }
-    else { const d = await res.json(); alert(d.error || 'Failed to delete member'); }
-  }
+    },
+    onSuccess: () => { setEditingRound(null); fetchCommittee(); },
+  });
 
   function openEditRound(r: Record<string, unknown>) {
     setEditingRound(r.id as string);
-    setRoundEditForm({
+    editRoundForm.reset({
       roundDate: r.roundDate ? (r.roundDate as string).split('T')[0] : '',
-      winningBid: r.winningBid != null ? (r.winningBid as { toString(): string }).toString() : '',
+      winningBid: r.winningBid ?? '',
       winningMember: (r.winningMember as string) || '',
       notes: (r.notes as string) || '',
     });
   }
 
-  async function handleEditRound(e: React.FormEvent) {
-    e.preventDefault();
-    if (!editingRound) return;
-    setSaving(true);
-    try {
-      const body: Record<string, unknown> = {
-        roundDate: roundEditForm.roundDate,
-        winningMember: roundEditForm.winningMember || null,
-        notes: roundEditForm.notes || undefined,
-      };
-      if (isWaiyk) body.winningBid = roundEditForm.winningBid ? parseFloat(roundEditForm.winningBid) : null;
-      const res = await fetch(`/api/committees/${id}/rounds/${editingRound}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(body),
-      });
-      if (res.ok) { setEditingRound(null); fetchCommittee(); }
-      else { const d = await res.json(); alert(d.error || 'Failed to update round'); }
-    } finally { setSaving(false); }
+  // --- Delete handlers ---
+  async function handleDelete() {
+    if (!confirm('Delete this committee? This cannot be undone.')) return;
+    setDeleteError(null);
+    const res = await fetch(`/api/committees/${id}`, { method: 'DELETE' });
+    if (res.ok) { router.push('/committees'); }
+    else {
+      try { const d = await res.json(); setDeleteError(d.error || 'Failed to delete committee'); }
+      catch { setDeleteError('Failed to delete committee'); }
+    }
+  }
+
+  async function handleDeleteMember(m: Record<string, unknown>) {
+    if (!confirm(`Remove "${m.name as string}" from this committee?`)) return;
+    setDeleteError(null);
+    const res = await fetch(`/api/committees/${id}/members/${m.id as string}`, { method: 'DELETE' });
+    if (res.ok) { fetchCommittee(); }
+    else {
+      try { const d = await res.json(); setDeleteError(d.error || 'Failed to delete member'); }
+      catch { setDeleteError('Failed to delete member'); }
+    }
   }
 
   async function handleDeleteRound(r: Record<string, unknown>) {
     if (!confirm(`Delete Round ${r.roundNumber as number}? This cannot be undone.`)) return;
+    setDeleteError(null);
     const res = await fetch(`/api/committees/${id}/rounds/${r.id as string}`, { method: 'DELETE' });
     if (res.ok) { fetchCommittee(); }
-    else { const d = await res.json(); alert(d.error || 'Failed to delete round'); }
+    else {
+      try { const d = await res.json(); setDeleteError(d.error || 'Failed to delete round'); }
+      catch { setDeleteError('Failed to delete round'); }
+    }
   }
 
   if (loading) return <PageLoading />;
@@ -193,6 +216,7 @@ export default function CommitteeDetailPage() {
   const members = (committee.members || []) as Array<Record<string, unknown>>;
   const rounds = (committee.rounds || []) as Array<Record<string, unknown>>;
   const isWaiyk = committee.type === 'WAIYK';
+  const editIsWaiyk = (editForm.form.type as string) === 'WAIYK';
   const latestRoundNumber = rounds.reduce((max, r) => Math.max(max, r.roundNumber as number), 0);
   const personOptions = persons.map((p) => ({ value: p.id, label: p.name }));
 
@@ -212,12 +236,16 @@ export default function CommitteeDetailPage() {
           <Button variant="outline" onClick={handleDelete}><Trash2 className="h-4 w-4 mr-1" /> Delete</Button>
           {committee.status === 'ACTIVE' && (
             <>
-              <Button variant="outline" onClick={() => setShowAddMember(true)}><UserPlus className="h-4 w-4 mr-1" /> Add Member</Button>
-              <Button onClick={() => setShowAddRound(true)}><Plus className="h-4 w-4 mr-1" /> New Round</Button>
+              <Button variant="outline" onClick={() => { addMemberForm.reset(); setShowAddMember(true); }}><UserPlus className="h-4 w-4 mr-1" /> Add Member</Button>
+              <Button onClick={() => { addRoundForm.reset({ roundDate: new Date().toISOString().split('T')[0], winningBid: '', winningMember: '', notes: '' }); setShowAddRound(true); }}><Plus className="h-4 w-4 mr-1" /> New Round</Button>
             </>
           )}
         </div>
       </div>
+
+      {deleteError && (
+        <p className="text-sm text-destructive bg-destructive/10 rounded-md px-3 py-2">{deleteError}</p>
+      )}
 
       <div className="grid gap-4 sm:grid-cols-3">
         <Card><CardContent className="pt-6"><p className="text-xs text-muted-foreground">Monthly Amount</p><p className="text-xl font-bold tabular-nums">{formatCurrency((committee.monthlyContribution as { toString(): string }).toString())}</p></CardContent></Card>
@@ -308,26 +336,58 @@ export default function CommitteeDetailPage() {
       <Dialog open={showAddMember} onOpenChange={setShowAddMember}>
         <DialogContent>
           <DialogHeader><DialogTitle>Add Member</DialogTitle></DialogHeader>
-          <form onSubmit={handleAddMember} className="space-y-4">
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Person</label>
-              <Select options={personOptions} value={memberForm.personId} onChange={(e) => setMemberForm({ ...memberForm, personId: e.target.value })} placeholder="Select person" />
-            </div>
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Name *</label>
-              <Input value={memberForm.name} onChange={(e) => setMemberForm({ ...memberForm, name: e.target.value })} placeholder="Member name" required />
-            </div>
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Slots</label>
-              <Input type="number" min="1" value={memberForm.slots} onChange={(e) => setMemberForm({ ...memberForm, slots: e.target.value })} />
-            </div>
-            <div className="flex items-center gap-2">
-              <input type="checkbox" id="isUser" checked={memberForm.isUser} onChange={(e) => setMemberForm({ ...memberForm, isUser: e.target.checked })} />
-              <label htmlFor="isUser" className="text-sm">This is me (your entry)</label>
-            </div>
+          <form onSubmit={addMemberForm.handleSubmit} className="space-y-4">
+            <FormField label="Person" error={addMemberForm.errors.personId}>
+              <Select
+                options={personOptions}
+                value={addMemberForm.form.personId as string}
+                onChange={(e) => addMemberForm.setField('personId', e.target.value)}
+                placeholder="Select person"
+              />
+            </FormField>
+
+            <FormField label="Name" required error={addMemberForm.errors.name}>
+              <Input
+                value={addMemberForm.form.name as string}
+                onChange={(e) => addMemberForm.setField('name', e.target.value)}
+                placeholder="Member name"
+              />
+            </FormField>
+
+            <FormField label="Slots" error={addMemberForm.errors.slots}>
+              <Input
+                type="number"
+                min="1"
+                value={addMemberForm.form.slots as number}
+                onChange={(e) => addMemberForm.setField('slots', e.target.value ? parseInt(e.target.value) : 1)}
+              />
+            </FormField>
+
+            <FormField label="Is User" error={addMemberForm.errors.isUser}>
+              <label className="flex items-center gap-2 text-sm">
+                <input
+                  type="checkbox"
+                  checked={addMemberForm.form.isUser as boolean}
+                  onChange={(e) => addMemberForm.setField('isUser', e.target.checked)}
+                />
+                This is me (your entry)
+              </label>
+            </FormField>
+
+            <FormField label="Notes" error={addMemberForm.errors.notes}>
+              <Textarea
+                value={addMemberForm.form.notes as string}
+                onChange={(e) => addMemberForm.setField('notes', e.target.value)}
+                placeholder="Optional"
+              />
+            </FormField>
+
+            {addMemberForm.serverError && (
+              <p className="text-sm text-destructive bg-destructive/10 rounded-md px-3 py-2">{addMemberForm.serverError}</p>
+            )}
             <DialogFooter>
               <Button type="button" variant="outline" onClick={() => setShowAddMember(false)}>Cancel</Button>
-              <Button type="submit" disabled={saving}>{saving ? 'Adding...' : 'Add Member'}</Button>
+              <Button type="submit" disabled={addMemberForm.saving}>{addMemberForm.saving ? 'Adding...' : 'Add Member'}</Button>
             </DialogFooter>
           </form>
         </DialogContent>
@@ -337,30 +397,57 @@ export default function CommitteeDetailPage() {
       <Dialog open={!!editingMember} onOpenChange={(open) => !open && setEditingMember(null)}>
         <DialogContent>
           <DialogHeader><DialogTitle>Edit Member</DialogTitle></DialogHeader>
-          <form onSubmit={handleEditMember} className="space-y-4">
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Person</label>
-              <Select options={personOptions} value={memberEditForm.personId} onChange={(e) => setMemberEditForm({ ...memberEditForm, personId: e.target.value })} placeholder="None" />
-            </div>
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Name *</label>
-              <Input value={memberEditForm.name} onChange={(e) => setMemberEditForm({ ...memberEditForm, name: e.target.value })} required />
-            </div>
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Slots *</label>
-              <Input type="number" min="1" value={memberEditForm.slots} onChange={(e) => setMemberEditForm({ ...memberEditForm, slots: e.target.value })} required />
-            </div>
-            <div className="flex items-center gap-2">
-              <input type="checkbox" id="editIsUser" checked={memberEditForm.isUser} onChange={(e) => setMemberEditForm({ ...memberEditForm, isUser: e.target.checked })} />
-              <label htmlFor="editIsUser" className="text-sm">This is me (your entry)</label>
-            </div>
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Notes</label>
-              <Input value={memberEditForm.notes} onChange={(e) => setMemberEditForm({ ...memberEditForm, notes: e.target.value })} placeholder="Optional" />
-            </div>
+          <form onSubmit={editMemberForm.handleSubmit} className="space-y-4">
+            <FormField label="Person" error={editMemberForm.errors.personId}>
+              <Select
+                options={personOptions}
+                value={editMemberForm.form.personId as string}
+                onChange={(e) => editMemberForm.setField('personId', e.target.value)}
+                placeholder="None"
+              />
+            </FormField>
+
+            <FormField label="Name" required error={editMemberForm.errors.name}>
+              <Input
+                value={editMemberForm.form.name as string}
+                onChange={(e) => editMemberForm.setField('name', e.target.value)}
+              />
+            </FormField>
+
+            <FormField label="Slots" error={editMemberForm.errors.slots}>
+              <Input
+                type="number"
+                min="1"
+                value={editMemberForm.form.slots as number}
+                onChange={(e) => editMemberForm.setField('slots', e.target.value ? parseInt(e.target.value) : 1)}
+              />
+            </FormField>
+
+            <FormField label="Is User" error={editMemberForm.errors.isUser}>
+              <label className="flex items-center gap-2 text-sm">
+                <input
+                  type="checkbox"
+                  checked={editMemberForm.form.isUser as boolean}
+                  onChange={(e) => editMemberForm.setField('isUser', e.target.checked)}
+                />
+                This is me (your entry)
+              </label>
+            </FormField>
+
+            <FormField label="Notes" error={editMemberForm.errors.notes}>
+              <Textarea
+                value={editMemberForm.form.notes as string}
+                onChange={(e) => editMemberForm.setField('notes', e.target.value)}
+                placeholder="Optional"
+              />
+            </FormField>
+
+            {editMemberForm.serverError && (
+              <p className="text-sm text-destructive bg-destructive/10 rounded-md px-3 py-2">{editMemberForm.serverError}</p>
+            )}
             <DialogFooter>
               <Button type="button" variant="outline" onClick={() => setEditingMember(null)}>Cancel</Button>
-              <Button type="submit" disabled={saving}>{saving ? 'Saving...' : 'Save Changes'}</Button>
+              <Button type="submit" disabled={editMemberForm.saving}>{editMemberForm.saving ? 'Saving...' : 'Save Changes'}</Button>
             </DialogFooter>
           </form>
         </DialogContent>
@@ -370,25 +457,55 @@ export default function CommitteeDetailPage() {
       <Dialog open={showAddRound} onOpenChange={setShowAddRound}>
         <DialogContent>
           <DialogHeader><DialogTitle>New Round</DialogTitle></DialogHeader>
-          <form onSubmit={handleAddRound} className="space-y-4">
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Date</label>
-              <Input type="date" value={roundForm.roundDate} onChange={(e) => setRoundForm({ ...roundForm, roundDate: e.target.value })} />
-            </div>
+          <form onSubmit={addRoundForm.handleSubmit} className="space-y-4">
+            <FormField label="Date" error={addRoundForm.errors.roundDate}>
+              <Input
+                type="date"
+                value={addRoundForm.form.roundDate as string}
+                onChange={(e) => addRoundForm.setField('roundDate', e.target.value)}
+              />
+            </FormField>
+
             {isWaiyk && (
-              <div className="space-y-2">
-                <label className="text-sm font-medium">Winning Bid Amount</label>
-                <Input type="number" step="0.01" value={roundForm.winningBid} onChange={(e) => setRoundForm({ ...roundForm, winningBid: e.target.value })} placeholder="The bid amount winner accepts" />
-                <p className="text-xs text-muted-foreground">Profit = Total Amount - Winning Bid, split among all members</p>
-              </div>
+              <>
+                <FormField label="Winning Bid Amount" error={addRoundForm.errors.winningBid} hint="Profit = Total Amount - Winning Bid, split among all members">
+                  <Input
+                    type="number"
+                    step="0.01"
+                    value={addRoundForm.form.winningBid as string | number}
+                    onChange={(e) => addRoundForm.setField('winningBid', e.target.value ? parseFloat(e.target.value) : '')}
+                    placeholder="The bid amount winner accepts"
+                  />
+                </FormField>
+
+                <FormField label="Winning Member" error={addRoundForm.errors.winningMember}>
+                  <Input
+                    value={addRoundForm.form.winningMember as string}
+                    onChange={(e) => addRoundForm.setField('winningMember', e.target.value)}
+                    placeholder="Optional"
+                    list="add-round-member-names"
+                  />
+                  <datalist id="add-round-member-names">
+                    {members.map((m) => <option key={m.id as string} value={m.name as string} />)}
+                  </datalist>
+                </FormField>
+              </>
             )}
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Notes</label>
-              <Input value={roundForm.notes} onChange={(e) => setRoundForm({ ...roundForm, notes: e.target.value })} />
-            </div>
+
+            <FormField label="Notes" error={addRoundForm.errors.notes}>
+              <Textarea
+                value={addRoundForm.form.notes as string}
+                onChange={(e) => addRoundForm.setField('notes', e.target.value)}
+                placeholder="Optional"
+              />
+            </FormField>
+
+            {addRoundForm.serverError && (
+              <p className="text-sm text-destructive bg-destructive/10 rounded-md px-3 py-2">{addRoundForm.serverError}</p>
+            )}
             <DialogFooter>
               <Button type="button" variant="outline" onClick={() => setShowAddRound(false)}>Cancel</Button>
-              <Button type="submit" disabled={saving}>{saving ? 'Creating...' : 'Create Round'}</Button>
+              <Button type="submit" disabled={addRoundForm.saving}>{addRoundForm.saving ? 'Creating...' : 'Create Round'}</Button>
             </DialogFooter>
           </form>
         </DialogContent>
@@ -398,32 +515,53 @@ export default function CommitteeDetailPage() {
       <Dialog open={!!editingRound} onOpenChange={(open) => !open && setEditingRound(null)}>
         <DialogContent>
           <DialogHeader><DialogTitle>Edit Round</DialogTitle></DialogHeader>
-          <form onSubmit={handleEditRound} className="space-y-4">
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Date *</label>
-              <Input type="date" value={roundEditForm.roundDate} onChange={(e) => setRoundEditForm({ ...roundEditForm, roundDate: e.target.value })} required />
-            </div>
+          <form onSubmit={editRoundForm.handleSubmit} className="space-y-4">
+            <FormField label="Date" required error={editRoundForm.errors.roundDate}>
+              <Input
+                type="date"
+                value={editRoundForm.form.roundDate as string}
+                onChange={(e) => editRoundForm.setField('roundDate', e.target.value)}
+              />
+            </FormField>
+
             {isWaiyk && (
-              <div className="space-y-2">
-                <label className="text-sm font-medium">Winning Bid Amount</label>
-                <Input type="number" step="0.01" value={roundEditForm.winningBid} onChange={(e) => setRoundEditForm({ ...roundEditForm, winningBid: e.target.value })} placeholder="The bid amount winner accepts" />
-                <p className="text-xs text-muted-foreground">Profit = Total Amount - Winning Bid, split among all members</p>
-              </div>
+              <FormField label="Winning Bid Amount" error={editRoundForm.errors.winningBid} hint="Profit = Total Amount - Winning Bid, split among all members">
+                <Input
+                  type="number"
+                  step="0.01"
+                  value={editRoundForm.form.winningBid as string | number}
+                  onChange={(e) => editRoundForm.setField('winningBid', e.target.value ? parseFloat(e.target.value) : '')}
+                  placeholder="The bid amount winner accepts"
+                />
+              </FormField>
             )}
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Winning Member</label>
-              <Input value={roundEditForm.winningMember} onChange={(e) => setRoundEditForm({ ...roundEditForm, winningMember: e.target.value })} placeholder="Optional" list="committee-member-names" />
+
+            <FormField label="Winning Member" error={editRoundForm.errors.winningMember}>
+              <Input
+                value={editRoundForm.form.winningMember as string}
+                onChange={(e) => editRoundForm.setField('winningMember', e.target.value)}
+                placeholder="Optional"
+                list="committee-member-names"
+              />
               <datalist id="committee-member-names">
                 {members.map((m) => <option key={m.id as string} value={m.name as string} />)}
               </datalist>
-            </div>
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Notes</label>
-              <Input value={roundEditForm.notes} onChange={(e) => setRoundEditForm({ ...roundEditForm, notes: e.target.value })} placeholder="Optional" />
-            </div>
+            </FormField>
+
+            <FormField label="Notes" error={editRoundForm.errors.notes}>
+              <Textarea
+                value={editRoundForm.form.notes as string}
+                onChange={(e) => editRoundForm.setField('notes', e.target.value)}
+                placeholder="Optional"
+              />
+            </FormField>
+
+            {editRoundForm.serverError && (
+              <p className="text-sm text-destructive bg-destructive/10 rounded-md px-3 py-2">{editRoundForm.serverError}</p>
+            )}
             <DialogFooter>
               <Button type="button" variant="outline" onClick={() => setEditingRound(null)}>Cancel</Button>
-              <Button type="submit" disabled={saving}>{saving ? 'Saving...' : 'Save Changes'}</Button>
+              <Button type="submit" disabled={editRoundForm.saving}>{editRoundForm.saving ? 'Saving...' : 'Save Changes'}</Button>
             </DialogFooter>
           </form>
         </DialogContent>
@@ -433,22 +571,108 @@ export default function CommitteeDetailPage() {
       <Dialog open={showEdit} onOpenChange={setShowEdit}>
         <DialogContent>
           <DialogHeader><DialogTitle>Edit Committee</DialogTitle></DialogHeader>
-          <form onSubmit={handleEdit} className="space-y-4">
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Name *</label>
-              <Input value={editForm.name} onChange={(e) => setEditForm({ ...editForm, name: e.target.value })} required />
+          <form onSubmit={editForm.handleSubmit} className="space-y-4">
+            <FormField label="Name" required error={editForm.errors.name}>
+              <Input
+                value={editForm.form.name as string}
+                onChange={(e) => editForm.setField('name', e.target.value)}
+              />
+            </FormField>
+
+            <div className="grid gap-4 sm:grid-cols-2">
+              <FormField label="Type" error={editForm.errors.type}>
+                <Select
+                  options={committeeTypeOptions}
+                  value={editForm.form.type as string}
+                  onChange={(e) => editForm.setField('type', e.target.value)}
+                />
+              </FormField>
+
+              <FormField label="Status" error={editForm.errors.status}>
+                <Select
+                  options={committeeStatusOptions}
+                  value={editForm.form.status as string}
+                  onChange={(e) => editForm.setField('status', e.target.value)}
+                />
+              </FormField>
             </div>
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Status</label>
-              <Select options={committeeStatusOptions} value={editForm.status} onChange={(e) => setEditForm({ ...editForm, status: e.target.value })} />
+
+            <div className="grid gap-4 sm:grid-cols-2">
+              <FormField label="Start Date" error={editForm.errors.startDate}>
+                <Input
+                  type="date"
+                  value={editForm.form.startDate as string}
+                  onChange={(e) => editForm.setField('startDate', e.target.value)}
+                />
+              </FormField>
+
+              <FormField label="End Date" error={editForm.errors.endDate}>
+                <Input
+                  type="date"
+                  value={editForm.form.endDate as string}
+                  onChange={(e) => editForm.setField('endDate', e.target.value)}
+                />
+              </FormField>
             </div>
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Notes</label>
-              <Input value={editForm.notes} onChange={(e) => setEditForm({ ...editForm, notes: e.target.value })} placeholder="Optional" />
+
+            <div className="grid gap-4 sm:grid-cols-2">
+              <FormField label="Member Count" error={editForm.errors.memberCount}>
+                <Input
+                  type="number"
+                  min="1"
+                  value={editForm.form.memberCount as string | number}
+                  onChange={(e) => editForm.setField('memberCount', e.target.value ? parseInt(e.target.value) : '')}
+                />
+              </FormField>
+
+              <FormField label="Monthly Contribution" error={editForm.errors.monthlyContribution}>
+                <Input
+                  type="number"
+                  step="0.01"
+                  value={editForm.form.monthlyContribution as string | number}
+                  onChange={(e) => editForm.setField('monthlyContribution', e.target.value ? parseFloat(e.target.value) : '')}
+                />
+              </FormField>
             </div>
+
+            {editIsWaiyk && (
+              <FormField label="Total Amount" error={editForm.errors.totalAmount}>
+                <Input
+                  type="number"
+                  step="0.01"
+                  value={editForm.form.totalAmount as string | number}
+                  onChange={(e) => editForm.setField('totalAmount', e.target.value ? parseFloat(e.target.value) : '')}
+                />
+              </FormField>
+            )}
+
+            <FormField label="Notes" error={editForm.errors.notes}>
+              <Textarea
+                value={editForm.form.notes as string}
+                onChange={(e) => editForm.setField('notes', e.target.value)}
+                placeholder="Optional"
+              />
+            </FormField>
+
+            <AdvancedSection>
+              <FormField label="Private" error={editForm.errors.isPrivate}>
+                <label className="flex items-center gap-2 text-sm">
+                  <input
+                    type="checkbox"
+                    checked={editForm.form.isPrivate as boolean}
+                    onChange={(e) => editForm.setField('isPrivate', e.target.checked)}
+                  />
+                  Mark as private
+                </label>
+              </FormField>
+            </AdvancedSection>
+
+            {editForm.serverError && (
+              <p className="text-sm text-destructive bg-destructive/10 rounded-md px-3 py-2">{editForm.serverError}</p>
+            )}
             <DialogFooter>
               <Button type="button" variant="outline" onClick={() => setShowEdit(false)}>Cancel</Button>
-              <Button type="submit" disabled={saving}>{saving ? 'Saving...' : 'Save Changes'}</Button>
+              <Button type="submit" disabled={editForm.saving}>{editForm.saving ? 'Saving...' : 'Save Changes'}</Button>
             </DialogFooter>
           </form>
         </DialogContent>

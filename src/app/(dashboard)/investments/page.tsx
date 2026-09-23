@@ -1,13 +1,18 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
+import { Select } from '@/components/ui/select';
+import { Textarea } from '@/components/ui/textarea';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { PageLoading, EmptyState } from '@/components/ui/loading';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/modal';
+import { FormField } from '@/components/forms/FormField';
+import { useResourceForm } from '@/hooks/useResourceForm';
+import { investmentSchema, investmentUpdateSchema } from '@/lib/validations/schemas';
 import { formatCurrency } from '@/lib/utils';
 import { TrendingUp, Plus, ArrowUp, ArrowDown, Pencil, Trash2 } from 'lucide-react';
 
@@ -21,19 +26,29 @@ interface Investment {
   profitLossPercent: number;
   status: string;
   investmentDate: string;
+  accountId: string;
   notes?: string | null;
   isActive: boolean;
 }
+
+const investmentTypeOptions = [
+  { value: 'stocks', label: 'Stocks' },
+  { value: 'property', label: 'Property' },
+  { value: 'business', label: 'Business' },
+  { value: 'mutual_fund', label: 'Mutual Fund' },
+  { value: 'gold', label: 'Gold' },
+  { value: 'crypto', label: 'Crypto' },
+  { value: 'other', label: 'Other' },
+];
+
+const today = new Date().toISOString().split('T')[0];
 
 export default function InvestmentsPage() {
   const [investments, setInvestments] = useState<Investment[]>([]);
   const [loading, setLoading] = useState(true);
   const [showCreate, setShowCreate] = useState(false);
-  const [saving, setSaving] = useState(false);
-  const [accounts, setAccounts] = useState<{ id: string; name: string }[]>([]);
-  const [form, setForm] = useState({ name: '', investmentType: 'Stock', amountInvested: '', currentValue: '', investmentDate: new Date().toISOString().split('T')[0], accountId: '', notes: '' });
   const [editing, setEditing] = useState<Investment | null>(null);
-  const [editForm, setEditForm] = useState({ name: '', currentValue: '', notes: '', isActive: true });
+  const [accounts, setAccounts] = useState<{ id: string; name: string }[]>([]);
 
   function fetchInvestments() {
     fetch('/api/investments').then((r) => r.json()).then((res) => setInvestments(res.data || [])).catch(console.error).finally(() => setLoading(false));
@@ -44,54 +59,38 @@ export default function InvestmentsPage() {
     fetch('/api/accounts').then((r) => r.json()).then((res) => setAccounts(res.data || [])).catch(console.error);
   }, []);
 
-  async function handleCreate(e: React.FormEvent) {
-    e.preventDefault();
-    setSaving(true);
-    try {
-      const res = await fetch('/api/investments', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ...form, amountInvested: parseFloat(form.amountInvested), currentValue: parseFloat(form.currentValue || form.amountInvested) }),
-      });
-      if (res.ok) { setShowCreate(false); setForm({ name: '', investmentType: 'Stock', amountInvested: '', currentValue: '', investmentDate: new Date().toISOString().split('T')[0], accountId: '', notes: '' }); fetchInvestments(); }
-    } finally { setSaving(false); }
-  }
+  const createForm = useResourceForm({
+    schema: investmentSchema,
+    initial: { name: '', investmentType: '', amountInvested: '', currentValue: null, accountId: '', investmentDate: today, notes: '' },
+    onSubmit: (data) => fetch('/api/investments', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) }),
+    onSuccess: () => { setShowCreate(false); createForm.reset(); fetchInvestments(); },
+  });
+
+  const editFormHook = useResourceForm({
+    schema: investmentUpdateSchema,
+    initial: { name: '', investmentType: '', amountInvested: '', currentValue: null, accountId: '', investmentDate: '', notes: '', isActive: true },
+    onSubmit: (data) => fetch(`/api/investments/${editing!.id}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) }),
+    onSuccess: () => { setEditing(null); fetchInvestments(); },
+  });
 
   function openEdit(inv: Investment) {
     setEditing(inv);
-    setEditForm({
+    editFormHook.setForm({
       name: inv.name,
-      currentValue: inv.currentValue.toString(),
+      investmentType: inv.investmentType,
+      amountInvested: parseFloat(inv.amountInvested.toString()),
+      currentValue: parseFloat(inv.currentValue.toString()) || null,
+      accountId: inv.accountId || '',
+      investmentDate: inv.investmentDate ? inv.investmentDate.split('T')[0] : '',
       notes: inv.notes || '',
       isActive: inv.isActive,
     });
   }
 
-  async function handleEdit(e: React.FormEvent) {
-    e.preventDefault();
-    if (!editing) return;
-    setSaving(true);
-    try {
-      const res = await fetch(`/api/investments/${editing.id}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          name: editForm.name,
-          currentValue: parseFloat(editForm.currentValue) || 0,
-          notes: editForm.notes || undefined,
-          isActive: editForm.isActive,
-        }),
-      });
-      if (res.ok) { setEditing(null); fetchInvestments(); }
-      else { const data = await res.json(); alert(data.error || 'Failed to update investment'); }
-    } finally { setSaving(false); }
-  }
-
   async function handleDelete(inv: Investment) {
     if (!confirm(`Delete "${inv.name}"? This cannot be undone.`)) return;
     const res = await fetch(`/api/investments/${inv.id}`, { method: 'DELETE' });
-    if (res.ok) { fetchInvestments(); }
-    else { const data = await res.json(); alert(data.error || 'Failed to delete investment'); }
+    if (res.ok) fetchInvestments();
   }
 
   if (loading) return <PageLoading />;
@@ -99,6 +98,7 @@ export default function InvestmentsPage() {
   const totalInvested = investments.reduce((s, i) => s + parseFloat(i.amountInvested.toString()), 0);
   const totalCurrent = investments.reduce((s, i) => s + parseFloat(i.currentValue.toString()), 0);
   const totalPL = totalCurrent - totalInvested;
+  const accountOptions = accounts.map((a) => ({ value: a.id, label: a.name }));
 
   return (
     <div className="space-y-6">
@@ -161,35 +161,80 @@ export default function InvestmentsPage() {
         </Card>
       )}
 
-      <Dialog open={showCreate} onOpenChange={setShowCreate}>
+      {/* Create Investment Modal */}
+      <Dialog open={showCreate} onOpenChange={(open) => { setShowCreate(open); if (!open) createForm.reset(); }}>
         <DialogContent>
           <DialogHeader><DialogTitle>Add Investment</DialogTitle></DialogHeader>
-          <form onSubmit={handleCreate} className="space-y-4">
-            <div className="space-y-2"><label className="text-sm font-medium">Name *</label><Input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} required placeholder="e.g., AAPL Shares" /></div>
-            <div className="space-y-2"><label className="text-sm font-medium">Type</label><Input value={form.investmentType} onChange={(e) => setForm({ ...form, investmentType: e.target.value })} placeholder="Stock, Crypto, Gold, Property..." /></div>
+          <form onSubmit={createForm.handleSubmit} className="space-y-4">
+            <FormField label="Name" required error={createForm.errors.name}>
+              <Input value={createForm.form.name as string} onChange={(e) => createForm.setField('name', e.target.value)} placeholder="e.g., AAPL Shares" />
+            </FormField>
+            <FormField label="Investment Type" required error={createForm.errors.investmentType}>
+              <Select options={investmentTypeOptions} value={createForm.form.investmentType as string} onChange={(e) => createForm.setField('investmentType', e.target.value)} placeholder="Select type" />
+            </FormField>
             <div className="grid gap-4 sm:grid-cols-2">
-              <div className="space-y-2"><label className="text-sm font-medium">Invested Amount *</label><Input type="number" step="0.01" value={form.amountInvested} onChange={(e) => setForm({ ...form, amountInvested: e.target.value })} required /></div>
-              <div className="space-y-2"><label className="text-sm font-medium">Current Value</label><Input type="number" step="0.01" value={form.currentValue} onChange={(e) => setForm({ ...form, currentValue: e.target.value })} placeholder="Same as invested if blank" /></div>
+              <FormField label="Invested Amount" required error={createForm.errors.amountInvested}>
+                <Input type="number" step="0.01" value={createForm.form.amountInvested as string | number} onChange={(e) => createForm.setField('amountInvested', e.target.value === '' ? '' : Number(e.target.value))} />
+              </FormField>
+              <FormField label="Current Value" error={createForm.errors.currentValue}>
+                <Input type="number" step="0.01" value={(createForm.form.currentValue as number | null) ?? ''} onChange={(e) => createForm.setField('currentValue', e.target.value === '' ? null : Number(e.target.value))} placeholder="Same as invested if blank" />
+              </FormField>
             </div>
-            <div className="space-y-2"><label className="text-sm font-medium">Account *</label><select className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm" value={form.accountId} onChange={(e) => setForm({ ...form, accountId: e.target.value })} required><option value="">Select account</option>{accounts.map((a) => <option key={a.id} value={a.id}>{a.name}</option>)}</select></div>
-            <div className="space-y-2"><label className="text-sm font-medium">Date</label><Input type="date" value={form.investmentDate} onChange={(e) => setForm({ ...form, investmentDate: e.target.value })} /></div>
-            <DialogFooter><Button type="button" variant="outline" onClick={() => setShowCreate(false)}>Cancel</Button><Button type="submit" disabled={saving}>{saving ? 'Saving...' : 'Add'}</Button></DialogFooter>
+            <FormField label="Account" required error={createForm.errors.accountId}>
+              <Select options={accountOptions} value={createForm.form.accountId as string} onChange={(e) => createForm.setField('accountId', e.target.value)} placeholder="Select account" />
+            </FormField>
+            <FormField label="Investment Date" required error={createForm.errors.investmentDate}>
+              <Input type="date" value={createForm.form.investmentDate as string} onChange={(e) => createForm.setField('investmentDate', e.target.value)} />
+            </FormField>
+            <FormField label="Notes" error={createForm.errors.notes}>
+              <Textarea value={createForm.form.notes as string} onChange={(e) => createForm.setField('notes', e.target.value)} placeholder="Optional" />
+            </FormField>
+            {createForm.serverError && <p className="text-sm text-destructive bg-destructive/10 rounded-md px-3 py-2">{createForm.serverError}</p>}
+            <DialogFooter>
+              <Button type="button" variant="outline" onClick={() => setShowCreate(false)}>Cancel</Button>
+              <Button type="submit" disabled={createForm.saving}>{createForm.saving ? 'Saving...' : 'Add'}</Button>
+            </DialogFooter>
           </form>
         </DialogContent>
       </Dialog>
 
+      {/* Edit Investment Modal */}
       <Dialog open={!!editing} onOpenChange={(open) => !open && setEditing(null)}>
         <DialogContent>
           <DialogHeader><DialogTitle>Edit Investment</DialogTitle></DialogHeader>
-          <form onSubmit={handleEdit} className="space-y-4">
-            <div className="space-y-2"><label className="text-sm font-medium">Name *</label><Input value={editForm.name} onChange={(e) => setEditForm({ ...editForm, name: e.target.value })} required /></div>
-            <div className="space-y-2"><label className="text-sm font-medium">Current Value</label><Input type="number" step="0.01" value={editForm.currentValue} onChange={(e) => setEditForm({ ...editForm, currentValue: e.target.value })} /></div>
-            <div className="space-y-2"><label className="text-sm font-medium">Notes</label><Input value={editForm.notes} onChange={(e) => setEditForm({ ...editForm, notes: e.target.value })} placeholder="Optional" /></div>
+          <form onSubmit={editFormHook.handleSubmit} className="space-y-4">
+            <FormField label="Name" required error={editFormHook.errors.name}>
+              <Input value={editFormHook.form.name as string} onChange={(e) => editFormHook.setField('name', e.target.value)} />
+            </FormField>
+            <FormField label="Investment Type" required error={editFormHook.errors.investmentType}>
+              <Select options={investmentTypeOptions} value={editFormHook.form.investmentType as string} onChange={(e) => editFormHook.setField('investmentType', e.target.value)} placeholder="Select type" />
+            </FormField>
+            <div className="grid gap-4 sm:grid-cols-2">
+              <FormField label="Invested Amount" required error={editFormHook.errors.amountInvested}>
+                <Input type="number" step="0.01" value={editFormHook.form.amountInvested as string | number} onChange={(e) => editFormHook.setField('amountInvested', e.target.value === '' ? '' : Number(e.target.value))} />
+              </FormField>
+              <FormField label="Current Value" error={editFormHook.errors.currentValue}>
+                <Input type="number" step="0.01" value={(editFormHook.form.currentValue as number | null) ?? ''} onChange={(e) => editFormHook.setField('currentValue', e.target.value === '' ? null : Number(e.target.value))} />
+              </FormField>
+            </div>
+            <FormField label="Account" required error={editFormHook.errors.accountId}>
+              <Select options={accountOptions} value={editFormHook.form.accountId as string} onChange={(e) => editFormHook.setField('accountId', e.target.value)} placeholder="Select account" />
+            </FormField>
+            <FormField label="Investment Date" required error={editFormHook.errors.investmentDate}>
+              <Input type="date" value={editFormHook.form.investmentDate as string} onChange={(e) => editFormHook.setField('investmentDate', e.target.value)} />
+            </FormField>
+            <FormField label="Notes" error={editFormHook.errors.notes}>
+              <Textarea value={editFormHook.form.notes as string} onChange={(e) => editFormHook.setField('notes', e.target.value)} placeholder="Optional" />
+            </FormField>
             <label className="flex items-center gap-2 text-sm font-medium">
-              <input type="checkbox" checked={editForm.isActive} onChange={(e) => setEditForm({ ...editForm, isActive: e.target.checked })} />
+              <input type="checkbox" checked={editFormHook.form.isActive as boolean} onChange={(e) => editFormHook.setField('isActive', e.target.checked)} />
               Active
             </label>
-            <DialogFooter><Button type="button" variant="outline" onClick={() => setEditing(null)}>Cancel</Button><Button type="submit" disabled={saving}>{saving ? 'Saving...' : 'Save Changes'}</Button></DialogFooter>
+            {editFormHook.serverError && <p className="text-sm text-destructive bg-destructive/10 rounded-md px-3 py-2">{editFormHook.serverError}</p>}
+            <DialogFooter>
+              <Button type="button" variant="outline" onClick={() => setEditing(null)}>Cancel</Button>
+              <Button type="submit" disabled={editFormHook.saving}>{editFormHook.saving ? 'Saving...' : 'Save Changes'}</Button>
+            </DialogFooter>
           </form>
         </DialogContent>
       </Dialog>

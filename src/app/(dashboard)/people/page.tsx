@@ -1,13 +1,17 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { PageLoading, EmptyState } from '@/components/ui/loading';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/modal';
+import { FormField } from '@/components/forms/FormField';
+import { useResourceForm } from '@/hooks/useResourceForm';
+import { personSchema, personUpdateSchema } from '@/lib/validations/schemas';
 import { Contact, Plus, Pencil, Trash2 } from 'lucide-react';
 
 interface Person {
@@ -21,7 +25,8 @@ interface Person {
   _count?: { loans?: number; committeeMembers?: number; transactions?: number };
 }
 
-const emptyForm = { name: '', phone: '', email: '', relationship: '', notes: '', isActive: true };
+const emptyCreate = { name: '', phone: '', email: '', relationship: '', notes: '' };
+const emptyEdit = { name: '', phone: '', email: '', relationship: '', notes: '', isActive: true };
 
 function plural(n: number, word: string) {
   return `${n} ${word}${n === 1 ? '' : 's'}`;
@@ -41,24 +46,58 @@ export default function PeoplePage() {
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [editing, setEditing] = useState<Person | null>(null);
-  const [saving, setSaving] = useState(false);
-  const [form, setForm] = useState(emptyForm);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
 
-  function fetchPersons() {
-    fetch('/api/persons').then((r) => r.json()).then((res) => setPersons(res.data || [])).catch(console.error).finally(() => setLoading(false));
+  const fetchPersons = useCallback(() => {
+    fetch('/api/persons')
+      .then((r) => r.json())
+      .then((res) => setPersons(res.data || []))
+      .catch(console.error)
+      .finally(() => setLoading(false));
+  }, []);
+
+  useEffect(() => { fetchPersons(); }, [fetchPersons]);
+
+  function closeForm() {
+    setShowForm(false);
+    setEditing(null);
   }
 
-  useEffect(() => { fetchPersons(); }, []);
+  const createForm = useResourceForm({
+    schema: personSchema,
+    initial: emptyCreate,
+    onSubmit: (data) =>
+      fetch('/api/persons', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data),
+      }),
+    onSuccess: () => { closeForm(); fetchPersons(); },
+  });
+
+  const editFormHook = useResourceForm({
+    schema: personUpdateSchema,
+    initial: emptyEdit,
+    onSubmit: (data) =>
+      fetch(`/api/persons/${editing?.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data),
+      }),
+    onSuccess: () => { closeForm(); fetchPersons(); },
+  });
+
+  const rf = editing ? editFormHook : createForm;
 
   function openCreate() {
     setEditing(null);
-    setForm(emptyForm);
+    createForm.reset(emptyCreate);
     setShowForm(true);
   }
 
   function openEdit(p: Person) {
     setEditing(p);
-    setForm({
+    editFormHook.reset({
       name: p.name,
       phone: p.phone || '',
       email: p.email || '',
@@ -69,43 +108,15 @@ export default function PeoplePage() {
     setShowForm(true);
   }
 
-  function closeForm() {
-    setShowForm(false);
-    setEditing(null);
-  }
-
-  async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault();
-    setSaving(true);
-    const payload = {
-      name: form.name,
-      phone: form.phone || undefined,
-      email: form.email || undefined,
-      relationship: form.relationship || undefined,
-      notes: form.notes || undefined,
-    };
-    try {
-      const res = editing
-        ? await fetch(`/api/persons/${editing.id}`, {
-            method: 'PUT',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ ...payload, isActive: form.isActive }),
-          })
-        : await fetch('/api/persons', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(payload),
-          });
-      if (res.ok) { closeForm(); fetchPersons(); }
-      else { const d = await res.json(); alert(d.error || (editing ? 'Failed to update person' : 'Failed to create person')); }
-    } finally { setSaving(false); }
-  }
-
   async function handleDelete(p: Person) {
     if (!confirm(`Delete "${p.name}"? This cannot be undone.`)) return;
+    setDeleteError(null);
     const res = await fetch(`/api/persons/${p.id}`, { method: 'DELETE' });
     if (res.ok) { fetchPersons(); }
-    else { const d = await res.json(); alert(d.error || 'Failed to delete person'); }
+    else {
+      try { const d = await res.json(); setDeleteError(d.error || 'Failed to delete person'); }
+      catch { setDeleteError('Failed to delete person'); }
+    }
   }
 
   if (loading) return <PageLoading />;
@@ -116,6 +127,10 @@ export default function PeoplePage() {
         <h1 className="text-2xl font-bold">People</h1>
         <Button onClick={openCreate}><Plus className="h-4 w-4 mr-2" /> Add Person</Button>
       </div>
+
+      {deleteError && (
+        <p className="text-sm text-destructive bg-destructive/10 rounded-md px-3 py-2">{deleteError}</p>
+      )}
 
       {persons.length === 0 ? (
         <EmptyState icon={<Contact className="h-12 w-12" />} title="No people" description="Add the people you lend to, borrow from, or share committees with" action={<Button onClick={openCreate}>Add Person</Button>} />
@@ -161,21 +176,67 @@ export default function PeoplePage() {
       <Dialog open={showForm} onOpenChange={(open) => !open && closeForm()}>
         <DialogContent>
           <DialogHeader><DialogTitle>{editing ? 'Edit Person' : 'Add Person'}</DialogTitle></DialogHeader>
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div className="space-y-2"><label className="text-sm font-medium">Name *</label><Input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} required /></div>
-            <div className="space-y-2"><label className="text-sm font-medium">Relationship</label><Input value={form.relationship} onChange={(e) => setForm({ ...form, relationship: e.target.value })} placeholder="e.g., Friend, Colleague" /></div>
-            <div className="space-y-2"><label className="text-sm font-medium">Phone</label><Input value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} placeholder="Optional" /></div>
-            <div className="space-y-2"><label className="text-sm font-medium">Email</label><Input type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} placeholder="Optional" /></div>
-            <div className="space-y-2"><label className="text-sm font-medium">Notes</label><Input value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} placeholder="Optional" /></div>
+          <form onSubmit={rf.handleSubmit} className="space-y-4">
+            <FormField label="Name" required error={rf.errors.name}>
+              <Input
+                value={rf.form.name as string}
+                onChange={(e) => rf.setField('name', e.target.value)}
+              />
+            </FormField>
+
+            <FormField label="Phone" error={rf.errors.phone}>
+              <Input
+                type="tel"
+                value={rf.form.phone as string}
+                onChange={(e) => rf.setField('phone', e.target.value)}
+                placeholder="Optional"
+              />
+            </FormField>
+
+            <FormField label="Email" error={rf.errors.email}>
+              <Input
+                type="email"
+                value={rf.form.email as string}
+                onChange={(e) => rf.setField('email', e.target.value)}
+                placeholder="Optional"
+              />
+            </FormField>
+
+            <FormField label="Relationship" error={rf.errors.relationship}>
+              <Input
+                value={rf.form.relationship as string}
+                onChange={(e) => rf.setField('relationship', e.target.value)}
+                placeholder="e.g., Friend, Colleague"
+              />
+            </FormField>
+
+            <FormField label="Notes" error={rf.errors.notes}>
+              <Textarea
+                value={rf.form.notes as string}
+                onChange={(e) => rf.setField('notes', e.target.value)}
+                placeholder="Optional"
+              />
+            </FormField>
+
             {editing && (
-              <label className="flex items-center gap-2 text-sm font-medium">
-                <input type="checkbox" checked={form.isActive} onChange={(e) => setForm({ ...form, isActive: e.target.checked })} />
-                Active
-              </label>
+              <FormField label="Active" error={rf.errors.isActive}>
+                <label className="flex items-center gap-2 text-sm">
+                  <input
+                    type="checkbox"
+                    checked={rf.form.isActive as boolean}
+                    onChange={(e) => rf.setField('isActive', e.target.checked)}
+                  />
+                  Person is active
+                </label>
+              </FormField>
+            )}
+
+            {rf.serverError && (
+              <p className="text-sm text-destructive bg-destructive/10 rounded-md px-3 py-2">{rf.serverError}</p>
             )}
             <DialogFooter>
               <Button type="button" variant="outline" onClick={closeForm}>Cancel</Button>
-              <Button type="submit" disabled={saving}>{saving ? 'Saving...' : editing ? 'Save Changes' : 'Add'}</Button>
+              <Button type="submit" disabled={rf.saving}>{rf.saving ? 'Saving...' : editing ? 'Save Changes' : 'Add'}</Button>
             </DialogFooter>
           </form>
         </DialogContent>
