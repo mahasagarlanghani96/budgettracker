@@ -1,159 +1,177 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 
-// Test the pure financial calculation logic
-// These are unit tests for the critical balance calculation rules
+// Mock must be defined via vi.hoisted so the factory below (hoisted to the
+// top of the file by Vitest) and the tests can share the same mock object.
+const mockPrisma = vi.hoisted(() => ({
+  account: { findUnique: vi.fn() },
+  transaction: { aggregate: vi.fn() },
+  loan: { findMany: vi.fn() },
+}));
 
-describe('Balance Calculation Rules', () => {
-  // Replicate the INFLOW_TYPES and OUTFLOW_TYPES from balance.ts
-  const INFLOW_TYPES = ['INCOME', 'LOAN_TAKEN', 'COMMITTEE_RECEIVED', 'TRANSFER_IN', 'SAVINGS_WITHDRAW', 'INVESTMENT_RETURN'];
-  const OUTFLOW_TYPES = ['EXPENSE', 'LOAN_GIVEN', 'LOAN_REPAYMENT_MADE', 'COMMITTEE_CONTRIBUTION', 'TRANSFER_OUT', 'SAVINGS_DEPOSIT', 'INVESTMENT', 'PLOT_PAYMENT'];
+vi.mock('@/lib/prisma', () => ({
+  default: mockPrisma,
+  prisma: mockPrisma,
+}));
 
-  it('should classify INCOME as inflow', () => {
+// Import the real module under test — no duplicated logic. If someone edits
+// the classification rules or the TransactionType enum without keeping both
+// in sync, these tests exercise the actual code and will catch it.
+import {
+  INFLOW_TYPES,
+  OUTFLOW_TYPES,
+  calculateAccountBalance,
+  getOutstandingReceivables,
+  getOutstandingPayables,
+} from '../balance';
+
+beforeEach(() => {
+  vi.clearAllMocks();
+});
+
+describe('Transaction type classification', () => {
+  it('classifies INCOME as inflow only', () => {
     expect(INFLOW_TYPES).toContain('INCOME');
+    expect(OUTFLOW_TYPES).not.toContain('INCOME');
   });
 
-  it('should classify EXPENSE as outflow', () => {
+  it('classifies EXPENSE as outflow only', () => {
     expect(OUTFLOW_TYPES).toContain('EXPENSE');
+    expect(INFLOW_TYPES).not.toContain('EXPENSE');
   });
 
-  it('should NOT count TRANSFER as income or expense', () => {
-    // TRANSFER itself is not in inflow or outflow — only TRANSFER_IN and TRANSFER_OUT
-    expect(INFLOW_TYPES).not.toContain('TRANSFER');
-    expect(OUTFLOW_TYPES).not.toContain('TRANSFER');
+  it('classifies TRANSFER as both inflow and outflow (net zero across the two accounts involved)', () => {
+    expect(INFLOW_TYPES).toContain('TRANSFER');
+    expect(OUTFLOW_TYPES).toContain('TRANSFER');
   });
 
-  it('should count TRANSFER_IN as inflow and TRANSFER_OUT as outflow', () => {
-    expect(INFLOW_TYPES).toContain('TRANSFER_IN');
-    expect(OUTFLOW_TYPES).toContain('TRANSFER_OUT');
-  });
-
-  it('should NOT count LOAN_GIVEN as expense', () => {
-    // Loan given is an outflow (money leaves account) but not an expense
+  it('classifies LOAN_GIVEN as outflow, not an expense', () => {
     expect(OUTFLOW_TYPES).toContain('LOAN_GIVEN');
-    // The key rule: loans are not expenses for reporting purposes
-    const EXPENSE_TYPES = ['EXPENSE'];
-    expect(EXPENSE_TYPES).not.toContain('LOAN_GIVEN');
+    expect(INFLOW_TYPES).not.toContain('LOAN_GIVEN');
   });
 
-  it('should NOT count LOAN_REPAYMENT_RECEIVED as income', () => {
-    // Loan repayment received is an inflow but not income
-    const INCOME_TYPES = ['INCOME'];
-    expect(INCOME_TYPES).not.toContain('LOAN_REPAYMENT_RECEIVED');
-  });
-
-  it('should count LOAN_TAKEN as inflow', () => {
+  it('classifies LOAN_TAKEN as inflow', () => {
     expect(INFLOW_TYPES).toContain('LOAN_TAKEN');
+    expect(OUTFLOW_TYPES).not.toContain('LOAN_TAKEN');
   });
 
-  it('should count LOAN_REPAYMENT_MADE as outflow', () => {
+  it('classifies LOAN_REPAYMENT_RECEIVED as inflow, not income', () => {
+    expect(INFLOW_TYPES).toContain('LOAN_REPAYMENT_RECEIVED');
+  });
+
+  it('classifies LOAN_REPAYMENT_MADE as outflow', () => {
     expect(OUTFLOW_TYPES).toContain('LOAN_REPAYMENT_MADE');
   });
 
-  describe('Account Balance Calculation', () => {
-    // balance = openingBalance + sum(inflows) - sum(outflows)
-    function calculateBalance(openingBalance: number, transactions: Array<{ type: string; amount: number }>) {
-      let balance = openingBalance;
-      for (const tx of transactions) {
-        if (INFLOW_TYPES.includes(tx.type)) {
-          balance += tx.amount;
-        } else if (OUTFLOW_TYPES.includes(tx.type)) {
-          balance -= tx.amount;
-        }
-      }
-      return balance;
-    }
+  it('classifies COMMITTEE_CONTRIBUTION as outflow and COMMITTEE_RECEIVING as inflow', () => {
+    expect(OUTFLOW_TYPES).toContain('COMMITTEE_CONTRIBUTION');
+    expect(INFLOW_TYPES).toContain('COMMITTEE_RECEIVING');
+  });
 
-    it('should start with opening balance when no transactions', () => {
-      expect(calculateBalance(10000, [])).toBe(10000);
-    });
+  it('classifies SAVINGS_DEPOSIT as outflow and SAVINGS_WITHDRAWAL as inflow', () => {
+    expect(OUTFLOW_TYPES).toContain('SAVINGS_DEPOSIT');
+    expect(INFLOW_TYPES).toContain('SAVINGS_WITHDRAWAL');
+  });
 
-    it('should add income to balance', () => {
-      expect(calculateBalance(10000, [{ type: 'INCOME', amount: 5000 }])).toBe(15000);
-    });
+  it('classifies INVESTMENT as outflow and INVESTMENT_RETURN as inflow', () => {
+    expect(OUTFLOW_TYPES).toContain('INVESTMENT');
+    expect(INFLOW_TYPES).toContain('INVESTMENT_RETURN');
+  });
 
-    it('should subtract expense from balance', () => {
-      expect(calculateBalance(10000, [{ type: 'EXPENSE', amount: 3000 }])).toBe(7000);
-    });
+  it('classifies PLOT_PAYMENT as outflow', () => {
+    expect(OUTFLOW_TYPES).toContain('PLOT_PAYMENT');
+  });
 
-    it('should handle mixed transactions correctly', () => {
-      const txns = [
-        { type: 'INCOME', amount: 150000 },
-        { type: 'EXPENSE', amount: 8500 },
-        { type: 'EXPENSE', amount: 2500 },
-        { type: 'TRANSFER_OUT', amount: 20000 },
-      ];
-      // 10000 + 150000 - 8500 - 2500 - 20000 = 129000
-      expect(calculateBalance(10000, txns)).toBe(129000);
-    });
-
-    it('should handle loan given as outflow (not expense)', () => {
-      const txns = [
-        { type: 'INCOME', amount: 100000 },
-        { type: 'LOAN_GIVEN', amount: 50000 },
-      ];
-      // 0 + 100000 - 50000 = 50000
-      expect(calculateBalance(0, txns)).toBe(50000);
-    });
-
-    it('should handle transfer correctly — net zero effect across accounts', () => {
-      // Account A: transfer out 20000
-      const accountA = calculateBalance(50000, [{ type: 'TRANSFER_OUT', amount: 20000 }]);
-      // Account B: transfer in 20000
-      const accountB = calculateBalance(10000, [{ type: 'TRANSFER_IN', amount: 20000 }]);
-
-      // Total across both accounts should be unchanged
-      expect(accountA + accountB).toBe(50000 + 10000);
-    });
-
-    it('should allow negative balance', () => {
-      expect(calculateBalance(1000, [{ type: 'EXPENSE', amount: 5000 }])).toBe(-4000);
-    });
+  it('does not classify OTHER as inflow or outflow', () => {
+    expect(INFLOW_TYPES).not.toContain('OTHER');
+    expect(OUTFLOW_TYPES).not.toContain('OTHER');
   });
 });
 
-describe('Waiyk Profit Calculation Rules', () => {
-  // Waiyk: winner bids a lower amount than total pool
-  // Profit = totalAmount - winningBid
-  // profitPerMember = profit / totalEntries
+describe('calculateAccountBalance', () => {
+  it('returns the opening balance when there are no transactions', async () => {
+    mockPrisma.account.findUnique.mockResolvedValue({ openingBalance: '10000' });
+    mockPrisma.transaction.aggregate
+      .mockResolvedValueOnce({ _sum: { amount: null } }) // inflows
+      .mockResolvedValueOnce({ _sum: { amount: null } }); // outflows
 
-  function calculateWaiykProfitShare(totalAmount: number, winningBid: number, totalEntries: number) {
-    const profit = totalAmount - winningBid;
-    const profitPerMember = totalEntries > 0 ? profit / totalEntries : 0;
-    const payoutAmount = winningBid; // Winner gets the bid amount
-    const effectiveContribution = (totalAmount / totalEntries) - profitPerMember;
-    return { profit, profitPerMember, payoutAmount, effectiveContribution };
-  }
+    const balance = await calculateAccountBalance('acc-1');
 
-  it('should calculate profit as total minus winning bid', () => {
-    const result = calculateWaiykProfitShare(100000, 85000, 10);
-    expect(result.profit).toBe(15000);
+    expect(balance.toString()).toBe('10000');
   });
 
-  it('should distribute profit equally among all members', () => {
-    const result = calculateWaiykProfitShare(100000, 85000, 10);
-    expect(result.profitPerMember).toBe(1500); // 15000 / 10
+  it('adds inflows and subtracts outflows from the opening balance', async () => {
+    mockPrisma.account.findUnique.mockResolvedValue({ openingBalance: '10000' });
+    mockPrisma.transaction.aggregate
+      .mockResolvedValueOnce({ _sum: { amount: '155000' } }) // inflows
+      .mockResolvedValueOnce({ _sum: { amount: '31000' } }); // outflows
+
+    const balance = await calculateAccountBalance('acc-1');
+
+    // 10000 + 155000 - 31000 = 134000
+    expect(balance.toString()).toBe('134000');
   });
 
-  it('should set payout to winning bid amount', () => {
-    const result = calculateWaiykProfitShare(100000, 85000, 10);
-    expect(result.payoutAmount).toBe(85000);
+  it('allows the resulting balance to go negative', async () => {
+    mockPrisma.account.findUnique.mockResolvedValue({ openingBalance: '1000' });
+    mockPrisma.transaction.aggregate
+      .mockResolvedValueOnce({ _sum: { amount: null } })
+      .mockResolvedValueOnce({ _sum: { amount: '5000' } });
+
+    const balance = await calculateAccountBalance('acc-1');
+
+    expect(balance.toString()).toBe('-4000');
   });
 
-  it('should calculate effective contribution (monthly - profit share)', () => {
-    const result = calculateWaiykProfitShare(100000, 85000, 10);
-    // Monthly = 100000/10 = 10000, profit share = 1500, effective = 8500
-    expect(result.effectiveContribution).toBe(8500);
+  it('only sums transactions that are not soft-deleted, scoped to this account', async () => {
+    mockPrisma.account.findUnique.mockResolvedValue({ openingBalance: '0' });
+    mockPrisma.transaction.aggregate
+      .mockResolvedValueOnce({ _sum: { amount: '0' } })
+      .mockResolvedValueOnce({ _sum: { amount: '0' } });
+
+    await calculateAccountBalance('acc-1');
+
+    expect(mockPrisma.transaction.aggregate).toHaveBeenNthCalledWith(1, expect.objectContaining({
+      where: expect.objectContaining({ destAccountId: 'acc-1', isDeleted: false }),
+    }));
+    expect(mockPrisma.transaction.aggregate).toHaveBeenNthCalledWith(2, expect.objectContaining({
+      where: expect.objectContaining({ sourceAccountId: 'acc-1', isDeleted: false }),
+    }));
   });
 
-  it('should handle zero profit when bid equals total', () => {
-    const result = calculateWaiykProfitShare(100000, 100000, 10);
-    expect(result.profit).toBe(0);
-    expect(result.profitPerMember).toBe(0);
+  it('throws when the account does not exist', async () => {
+    mockPrisma.account.findUnique.mockResolvedValue(null);
+
+    await expect(calculateAccountBalance('missing')).rejects.toThrow('Account missing not found');
+  });
+});
+
+describe('getOutstandingReceivables / getOutstandingPayables', () => {
+  it('sums unpaid amounts (loan amount minus repayments) for GIVEN loans', async () => {
+    mockPrisma.loan.findMany.mockResolvedValue([
+      { amount: '50000', repayments: [{ amount: '20000' }] },
+      { amount: '10000', repayments: [] },
+    ]);
+
+    const total = await getOutstandingReceivables('user-1');
+
+    // (50000 - 20000) + (10000 - 0) = 40000
+    expect(total.toString()).toBe('40000');
+    expect(mockPrisma.loan.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({ where: { userId: 'user-1', direction: 'GIVEN', status: 'ACTIVE' } })
+    );
   });
 
-  it('should handle large committees', () => {
-    const result = calculateWaiykProfitShare(500000, 420000, 25);
-    expect(result.profit).toBe(80000);
-    expect(result.profitPerMember).toBe(3200); // 80000 / 25
+  it('sums unpaid amounts for TAKEN loans', async () => {
+    mockPrisma.loan.findMany.mockResolvedValue([
+      { amount: '30000', repayments: [{ amount: '5000' }, { amount: '5000' }] },
+    ]);
+
+    const total = await getOutstandingPayables('user-1');
+
+    // 30000 - (5000 + 5000) = 20000
+    expect(total.toString()).toBe('20000');
+    expect(mockPrisma.loan.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({ where: { userId: 'user-1', direction: 'TAKEN', status: 'ACTIVE' } })
+    );
   });
 });

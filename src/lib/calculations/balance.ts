@@ -4,7 +4,7 @@ import Decimal from 'decimal.js';
 /**
  * Transaction types that represent inflows to an account (destAccountId)
  */
-const INFLOW_TYPES = [
+export const INFLOW_TYPES = [
   'INCOME',
   'TRANSFER',
   'LOAN_REPAYMENT_RECEIVED',
@@ -17,7 +17,7 @@ const INFLOW_TYPES = [
 /**
  * Transaction types that represent outflows from an account (sourceAccountId)
  */
-const OUTFLOW_TYPES = [
+export const OUTFLOW_TYPES = [
   'EXPENSE',
   'TRANSFER',
   'LOAN_GIVEN',
