@@ -5,9 +5,11 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { PageLoading } from '@/components/ui/loading';
-import { Settings, User, Lock } from 'lucide-react';
+import { User, Lock, Download, CheckCircle2 } from 'lucide-react';
+import { usePwaInstall } from '@/hooks/use-pwa-install';
 
 export default function SettingsPage() {
+  const { canInstall, isInstalled, isIOS, promptInstall } = usePwaInstall();
   const [profile, setProfile] = useState<{ name: string; email: string } | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -126,6 +128,36 @@ export default function SettingsPage() {
             </div>
             <Button type="submit" disabled={saving}>{saving ? 'Changing...' : 'Change Password'}</Button>
           </form>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base flex items-center gap-2"><Download className="h-4 w-4" /> App</CardTitle>
+        </CardHeader>
+        <CardContent>
+          {isInstalled ? (
+            <p className="flex items-center gap-2 text-sm text-muted-foreground">
+              <CheckCircle2 className="h-4 w-4 text-success" />
+              Budget Tracker is installed on this device.
+            </p>
+          ) : canInstall ? (
+            <div className="space-y-2">
+              <p className="text-sm text-muted-foreground">
+                Install Budget Tracker for quick access and offline support.
+              </p>
+              <Button size="sm" onClick={() => promptInstall()}>Install App</Button>
+            </div>
+          ) : isIOS ? (
+            <p className="text-sm text-muted-foreground">
+              To install: tap the Share icon in Safari, then choose &ldquo;Add to Home Screen&rdquo;.
+            </p>
+          ) : (
+            <p className="text-sm text-muted-foreground">
+              Your browser doesn&rsquo;t support one-tap install. Check your browser&rsquo;s menu for an
+              &ldquo;Install app&rdquo; or &ldquo;Add to Home Screen&rdquo; option.
+            </p>
+          )}
         </CardContent>
       </Card>
     </div>
