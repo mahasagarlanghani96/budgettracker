@@ -75,7 +75,11 @@ export function useResourceForm<S extends ZodObject<ZodRawShape>>({
 
   /** Client-only validation; returns true when valid */
   const validate = useCallback((): boolean => {
-    const result = schema.safeParse(form);
+    const cleaned: Record<string, unknown> = {};
+    for (const [k, v] of Object.entries(form)) {
+      cleaned[k] = v === '' ? undefined : v;
+    }
+    const result = schema.safeParse(cleaned);
     if (result.success) {
       setErrors({});
       return true;
@@ -90,7 +94,13 @@ export function useResourceForm<S extends ZodObject<ZodRawShape>>({
       e.preventDefault();
       setServerError(null);
 
-      const result = schema.safeParse(form);
+      // Clean empty strings to undefined so optional Zod fields don't reject ''
+      const cleaned: Record<string, unknown> = {};
+      for (const [k, v] of Object.entries(form)) {
+        cleaned[k] = v === '' ? undefined : v;
+      }
+
+      const result = schema.safeParse(cleaned);
       if (!result.success) {
         setErrors(mapZodErrors(result.error.issues));
         return;

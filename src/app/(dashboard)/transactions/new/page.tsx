@@ -41,7 +41,7 @@ const emptyForm = {
 export default function NewTransactionPage() {
   const router = useRouter();
   const [accounts, setAccounts] = useState<Array<{ id: string; name: string }>>([]);
-  const [categories, setCategories] = useState<Array<{ id: string; name: string; type: string }>>([]);
+  const [categories, setCategories] = useState<Array<{ id: string; name: string; group: string }>>([]);
   const [persons, setPersons] = useState<Array<{ id: string; name: string }>>([]);
 
   const { form, errors, serverError, saving, setField, handleSubmit } = useResourceForm({
@@ -82,7 +82,7 @@ export default function NewTransactionPage() {
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const filteredCategories = categories.filter(
-    (c) => (form.type as string) === 'TRANSFER' || c.type === ((form.type as string) === 'INCOME' ? 'INCOME' : 'EXPENSE')
+    (c) => (form.type as string) === 'TRANSFER' || c.group === ((form.type as string) === 'INCOME' ? 'INCOME' : 'EXPENSE')
   );
 
   return (

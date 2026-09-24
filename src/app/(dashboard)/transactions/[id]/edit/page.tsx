@@ -47,7 +47,7 @@ export default function EditTransactionPage() {
   const router = useRouter();
   const [loading, setLoading] = useState(true);
   const [accounts, setAccounts] = useState<Array<{ id: string; name: string }>>([]);
-  const [categories, setCategories] = useState<Array<{ id: string; name: string; type: string }>>([]);
+  const [categories, setCategories] = useState<Array<{ id: string; name: string; group: string }>>([]);
   const [persons, setPersons] = useState<Array<{ id: string; name: string }>>([]);
   const [transaction, setTransaction] = useState<Record<string, unknown> | null>(null);
 
@@ -106,7 +106,7 @@ export default function EditTransactionPage() {
   }, [id]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const filteredCategories = categories.filter(
-    (c) => (form.type as string) === 'TRANSFER' || c.type === ((form.type as string) === 'INCOME' ? 'INCOME' : 'EXPENSE')
+    (c) => (form.type as string) === 'TRANSFER' || c.group === ((form.type as string) === 'INCOME' ? 'INCOME' : 'EXPENSE')
   );
 
   if (loading) return <PageLoading />;
