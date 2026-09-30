@@ -15,6 +15,7 @@ import { FormField } from '@/components/forms/FormField';
 import { AdvancedSection } from '@/components/forms/AdvancedSection';
 import { useResourceForm } from '@/hooks/useResourceForm';
 import { accountUpdateSchema } from '@/lib/validations/schemas';
+import { SharedAccessSection } from '@/components/shared-access/SharedAccessSection';
 import { formatCurrency, formatDate } from '@/lib/utils';
 import { ArrowLeft, Pencil, Trash2 } from 'lucide-react';
 import Link from 'next/link';
@@ -138,6 +139,10 @@ export default function AccountDetailPage() {
           </CardContent>
         </Card>
       </div>
+
+      {(account.isShared as boolean) && (
+        <SharedAccessSection resourceType="account" resourceId={id} />
+      )}
 
       <Card>
         <CardHeader>

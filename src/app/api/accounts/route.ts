@@ -4,24 +4,54 @@ import { requireAuth } from '@/lib/auth';
 import { accountSchema } from '@/lib/validations/schemas';
 import { calculateAccountBalance } from '@/lib/calculations/balance';
 
-// GET /api/accounts — list all accounts for the user
+// GET /api/accounts — list all accounts for the user (own + shared with me)
 export async function GET() {
   try {
     const session = await requireAuth();
-    const accounts = await prisma.account.findMany({
-      where: { userId: (session.user as { id: string }).id },
-      orderBy: { createdAt: 'desc' },
-    });
+    const userId = (session.user as { id: string }).id;
 
-    // Calculate balance for each account
-    const accountsWithBalance = await Promise.all(
-      accounts.map(async (account: { id: string; [key: string]: unknown }) => {
+    const [ownAccounts, sharedEntries] = await Promise.all([
+      prisma.account.findMany({
+        where: { userId },
+        orderBy: { createdAt: 'desc' },
+      }),
+      prisma.sharedAccess.findMany({
+        where: { sharedWithId: userId, resourceType: 'account' },
+        select: { resourceId: true, accessLevel: true },
+      }),
+    ]);
+
+    const sharedAccountIds = sharedEntries.map((s) => s.resourceId);
+    const sharedAccounts = sharedAccountIds.length > 0
+      ? await prisma.account.findMany({
+          where: { id: { in: sharedAccountIds } },
+          include: { user: { select: { name: true } } },
+          orderBy: { createdAt: 'desc' },
+        })
+      : [];
+
+    const accessMap = Object.fromEntries(sharedEntries.map((s) => [s.resourceId, s.accessLevel]));
+
+    const ownWithBalance = await Promise.all(
+      ownAccounts.map(async (account: { id: string; [key: string]: unknown }) => {
         const balance = await calculateAccountBalance(account.id);
         return { ...account, currentBalance: balance.toString() };
       })
     );
 
-    return NextResponse.json({ data: accountsWithBalance });
+    const sharedWithBalance = await Promise.all(
+      sharedAccounts.map(async (account) => {
+        const balance = await calculateAccountBalance(account.id);
+        return {
+          ...account,
+          currentBalance: balance.toString(),
+          sharedByOwner: (account as any).user?.name,
+          sharedAccessLevel: accessMap[account.id],
+        };
+      })
+    );
+
+    return NextResponse.json({ data: ownWithBalance, shared: sharedWithBalance });
   } catch (error: unknown) {
     if (error instanceof Error && error.message === 'Unauthorized') {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });

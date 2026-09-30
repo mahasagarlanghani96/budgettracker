@@ -16,6 +16,7 @@ export async function GET(_request: NextRequest, { params }: { params: Promise<{
         sourceAccount: true,
         destAccount: true,
         person: true,
+        attachments: { orderBy: { createdAt: 'desc' } },
       },
     });
 

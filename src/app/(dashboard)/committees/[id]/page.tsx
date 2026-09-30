@@ -15,6 +15,7 @@ import { FormField } from '@/components/forms/FormField';
 import { AdvancedSection } from '@/components/forms/AdvancedSection';
 import { useResourceForm } from '@/hooks/useResourceForm';
 import { committeeUpdateSchema, committeeMemberSchema, committeeRoundUpdateSchema } from '@/lib/validations/schemas';
+import { ContributionsSection } from '@/components/committees/ContributionsSection';
 import { formatCurrency, formatDate } from '@/lib/utils';
 import { ArrowLeft, Plus, UserPlus, Pencil, Trash2 } from 'lucide-react';
 import Link from 'next/link';
@@ -36,6 +37,7 @@ export default function CommitteeDetailPage() {
   const [committee, setCommittee] = useState<Record<string, unknown> | null>(null);
   const [loading, setLoading] = useState(true);
   const [persons, setPersons] = useState<Array<{ id: string; name: string }>>([]);
+  const [accounts, setAccounts] = useState<Array<{ id: string; name: string }>>([]);
   const [showAddMember, setShowAddMember] = useState(false);
   const [showAddRound, setShowAddRound] = useState(false);
   const [showEdit, setShowEdit] = useState(false);
@@ -54,6 +56,7 @@ export default function CommitteeDetailPage() {
   useEffect(() => {
     fetchCommittee();
     fetch('/api/persons').then((r) => r.json()).then((res) => setPersons(res.data || []));
+    fetch('/api/accounts').then((r) => r.json()).then((res) => setAccounts(res.data || []));
   }, [fetchCommittee]);
 
   // --- Edit Committee Form ---
@@ -215,6 +218,7 @@ export default function CommitteeDetailPage() {
 
   const members = (committee.members || []) as Array<Record<string, unknown>>;
   const rounds = (committee.rounds || []) as Array<Record<string, unknown>>;
+  const entries = (committee.entries || []) as Array<{ id: string; slotNumber: number }>;
   const isWaiyk = committee.type === 'WAIYK';
   const editIsWaiyk = (editForm.form.type as string) === 'WAIYK';
   const latestRoundNumber = rounds.reduce((max, r) => Math.max(max, r.roundNumber as number), 0);
@@ -331,6 +335,18 @@ export default function CommitteeDetailPage() {
           )}
         </CardContent>
       </Card>
+
+      {/* Contributions & Receivings */}
+      {entries.length > 0 && rounds.length > 0 && (
+        <ContributionsSection
+          committeeId={id}
+          entries={entries}
+          rounds={rounds as any}
+          accounts={accounts}
+          monthlyContribution={(committee.monthlyContribution as { toString(): string }).toString()}
+          onRefresh={fetchCommittee}
+        />
+      )}
 
       {/* Add Member Modal */}
       <Dialog open={showAddMember} onOpenChange={setShowAddMember}>

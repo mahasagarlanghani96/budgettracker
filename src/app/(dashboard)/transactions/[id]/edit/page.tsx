@@ -12,6 +12,7 @@ import { FormField } from '@/components/forms/FormField';
 import { AdvancedSection } from '@/components/forms/AdvancedSection';
 import { useResourceForm } from '@/hooks/useResourceForm';
 import { transactionSchema } from '@/lib/validations/schemas';
+import { AttachmentSection } from '@/components/attachments/AttachmentSection';
 import { ArrowLeft } from 'lucide-react';
 import Link from 'next/link';
 
@@ -300,6 +301,8 @@ export default function EditTransactionPage() {
           </form>
         </CardContent>
       </Card>
+
+      <AttachmentSection transactionId={id} />
     </div>
   );
 }
