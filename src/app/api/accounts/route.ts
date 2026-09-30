@@ -70,7 +70,13 @@ export async function POST(request: NextRequest) {
 
     const account = await prisma.account.create({
       data: {
-        ...validated,
+        name: validated.name,
+        accountType: validated.accountType,
+        openingBalance: validated.openingBalance ?? 0,
+        openingDate: validated.openingDate ? new Date(validated.openingDate) : undefined,
+        currency: validated.currency,
+        isShared: validated.isShared,
+        notes: validated.notes,
         userId: (session.user as { id: string }).id,
       },
     });
