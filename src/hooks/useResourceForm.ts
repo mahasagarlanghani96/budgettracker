@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useCallback } from 'react';
-import type { ZodObject, ZodRawShape, ZodError, ZodIssue } from 'zod';
+import { ZodNumber, type ZodObject, type ZodRawShape, type ZodError, type ZodIssue, type ZodTypeAny } from 'zod';
 
 // ---------------------------------------------------------------------------
 // useResourceForm
@@ -23,6 +23,19 @@ interface UseResourceFormOptions<S extends ZodObject<ZodRawShape>> {
   onSubmit: (data: Record<string, unknown>) => Promise<Response>;
   /** Called after a successful submission (res.ok) */
   onSuccess?: () => void;
+}
+
+/** Unwrap ZodOptional / ZodNullable / ZodDefault to find the inner type */
+function unwrapZod(z: ZodTypeAny): ZodTypeAny {
+  while ('_def' in z && ('innerType' in z._def || 'typeName' in z._def)) {
+    if (z._def.innerType) { z = z._def.innerType; continue; }
+    break;
+  }
+  return z;
+}
+
+function isZodNumber(z: ZodTypeAny): boolean {
+  return unwrapZod(z) instanceof ZodNumber;
 }
 
 function mapZodErrors(issues: ZodIssue[]): Record<string, string> {
@@ -75,9 +88,17 @@ export function useResourceForm<S extends ZodObject<ZodRawShape>>({
 
   /** Client-only validation; returns true when valid */
   const validate = useCallback((): boolean => {
+    const shape = schema.shape;
     const cleaned: Record<string, unknown> = {};
     for (const [k, v] of Object.entries(form)) {
-      cleaned[k] = v === '' ? undefined : v;
+      if (v === '' || v === undefined || v === null) {
+        cleaned[k] = undefined;
+      } else if (typeof v === 'string' && shape[k] && isZodNumber(shape[k])) {
+        const n = Number(v);
+        cleaned[k] = isNaN(n) ? v : n;
+      } else {
+        cleaned[k] = v;
+      }
     }
     const result = schema.safeParse(cleaned);
     if (result.success) {
@@ -94,10 +115,18 @@ export function useResourceForm<S extends ZodObject<ZodRawShape>>({
       e.preventDefault();
       setServerError(null);
 
-      // Clean empty strings to undefined so optional Zod fields don't reject ''
+      // Clean form values: empty strings → undefined, string-numbers → numbers
+      const shape = schema.shape;
       const cleaned: Record<string, unknown> = {};
       for (const [k, v] of Object.entries(form)) {
-        cleaned[k] = v === '' ? undefined : v;
+        if (v === '' || v === undefined || v === null) {
+          cleaned[k] = undefined;
+        } else if (typeof v === 'string' && shape[k] && isZodNumber(shape[k])) {
+          const n = Number(v);
+          cleaned[k] = isNaN(n) ? v : n;
+        } else {
+          cleaned[k] = v;
+        }
       }
 
       const result = schema.safeParse(cleaned);
