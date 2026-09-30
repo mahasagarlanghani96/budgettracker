@@ -9,10 +9,10 @@ async function main() {
   // Create demo user
   const hashedPassword = await bcrypt.hash('demo1234', 12);
   const user = await prisma.user.upsert({
-    where: { email: 'demo@budgettracker.com' },
+    where: { email: 'demo@finkeep.com' },
     update: {},
     create: {
-      email: 'demo@budgettracker.com',
+      email: 'demo@finkeep.com',
       name: 'Demo User',
       passwordHash: hashedPassword,
       currency: 'PKR',
@@ -228,7 +228,7 @@ async function main() {
   console.log('✅ Financial targets created');
 
   console.log('\n🎉 Seed completed!');
-  console.log('📧 Login: demo@budgettracker.com / demo1234');
+  console.log('📧 Login: demo@finkeep.com / demo1234');
 }
 
 main()

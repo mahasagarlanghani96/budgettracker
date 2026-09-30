@@ -1,11 +1,11 @@
 {
-  "name": "Budget Tracker",
-  "short_name": "Budget",
-  "description": "Complete personal & family budget management system",
+  "name": "FinKeep",
+  "short_name": "FinKeep",
+  "description": "Track income, expenses, loans, savings, investments and more — all in one place.",
   "start_url": "/dashboard",
   "display": "standalone",
   "background_color": "#ffffff",
-  "theme_color": "#2563eb",
+  "theme_color": "#1fa08a",
   "orientation": "portrait-primary",
   "scope": "/",
   "icons": [

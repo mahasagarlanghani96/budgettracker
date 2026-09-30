@@ -1,4 +1,4 @@
-const CACHE_NAME = 'budget-tracker-v1';
+const CACHE_NAME = 'finkeep-v1';
 const STATIC_ASSETS = [
   '/manifest.json',
   '/icons/icon-192x192.png',

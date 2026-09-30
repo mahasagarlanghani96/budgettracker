@@ -37,7 +37,7 @@ export function PWAInstallPrompt() {
           <Download className="h-5 w-5" />
         </div>
         <div className="flex-1">
-          <p className="font-medium text-sm">Install Budget Tracker</p>
+          <p className="font-medium text-sm">Install FinKeep</p>
           <p className="text-xs text-muted-foreground mt-0.5">
             Add to your home screen for quick access
           </p>

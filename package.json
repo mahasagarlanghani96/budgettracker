@@ -1,5 +1,5 @@
 {
-  "name": "budget-tracker",
+  "name": "finkeep",
   "version": "1.0.0",
   "private": true,
   "scripts": {
@@ -58,6 +58,7 @@
     "eslint-config-next": "^14.2.21",
     "postcss": "^8.4.49",
     "prisma": "^6.1.0",
+    "sharp": "^0.35.5",
     "tailwindcss": "^3.4.17",
     "tsx": "^4.19.2",
     "typescript": "^5.7.3",

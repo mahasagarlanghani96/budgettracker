@@ -6,13 +6,16 @@ import './globals.css';
 const inter = Inter({ subsets: ['latin'], variable: '--font-inter' });
 
 export const metadata: Metadata = {
-  title: 'Budget Tracker',
-  description: 'Complete personal & family budget management system',
+  title: {
+    default: 'FinKeep — Your Finances. Organized.',
+    template: '%s | FinKeep',
+  },
+  description: 'Track income, expenses, loans, savings, investments and more — all in one place. FinKeep helps you stay on top of your personal and family finances.',
   manifest: '/manifest.json',
   appleWebApp: {
     capable: true,
     statusBarStyle: 'default',
-    title: 'Budget Tracker',
+    title: 'FinKeep',
   },
   formatDetection: {
     telephone: false,
@@ -30,7 +33,7 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  themeColor: '#2563eb',
+  themeColor: '#1fa08a',
   width: 'device-width',
   initialScale: 1,
   maximumScale: 1,

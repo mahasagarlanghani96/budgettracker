@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { cn } from '@/lib/utils';
+import Image from 'next/image';
 import {
   LayoutDashboard,
   Wallet,
@@ -48,8 +49,8 @@ export function Sidebar() {
   const navContent = (
     <>
       <div className="flex items-center gap-2 px-4 py-5 border-b">
-        <Wallet className="h-7 w-7 text-primary" />
-        <span className="text-lg font-bold">Budget Tracker</span>
+        <Image src="/logo.png" alt="FinKeep" width={32} height={32} className="h-7 w-7 object-contain" />
+        <span className="text-lg font-bold">FinKeep</span>
       </div>
 
       <div className="px-2 py-2">

@@ -6,7 +6,7 @@ import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
-import { Wallet } from 'lucide-react';
+import Image from 'next/image';
 
 export default function RegisterPage() {
   const router = useRouter();
@@ -59,7 +59,7 @@ export default function RegisterPage() {
     <Card className="w-full max-w-md">
       <CardHeader className="text-center">
         <div className="flex justify-center mb-2">
-          <Wallet className="h-10 w-10 text-primary" />
+          <Image src="/logo.png" alt="FinKeep" width={120} height={60} className="h-14 w-auto object-contain" />
         </div>
         <CardTitle className="text-2xl">Create Account</CardTitle>
         <CardDescription>Start managing your finances today</CardDescription>

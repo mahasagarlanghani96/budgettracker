@@ -139,12 +139,12 @@ export default function SettingsPage() {
           {isInstalled ? (
             <p className="flex items-center gap-2 text-sm text-muted-foreground">
               <CheckCircle2 className="h-4 w-4 text-success" />
-              Budget Tracker is installed on this device.
+              FinKeep is installed on this device.
             </p>
           ) : canInstall ? (
             <div className="space-y-2">
               <p className="text-sm text-muted-foreground">
-                Install Budget Tracker for quick access and offline support.
+                Install FinKeep for quick access and offline support.
               </p>
               <Button size="sm" onClick={() => promptInstall()}>Install App</Button>
             </div>

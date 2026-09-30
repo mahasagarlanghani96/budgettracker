@@ -1,0 +1,21 @@
+{
+  "pass": 151,
+  "fail": 3,
+  "findings": [
+    {
+      "module": "auth",
+      "test": "Register with valid data",
+      "detail": "Status 409: {\"error\":\"An account with this email already exists\"}"
+    },
+    {
+      "module": "categories",
+      "test": "Create INCOME category",
+      "detail": "Status 500"
+    },
+    {
+      "module": "categories",
+      "test": "Create EXPENSE category",
+      "detail": "Status 500"
+    }
+  ]
+}

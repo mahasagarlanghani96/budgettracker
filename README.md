@@ -1,4 +1,4 @@
-# Budget Tracker
+# FinKeep
 
 A personal & family budget management app built with Next.js. Tracks accounts,
 transactions, loans between people, committee savings circles (including a
@@ -49,7 +49,7 @@ plans. Defaults to PKR currency and the Asia/Karachi timezone.
    npm run db:seed
    ```
 
-   This creates a demo user you can log in with: `demo@budgettracker.com` / `demo1234`.
+   This creates a demo user you can log in with: `demo@finkeep.com` / `demo1234`.
 
 5. Start the dev server:
 
