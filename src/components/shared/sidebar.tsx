@@ -49,7 +49,7 @@ export function Sidebar() {
   const navContent = (
     <>
       <div className="flex items-center gap-2 px-4 py-5 border-b">
-        <Image src="/logo.png" alt="FinKeep" width={32} height={32} className="h-7 w-7 object-contain" />
+        <Image src="/icon-mark.png" alt="FinKeep" width={36} height={36} className="h-9 w-9 object-contain" />
         <span className="text-lg font-bold">FinKeep</span>
       </div>
 

@@ -20,26 +20,48 @@ async function main() {
   });
   console.log(`✅ User created: ${user.email}`);
 
-  // Create default categories (field is "group", not "type")
-  const incomeCategories = ['Salary', 'Freelance', 'Business Income', 'Rental Income', 'Interest', 'Other Income'];
+  // Create default categories with distinct icons
+  const incomeCategories = [
+    { name: 'Salary', icon: '💼' },
+    { name: 'Freelance', icon: '💻' },
+    { name: 'Business Income', icon: '🏢' },
+    { name: 'Rental Income', icon: '🏠' },
+    { name: 'Interest', icon: '🏦' },
+    { name: 'Gift', icon: '🎁' },
+    { name: 'Refund', icon: '🔄' },
+    { name: 'Other Income', icon: '💰' },
+  ];
   const expenseCategories = [
-    'Food & Dining', 'Groceries', 'Transport', 'Fuel', 'Utilities', 'Rent',
-    'Healthcare', 'Education', 'Shopping', 'Entertainment', 'Personal Care',
-    'Mobile & Internet', 'Household', 'Other Expense',
+    { name: 'Food & Dining', icon: '🍽️' },
+    { name: 'Groceries', icon: '🛒' },
+    { name: 'Transport', icon: '🚗' },
+    { name: 'Fuel', icon: '⛽' },
+    { name: 'Utilities', icon: '💡' },
+    { name: 'Rent', icon: '🏘️' },
+    { name: 'Healthcare', icon: '🏥' },
+    { name: 'Education', icon: '📚' },
+    { name: 'Shopping', icon: '🛍️' },
+    { name: 'Entertainment', icon: '🎬' },
+    { name: 'Personal Care', icon: '💇' },
+    { name: 'Mobile & Internet', icon: '📱' },
+    { name: 'Household', icon: '🧹' },
+    { name: 'Clothing', icon: '👔' },
+    { name: 'Charity', icon: '🤲' },
+    { name: 'Other Expense', icon: '💸' },
   ];
 
-  for (const name of incomeCategories) {
+  for (const cat of incomeCategories) {
     await prisma.category.upsert({
-      where: { userId_name_group: { userId: user.id, name, group: 'INCOME' } },
-      update: {},
-      create: { userId: user.id, name, group: 'INCOME', icon: '💰' },
+      where: { userId_name_group: { userId: user.id, name: cat.name, group: 'INCOME' } },
+      update: { icon: cat.icon },
+      create: { userId: user.id, name: cat.name, group: 'INCOME', icon: cat.icon, isSystem: false },
     });
   }
-  for (const name of expenseCategories) {
+  for (const cat of expenseCategories) {
     await prisma.category.upsert({
-      where: { userId_name_group: { userId: user.id, name, group: 'EXPENSE' } },
-      update: {},
-      create: { userId: user.id, name, group: 'EXPENSE', icon: '💸' },
+      where: { userId_name_group: { userId: user.id, name: cat.name, group: 'EXPENSE' } },
+      update: { icon: cat.icon },
+      create: { userId: user.id, name: cat.name, group: 'EXPENSE', icon: cat.icon, isSystem: false },
     });
   }
   console.log('✅ Categories created');
@@ -206,25 +228,23 @@ async function main() {
   // Create financial targets (type not targetType, month/year not period)
   const currentMonth = now.getMonth() + 1; // 1-12
   const currentYear = now.getFullYear();
-  await prisma.financialTarget.create({
-    data: {
-      userId: user.id, name: 'Monthly Grocery Budget', type: 'MAX_EXPENSE',
-      amount: 40000, month: currentMonth, year: currentYear,
-      categoryId: groceriesCategory!.id,
-    },
-  });
-  await prisma.financialTarget.create({
-    data: {
-      userId: user.id, name: 'Monthly Expense Cap', type: 'MAX_TOTAL_EXPENSE',
-      amount: 100000, month: currentMonth, year: currentYear,
-    },
-  });
-  await prisma.financialTarget.create({
-    data: {
-      userId: user.id, name: 'Minimum Monthly Income', type: 'MIN_INCOME',
-      amount: 150000, month: currentMonth, year: currentYear,
-    },
-  });
+  const targets = [
+    { name: 'Monthly Grocery Budget', type: 'MAX_EXPENSE' as const, amount: 40000, categoryId: groceriesCategory!.id },
+    { name: 'Monthly Expense Cap', type: 'MAX_TOTAL_EXPENSE' as const, amount: 100000, categoryId: null },
+    { name: 'Minimum Monthly Income', type: 'MIN_INCOME' as const, amount: 150000, categoryId: null },
+  ];
+  for (const t of targets) {
+    const existing = await prisma.financialTarget.findFirst({
+      where: { userId: user.id, type: t.type, categoryId: t.categoryId ?? undefined, month: currentMonth, year: currentYear },
+    });
+    if (existing) {
+      await prisma.financialTarget.update({ where: { id: existing.id }, data: { name: t.name, amount: t.amount } });
+    } else {
+      await prisma.financialTarget.create({
+        data: { userId: user.id, name: t.name, type: t.type, amount: t.amount, month: currentMonth, year: currentYear, categoryId: t.categoryId },
+      });
+    }
+  }
   console.log('✅ Financial targets created');
 
   console.log('\n🎉 Seed completed!');

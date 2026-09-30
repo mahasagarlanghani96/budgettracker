@@ -3,11 +3,33 @@ import bcrypt from 'bcryptjs';
 import prisma from '@/lib/prisma';
 import { registerSchema } from '@/lib/validations/schemas';
 
-const DEFAULT_INCOME_CATEGORIES = ['Salary', 'Business', 'Freelance', 'Gift', 'Refund', 'Other Income'];
+const DEFAULT_INCOME_CATEGORIES = [
+  { name: 'Salary', icon: '💼' },
+  { name: 'Freelance', icon: '💻' },
+  { name: 'Business Income', icon: '🏢' },
+  { name: 'Rental Income', icon: '🏠' },
+  { name: 'Interest', icon: '🏦' },
+  { name: 'Gift', icon: '🎁' },
+  { name: 'Refund', icon: '🔄' },
+  { name: 'Other Income', icon: '💰' },
+];
 const DEFAULT_EXPENSE_CATEGORIES = [
-  'Food', 'Transport', 'Bills', 'Shopping', 'Education',
-  'Medical', 'Household', 'Rent', 'Utilities', 'Entertainment',
-  'Clothing', 'Personal Care', 'Charity', 'Other Expense',
+  { name: 'Food & Dining', icon: '🍽️' },
+  { name: 'Groceries', icon: '🛒' },
+  { name: 'Transport', icon: '🚗' },
+  { name: 'Fuel', icon: '⛽' },
+  { name: 'Utilities', icon: '💡' },
+  { name: 'Rent', icon: '🏘️' },
+  { name: 'Healthcare', icon: '🏥' },
+  { name: 'Education', icon: '📚' },
+  { name: 'Shopping', icon: '🛍️' },
+  { name: 'Entertainment', icon: '🎬' },
+  { name: 'Personal Care', icon: '💇' },
+  { name: 'Mobile & Internet', icon: '📱' },
+  { name: 'Household', icon: '🧹' },
+  { name: 'Clothing', icon: '👔' },
+  { name: 'Charity', icon: '🤲' },
+  { name: 'Other Expense', icon: '💸' },
 ];
 
 export async function POST(request: Request) {
@@ -51,9 +73,10 @@ export async function POST(request: Request) {
       await tx.category.createMany({
         data: DEFAULT_INCOME_CATEGORIES.map((cat) => ({
           userId: newUser.id,
-          name: cat,
+          name: cat.name,
           group: 'INCOME' as const,
-          isSystem: true,
+          icon: cat.icon,
+          isSystem: false,
         })),
       });
 
@@ -61,9 +84,10 @@ export async function POST(request: Request) {
       await tx.category.createMany({
         data: DEFAULT_EXPENSE_CATEGORIES.map((cat) => ({
           userId: newUser.id,
-          name: cat,
+          name: cat.name,
           group: 'EXPENSE' as const,
-          isSystem: true,
+          icon: cat.icon,
+          isSystem: false,
         })),
       });
 

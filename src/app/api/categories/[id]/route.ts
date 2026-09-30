@@ -16,8 +16,6 @@ export async function PUT(request: NextRequest, { params }: Params) {
 
     const existing = await prisma.category.findFirst({ where: { id, userId } });
     if (!existing) return NextResponse.json({ error: 'Category not found' }, { status: 404 });
-    if (existing.isSystem) return NextResponse.json({ error: 'System categories cannot be edited' }, { status: 403 });
-
     // Check duplicate name within the same group
     const dup = await prisma.category.findFirst({
       where: { userId, name: validated.name, group: validated.group, id: { not: id } },
@@ -56,8 +54,6 @@ export async function DELETE(_request: NextRequest, { params }: Params) {
 
     const existing = await prisma.category.findFirst({ where: { id, userId } });
     if (!existing) return NextResponse.json({ error: 'Category not found' }, { status: 404 });
-    if (existing.isSystem) return NextResponse.json({ error: 'System categories cannot be deleted' }, { status: 403 });
-
     const txCount = await prisma.transaction.count({ where: { categoryId: id, isDeleted: false } });
     if (txCount > 0) {
       return NextResponse.json(
