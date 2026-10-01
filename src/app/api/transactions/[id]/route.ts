@@ -17,6 +17,9 @@ export async function GET(_request: NextRequest, { params }: { params: Promise<{
         destAccount: true,
         person: true,
         attachments: { orderBy: { createdAt: 'desc' } },
+        committeeContrib: { include: { committee: true, entry: true } },
+        committeeRecv: { include: { committee: true, entry: true } },
+        plotPayment: { include: { plot: true } },
       },
     });
 
@@ -34,21 +37,129 @@ export async function GET(_request: NextRequest, { params }: { params: Promise<{
 }
 
 // PUT /api/transactions/:id
+// For linked committee/plot transactions, also updates the module record.
 export async function PUT(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const session = await requireAuth();
     const { id } = await params;
     const body = await request.json();
     const validated = transactionSchema.parse(body);
+    const userId = (session.user as { id: string }).id;
 
     const existing = await prisma.transaction.findFirst({
-      where: { id, userId: (session.user as { id: string }).id, isDeleted: false },
+      where: { id, userId, isDeleted: false },
     });
 
     if (!existing) {
       return NextResponse.json({ error: 'Transaction not found' }, { status: 404 });
     }
 
+    const txDate = new Date(validated.transactionDate);
+
+    // --- Linked committee contribution ---
+    if (existing.committeeContribId) {
+      const accountId = validated.sourceAccountId || validated.destAccountId;
+      if (!accountId) return NextResponse.json({ error: 'Account is required' }, { status: 400 });
+
+      const result = await prisma.$transaction(async (tx: any) => {
+        await tx.committeeContribution.update({
+          where: { id: existing.committeeContribId },
+          data: {
+            accountId,
+            actualAmount: validated.amount,
+            expectedAmount: validated.expectedAmount ?? validated.amount,
+            profitDeduction: body.profitDeduction ?? undefined,
+            transactionDate: txDate,
+            notes: validated.notes,
+          },
+        });
+
+        return tx.transaction.update({
+          where: { id },
+          data: {
+            amount: validated.amount,
+            sourceAccountId: accountId,
+            description: validated.description,
+            transactionDate: txDate,
+            notes: validated.notes,
+            isPrivate: validated.isPrivate,
+          },
+          include: { category: true, sourceAccount: true, destAccount: true },
+        });
+      });
+
+      return NextResponse.json({ data: result });
+    }
+
+    // --- Linked committee receiving ---
+    if (existing.committeeRecvId) {
+      const accountId = validated.destAccountId || validated.sourceAccountId;
+      if (!accountId) return NextResponse.json({ error: 'Account is required' }, { status: 400 });
+
+      const result = await prisma.$transaction(async (tx: any) => {
+        await tx.committeeReceiving.update({
+          where: { id: existing.committeeRecvId },
+          data: {
+            accountId,
+            actualAmount: validated.amount,
+            expectedAmount: validated.expectedAmount ?? null,
+            transactionDate: txDate,
+            notes: validated.notes,
+          },
+        });
+
+        return tx.transaction.update({
+          where: { id },
+          data: {
+            amount: validated.amount,
+            destAccountId: accountId,
+            description: validated.description,
+            transactionDate: txDate,
+            notes: validated.notes,
+            isPrivate: validated.isPrivate,
+          },
+          include: { category: true, sourceAccount: true, destAccount: true },
+        });
+      });
+
+      return NextResponse.json({ data: result });
+    }
+
+    // --- Linked plot payment ---
+    if (existing.plotPaymentId) {
+      const accountId = validated.sourceAccountId || validated.destAccountId;
+      if (!accountId) return NextResponse.json({ error: 'Account is required' }, { status: 400 });
+
+      const result = await prisma.$transaction(async (tx: any) => {
+        await tx.plotPayment.update({
+          where: { id: existing.plotPaymentId },
+          data: {
+            accountId,
+            amount: validated.amount,
+            transactionDate: txDate,
+            dueDate: body.dueDate ? new Date(body.dueDate) : undefined,
+            notes: validated.notes,
+          },
+        });
+
+        return tx.transaction.update({
+          where: { id },
+          data: {
+            amount: validated.amount,
+            sourceAccountId: accountId,
+            description: validated.description,
+            transactionDate: txDate,
+            notes: validated.notes,
+            isPrivate: validated.isPrivate,
+          },
+          include: { category: true, sourceAccount: true, destAccount: true },
+        });
+      });
+
+      return NextResponse.json({ data: result });
+    }
+
+    // --- Standard transaction ---
     const transaction = await prisma.transaction.update({
       where: { id },
       data: {
@@ -60,7 +171,7 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
         personId: validated.personId,
         description: validated.description,
         notes: validated.notes,
-        transactionDate: new Date(validated.transactionDate),
+        transactionDate: txDate,
         transactionTime: validated.transactionTime,
         taxAmount: validated.taxAmount,
         taxPercent: validated.taxPercent,
@@ -83,22 +194,36 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
 }
 
 // DELETE /api/transactions/:id (soft delete)
+// For linked committee/plot transactions, also removes the module record.
 export async function DELETE(_request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const session = await requireAuth();
     const { id } = await params;
+    const userId = (session.user as { id: string }).id;
 
     const existing = await prisma.transaction.findFirst({
-      where: { id, userId: (session.user as { id: string }).id, isDeleted: false },
+      where: { id, userId, isDeleted: false },
     });
 
     if (!existing) {
       return NextResponse.json({ error: 'Transaction not found' }, { status: 404 });
     }
 
-    await prisma.transaction.update({
-      where: { id },
-      data: { isDeleted: true, deletedAt: new Date() },
+    await prisma.$transaction(async (tx: any) => {
+      if (existing.committeeContribId) {
+        await tx.committeeContribution.delete({ where: { id: existing.committeeContribId } });
+      }
+      if (existing.committeeRecvId) {
+        await tx.committeeReceiving.delete({ where: { id: existing.committeeRecvId } });
+      }
+      if (existing.plotPaymentId) {
+        await tx.plotPayment.delete({ where: { id: existing.plotPaymentId } });
+      }
+
+      await tx.transaction.update({
+        where: { id },
+        data: { isDeleted: true, deletedAt: new Date() },
+      });
     });
 
     return NextResponse.json({ data: { success: true } });

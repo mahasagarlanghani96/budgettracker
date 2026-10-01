@@ -37,6 +37,7 @@ export async function POST(
     }
 
     const txDate = new Date(validated.transactionDate);
+    const isHistorical = body.isHistorical === true;
 
     const result = await prisma.$transaction(async (tx: any) => {
       const contribution = await tx.committeeContribution.create({
@@ -64,6 +65,7 @@ export async function POST(
           description: `Committee contribution: ${committee.name}`,
           transactionDate: txDate,
           committeeContribId: contribution.id,
+          isHistorical,
         },
       });
 

@@ -12,10 +12,13 @@ import { formatCurrency, formatDate } from '@/lib/utils';
 import { Plus, Search, ArrowLeftRight, Pencil, Trash2, Lock, AlertCircle } from 'lucide-react';
 import Link from 'next/link';
 
-// Only plain ledger entries (no linked Loan/Committee/Savings/Investment/Plot
-// record) can be edited or deleted from this generic list — see the edit page
-// for why editing the others here would desync their linked record.
-const EDITABLE_TYPES = ['INCOME', 'EXPENSE', 'TRANSFER', 'OTHER'];
+// Editable types: plain ledger entries + committee/plot types (the API now
+// syncs the linked module record on edit/delete).  Loan/Savings/Investment
+// remain locked — edit those from their respective module pages.
+const EDITABLE_TYPES = [
+  'INCOME', 'EXPENSE', 'TRANSFER', 'OTHER',
+  'COMMITTEE_CONTRIBUTION', 'COMMITTEE_RECEIVING', 'PLOT_PAYMENT',
+];
 
 const typeOptions = [
   { value: '', label: 'All Types' },
@@ -50,6 +53,7 @@ interface Transaction {
   amount: { toString(): string };
   description: string;
   transactionDate: string;
+  isHistorical?: boolean;
   category?: { name: string } | null;
   sourceAccount?: { name: string } | null;
   destAccount?: { name: string } | null;
@@ -178,7 +182,7 @@ export default function TransactionsPage() {
                   {transactions.map((tx) => {
                     const editable = EDITABLE_TYPES.includes(tx.type);
                     return (
-                      <TableRow key={tx.id}>
+                      <TableRow key={tx.id} className={tx.isHistorical ? 'opacity-50' : ''}>
                         <TableCell className="text-sm whitespace-nowrap">{formatDate(tx.transactionDate)}</TableCell>
                         <TableCell className="text-sm max-w-[200px] truncate">{tx.description || '—'}</TableCell>
                         <TableCell className="text-sm">{tx.category?.name || '—'}</TableCell>
@@ -203,7 +207,7 @@ export default function TransactionsPage() {
                               <Button variant="ghost" size="icon" onClick={() => handleDelete(tx)}><Trash2 className="h-4 w-4" /></Button>
                             </div>
                           ) : (
-                            <span title="Linked to a Loan/Committee/Savings/Investment/Plot record — edit from there" className="inline-flex justify-end text-muted-foreground">
+                            <span title="Linked to a Loan/Savings/Investment record — edit from there" className="inline-flex justify-end text-muted-foreground">
                               <Lock className="h-4 w-4" />
                             </span>
                           )}

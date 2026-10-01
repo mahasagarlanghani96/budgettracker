@@ -45,6 +45,7 @@ export async function calculateAccountBalance(accountId: string): Promise<Decima
     where: {
       destAccountId: accountId,
       isDeleted: false,
+      isHistorical: false,
       type: { in: INFLOW_TYPES as any },
     },
     _sum: { amount: true },
@@ -55,14 +56,15 @@ export async function calculateAccountBalance(accountId: string): Promise<Decima
     where: {
       sourceAccountId: accountId,
       isDeleted: false,
+      isHistorical: false,
       type: { in: OUTFLOW_TYPES as any },
     },
     _sum: { amount: true },
   });
 
   const opening = new Decimal(account.openingBalance.toString());
-  const inflows = new Decimal(inflowResult._sum.amount?.toString() || '0');
-  const outflows = new Decimal(outflowResult._sum.amount?.toString() || '0');
+  const inflows = new Decimal(inflowResult._sum?.amount?.toString() || '0');
+  const outflows = new Decimal(outflowResult._sum?.amount?.toString() || '0');
 
   return opening.plus(inflows).minus(outflows);
 }

@@ -18,8 +18,26 @@ const transactionTypes = [
   { value: 'INCOME', label: 'Income' },
   { value: 'EXPENSE', label: 'Expense' },
   { value: 'TRANSFER', label: 'Transfer' },
+  { value: 'COMMITTEE_CONTRIBUTION', label: 'Committee Contribution' },
+  { value: 'COMMITTEE_RECEIVING', label: 'Committee Receiving' },
+  { value: 'PLOT_PAYMENT', label: 'Plot Payment' },
   { value: 'OTHER', label: 'Other' },
 ];
+
+const COMMITTEE_TYPES = ['COMMITTEE_CONTRIBUTION', 'COMMITTEE_RECEIVING'];
+
+interface CommitteeOption {
+  id: string;
+  name: string;
+  type: string;
+  entries: { id: string; slotNumber: number; userId: string }[];
+  rounds: { id: string; roundNumber: number; roundDate: string }[];
+}
+
+interface PlotOption {
+  id: string;
+  name: string;
+}
 
 const emptyForm = {
   type: 'EXPENSE',
@@ -43,13 +61,23 @@ export default function NewTransactionPage() {
   const [accounts, setAccounts] = useState<Array<{ id: string; name: string }>>([]);
   const [categories, setCategories] = useState<Array<{ id: string; name: string; group: string }>>([]);
   const [persons, setPersons] = useState<Array<{ id: string; name: string }>>([]);
+  const [committees, setCommittees] = useState<CommitteeOption[]>([]);
+  const [plots, setPlots] = useState<PlotOption[]>([]);
+
+  // Extra fields for committee/plot linking (not part of transactionSchema)
+  const [committeeId, setCommitteeId] = useState('');
+  const [entryId, setEntryId] = useState('');
+  const [roundId, setRoundId] = useState('');
+  const [profitDeduction, setProfitDeduction] = useState('');
+  const [plotId, setPlotId] = useState('');
+  const [dueDate, setDueDate] = useState('');
+  const [isHistorical, setIsHistorical] = useState(false);
 
   const { form, errors, serverError, saving, setField, handleSubmit } = useResourceForm({
     schema: transactionSchema,
     initial: emptyForm,
     onSubmit: (data) => {
-      const payload = { ...data };
-      // Clean optional empty strings / zeroes that the schema allows but the API may not want
+      const payload: Record<string, unknown> = { ...data };
       if (!payload.destAccountId) delete payload.destAccountId;
       if (!payload.categoryId) delete payload.categoryId;
       if (!payload.personId) delete payload.personId;
@@ -57,6 +85,27 @@ export default function NewTransactionPage() {
       if (!payload.taxAmount) delete payload.taxAmount;
       if (!payload.taxPercent) delete payload.taxPercent;
       if (!payload.expectedAmount) delete payload.expectedAmount;
+
+      if (COMMITTEE_TYPES.includes(data.type as string)) {
+        payload.committeeId = committeeId;
+        payload.entryId = entryId;
+        payload.roundId = roundId || undefined;
+        payload.isHistorical = isHistorical;
+        if (data.type === 'COMMITTEE_CONTRIBUTION' && profitDeduction) {
+          payload.profitDeduction = parseFloat(profitDeduction);
+        }
+        if (data.type === 'COMMITTEE_RECEIVING') {
+          payload.destAccountId = data.sourceAccountId;
+          delete payload.sourceAccountId;
+        }
+      }
+
+      if (data.type === 'PLOT_PAYMENT') {
+        payload.plotId = plotId;
+        payload.isHistorical = isHistorical;
+        if (dueDate) payload.dueDate = dueDate;
+      }
+
       return fetch('/api/transactions', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -81,9 +130,55 @@ export default function NewTransactionPage() {
     });
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // Fetch committees when a committee type is selected
+  useEffect(() => {
+    if (COMMITTEE_TYPES.includes(form.type as string) && committees.length === 0) {
+      fetch('/api/committees').then((r) => r.json()).then((res) => {
+        setCommittees(res.data || []);
+      });
+    }
+  }, [form.type]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Fetch committee detail (entries + rounds) when committee is picked
+  const [selectedCommittee, setSelectedCommittee] = useState<CommitteeOption | null>(null);
+  useEffect(() => {
+    if (!committeeId) { setSelectedCommittee(null); return; }
+    fetch(`/api/committees/${committeeId}`).then((r) => r.json()).then((res) => {
+      if (res.data) setSelectedCommittee(res.data);
+    });
+  }, [committeeId]);
+
+  // Fetch plots when plot payment type is selected
+  useEffect(() => {
+    if ((form.type as string) === 'PLOT_PAYMENT' && plots.length === 0) {
+      fetch('/api/plots').then((r) => r.json()).then((res) => {
+        setPlots(res.data || []);
+      });
+    }
+  }, [form.type]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Reset linked fields on type change
+  useEffect(() => {
+    setCommitteeId('');
+    setEntryId('');
+    setRoundId('');
+    setProfitDeduction('');
+    setPlotId('');
+    setDueDate('');
+    setIsHistorical(false);
+    setSelectedCommittee(null);
+  }, [form.type]);
+
+  const isCommittee = COMMITTEE_TYPES.includes(form.type as string);
+  const isPlot = (form.type as string) === 'PLOT_PAYMENT';
+  const isTransfer = (form.type as string) === 'TRANSFER';
+
   const filteredCategories = categories.filter(
-    (c) => (form.type as string) === 'TRANSFER' || c.group === ((form.type as string) === 'INCOME' ? 'INCOME' : 'EXPENSE')
+    (c) => isTransfer || c.group === ((form.type as string) === 'INCOME' ? 'INCOME' : 'EXPENSE')
   );
+
+  const userEntries = selectedCommittee?.entries || [];
+  const rounds = selectedCommittee?.rounds || [];
 
   return (
     <div className="max-w-2xl mx-auto space-y-6">
@@ -118,8 +213,89 @@ export default function NewTransactionPage() {
               </FormField>
             </div>
 
+            {/* Committee-specific fields */}
+            {isCommittee && (
+              <>
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <FormField label="Committee" required>
+                    <Select
+                      options={committees.map((c) => ({ value: c.id, label: `${c.name} (${c.type})` }))}
+                      value={committeeId}
+                      onChange={(e) => { setCommitteeId(e.target.value); setEntryId(''); setRoundId(''); }}
+                      placeholder="Select committee"
+                    />
+                  </FormField>
+
+                  <FormField label="Your Slot / Entry" required>
+                    <Select
+                      options={userEntries.map((e) => ({ value: e.id, label: `Slot #${e.slotNumber}` }))}
+                      value={entryId}
+                      onChange={(e) => setEntryId(e.target.value)}
+                      placeholder={committeeId ? 'Select slot' : 'Pick a committee first'}
+                    />
+                  </FormField>
+                </div>
+
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <FormField label="Round (optional)">
+                    <Select
+                      options={[
+                        { value: '', label: 'No round' },
+                        ...rounds.map((r) => ({
+                          value: r.id,
+                          label: `Round ${r.roundNumber} — ${new Date(r.roundDate).toLocaleDateString()}`,
+                        })),
+                      ]}
+                      value={roundId}
+                      onChange={(e) => setRoundId(e.target.value)}
+                      placeholder="Select round"
+                    />
+                  </FormField>
+
+                  {(form.type as string) === 'COMMITTEE_CONTRIBUTION' && (
+                    <FormField label="Profit Deduction">
+                      <Input
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        value={profitDeduction}
+                        onChange={(e) => setProfitDeduction(e.target.value)}
+                        placeholder="0.00"
+                      />
+                    </FormField>
+                  )}
+                </div>
+              </>
+            )}
+
+            {/* Plot-specific fields */}
+            {isPlot && (
+              <div className="grid gap-4 sm:grid-cols-2">
+                <FormField label="Plot" required>
+                  <Select
+                    options={plots.map((p) => ({ value: p.id, label: p.name }))}
+                    value={plotId}
+                    onChange={(e) => setPlotId(e.target.value)}
+                    placeholder="Select plot"
+                  />
+                </FormField>
+
+                <FormField label="Due Date (optional)">
+                  <Input
+                    type="date"
+                    value={dueDate}
+                    onChange={(e) => setDueDate(e.target.value)}
+                  />
+                </FormField>
+              </div>
+            )}
+
             <div className="grid gap-4 sm:grid-cols-2">
-              <FormField label={(form.type as string) === 'TRANSFER' ? 'From Account' : 'Account'} required error={errors.sourceAccountId}>
+              <FormField
+                label={isTransfer ? 'From Account' : (form.type as string) === 'COMMITTEE_RECEIVING' ? 'Into Account' : 'Account'}
+                required
+                error={errors.sourceAccountId}
+              >
                 <Select
                   options={accounts.map((a) => ({ value: a.id, label: a.name }))}
                   value={form.sourceAccountId as string}
@@ -128,7 +304,7 @@ export default function NewTransactionPage() {
                 />
               </FormField>
 
-              {(form.type as string) === 'TRANSFER' ? (
+              {isTransfer ? (
                 <FormField label="To Account" error={errors.destAccountId}>
                   <Select
                     options={accounts
@@ -139,7 +315,7 @@ export default function NewTransactionPage() {
                     placeholder="Select destination"
                   />
                 </FormField>
-              ) : (
+              ) : !isCommittee && !isPlot ? (
                 <FormField label="Category" error={errors.categoryId}>
                   <Select
                     options={filteredCategories.map((c) => ({ value: c.id, label: c.name }))}
@@ -148,17 +324,19 @@ export default function NewTransactionPage() {
                     placeholder="Select category"
                   />
                 </FormField>
-              )}
+              ) : null}
             </div>
 
-            <FormField label="Person" error={errors.personId}>
-              <Select
-                options={persons.map((p) => ({ value: p.id, label: p.name }))}
-                value={form.personId as string}
-                onChange={(e) => setField('personId', e.target.value)}
-                placeholder="Select person (optional)"
-              />
-            </FormField>
+            {!isCommittee && !isPlot && (
+              <FormField label="Person" error={errors.personId}>
+                <Select
+                  options={persons.map((p) => ({ value: p.id, label: p.name }))}
+                  value={form.personId as string}
+                  onChange={(e) => setField('personId', e.target.value)}
+                  placeholder="Select person (optional)"
+                />
+              </FormField>
+            )}
 
             <FormField label="Description" error={errors.description}>
               <Input
@@ -183,6 +361,18 @@ export default function NewTransactionPage() {
                 placeholder="Additional notes..."
               />
             </FormField>
+
+            {/* Historical toggle for committee / plot types */}
+            {(isCommittee || isPlot) && (
+              <label className="flex items-center gap-2 text-sm">
+                <input
+                  type="checkbox"
+                  checked={isHistorical}
+                  onChange={(e) => setIsHistorical(e.target.checked)}
+                />
+                Historical entry — tracking only, won&apos;t affect account balance
+              </label>
+            )}
 
             <AdvancedSection>
               <FormField label="Transaction Time" error={errors.transactionTime}>

@@ -191,6 +191,7 @@ model Transaction {
   taxPercent        Decimal?        @db.Decimal(5, 2)
   expectedAmount    Decimal?        @db.Decimal(18, 2)
   isPrivate         Boolean         @default(true)
+  isHistorical      Boolean         @default(false) // true = tracking only, excluded from balance
   relatedTransId    String?         // link to related transaction
   isDeleted         Boolean         @default(false)
   deletedAt         DateTime?

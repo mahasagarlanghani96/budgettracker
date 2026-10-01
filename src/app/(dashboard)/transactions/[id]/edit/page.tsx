@@ -20,11 +20,20 @@ const transactionTypes = [
   { value: 'INCOME', label: 'Income' },
   { value: 'EXPENSE', label: 'Expense' },
   { value: 'TRANSFER', label: 'Transfer' },
+  { value: 'COMMITTEE_CONTRIBUTION', label: 'Committee Contribution' },
+  { value: 'COMMITTEE_RECEIVING', label: 'Committee Receiving' },
+  { value: 'PLOT_PAYMENT', label: 'Plot Payment' },
   { value: 'OTHER', label: 'Other' },
 ];
 
-// Only plain ledger entries can be edited here.
-const EDITABLE_TYPES = ['INCOME', 'EXPENSE', 'TRANSFER', 'OTHER'];
+const LINKED_TYPES = [
+  'COMMITTEE_CONTRIBUTION', 'COMMITTEE_RECEIVING', 'PLOT_PAYMENT',
+  'LOAN_GIVEN', 'LOAN_TAKEN', 'LOAN_REPAYMENT_RECEIVED', 'LOAN_REPAYMENT_MADE',
+  'SAVINGS_DEPOSIT', 'SAVINGS_WITHDRAWAL', 'INVESTMENT', 'INVESTMENT_RETURN',
+];
+
+const COMMITTEE_TYPES = ['COMMITTEE_CONTRIBUTION', 'COMMITTEE_RECEIVING'];
+const EDITABLE_LINKED = ['COMMITTEE_CONTRIBUTION', 'COMMITTEE_RECEIVING', 'PLOT_PAYMENT'];
 
 const emptyForm = {
   type: 'EXPENSE',
@@ -43,6 +52,13 @@ const emptyForm = {
   isPrivate: true,
 };
 
+interface LinkedInfo {
+  committeeName?: string;
+  entrySlot?: number;
+  roundNumber?: number;
+  plotName?: string;
+}
+
 export default function EditTransactionPage() {
   const { id } = useParams<{ id: string }>();
   const router = useRouter();
@@ -51,12 +67,15 @@ export default function EditTransactionPage() {
   const [categories, setCategories] = useState<Array<{ id: string; name: string; group: string }>>([]);
   const [persons, setPersons] = useState<Array<{ id: string; name: string }>>([]);
   const [transaction, setTransaction] = useState<Record<string, unknown> | null>(null);
+  const [linkedInfo, setLinkedInfo] = useState<LinkedInfo>({});
+  const [profitDeduction, setProfitDeduction] = useState('');
+  const [dueDate, setDueDate] = useState('');
 
   const { form, errors, serverError, saving, setField, handleSubmit, reset } = useResourceForm({
     schema: transactionSchema,
     initial: emptyForm,
     onSubmit: (data) => {
-      const payload = { ...data };
+      const payload: Record<string, unknown> = { ...data };
       if (!payload.destAccountId) delete payload.destAccountId;
       if (!payload.categoryId) delete payload.categoryId;
       if (!payload.personId) delete payload.personId;
@@ -64,6 +83,18 @@ export default function EditTransactionPage() {
       if (!payload.taxAmount) delete payload.taxAmount;
       if (!payload.taxPercent) delete payload.taxPercent;
       if (!payload.expectedAmount) delete payload.expectedAmount;
+
+      if ((data.type as string) === 'COMMITTEE_CONTRIBUTION' && profitDeduction) {
+        payload.profitDeduction = parseFloat(profitDeduction);
+      }
+      if ((data.type as string) === 'COMMITTEE_RECEIVING') {
+        payload.destAccountId = data.sourceAccountId;
+        delete payload.sourceAccountId;
+      }
+      if ((data.type as string) === 'PLOT_PAYMENT' && dueDate) {
+        payload.dueDate = dueDate;
+      }
+
       return fetch(`/api/transactions/${id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
@@ -86,10 +117,11 @@ export default function EditTransactionPage() {
       const tx = txRes.data;
       setTransaction(tx);
       if (tx) {
+        const accountId = tx.sourceAccountId || tx.destAccountId || '';
         reset({
           type: tx.type,
           amount: tx.amount,
-          sourceAccountId: tx.sourceAccountId || '',
+          sourceAccountId: accountId,
           destAccountId: tx.destAccountId || '',
           categoryId: tx.categoryId || '',
           personId: tx.personId || '',
@@ -102,18 +134,43 @@ export default function EditTransactionPage() {
           expectedAmount: tx.expectedAmount ?? '',
           isPrivate: tx.isPrivate ?? true,
         });
+
+        // Extract linked info for display
+        const info: LinkedInfo = {};
+        if (tx.committeeContrib) {
+          info.committeeName = tx.committeeContrib.committee?.name;
+          info.entrySlot = tx.committeeContrib.entry?.slotNumber;
+          setProfitDeduction(tx.committeeContrib.profitDeduction?.toString() || '');
+        }
+        if (tx.committeeRecv) {
+          info.committeeName = tx.committeeRecv.committee?.name;
+          info.entrySlot = tx.committeeRecv.entry?.slotNumber;
+        }
+        if (tx.plotPayment) {
+          info.plotName = tx.plotPayment.plot?.name;
+          setDueDate(tx.plotPayment.dueDate ? (tx.plotPayment.dueDate as string).split('T')[0] : '');
+        }
+        setLinkedInfo(info);
       }
     }).finally(() => setLoading(false));
   }, [id]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  const txType = (transaction?.type as string) || '';
+  const isLinked = LINKED_TYPES.includes(txType);
+  const isEditableLinked = EDITABLE_LINKED.includes(txType);
+  const isCommittee = COMMITTEE_TYPES.includes(txType);
+  const isPlot = txType === 'PLOT_PAYMENT';
+  const isTransfer = (form.type as string) === 'TRANSFER';
+
   const filteredCategories = categories.filter(
-    (c) => (form.type as string) === 'TRANSFER' || c.group === ((form.type as string) === 'INCOME' ? 'INCOME' : 'EXPENSE')
+    (c) => isTransfer || c.group === ((form.type as string) === 'INCOME' ? 'INCOME' : 'EXPENSE')
   );
 
   if (loading) return <PageLoading />;
   if (!transaction) return <div className="text-center py-12 text-muted-foreground">Transaction not found</div>;
 
-  if (!EDITABLE_TYPES.includes(transaction.type as string)) {
+  // Loan/Savings/Investment types still can't be edited here
+  if (isLinked && !isEditableLinked) {
     return (
       <div className="max-w-2xl mx-auto space-y-6">
         <div className="flex items-center gap-4">
@@ -124,10 +181,10 @@ export default function EditTransactionPage() {
         </div>
         <Card>
           <CardContent className="pt-6 text-sm text-muted-foreground">
-            This transaction was created automatically as part of a Loan, Committee,
-            Savings, Investment, or Plot record, so it can&rsquo;t be edited directly here —
-            doing so would leave that record out of sync. Edit it from the resource it
-            belongs to instead.
+            This transaction was created automatically as part of a Loan, Savings, or
+            Investment record, so it can&rsquo;t be edited directly here &mdash; doing so
+            would leave that record out of sync. Edit it from the resource it belongs to
+            instead.
           </CardContent>
         </Card>
       </div>
@@ -143,16 +200,38 @@ export default function EditTransactionPage() {
         <h1 className="text-2xl font-bold">Edit Transaction</h1>
       </div>
 
+      {/* Show linked resource info */}
+      {(isCommittee || isPlot) && (
+        <Card>
+          <CardContent className="pt-4 pb-3 text-sm text-muted-foreground">
+            {isCommittee && (
+              <p>Linked to committee <span className="font-medium text-foreground">{linkedInfo.committeeName}</span>
+                {linkedInfo.entrySlot != null && <>, Slot #{linkedInfo.entrySlot}</>}
+              </p>
+            )}
+            {isPlot && (
+              <p>Linked to plot <span className="font-medium text-foreground">{linkedInfo.plotName}</span></p>
+            )}
+            <p className="text-xs mt-1">Changes here will also update the linked record.</p>
+          </CardContent>
+        </Card>
+      )}
+
       <Card>
         <CardContent className="pt-6">
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="grid gap-4 sm:grid-cols-2">
               <FormField label="Type" required error={errors.type}>
-                <Select
-                  options={transactionTypes}
-                  value={form.type as string}
-                  onChange={(e) => { setField('type', e.target.value); setField('categoryId', ''); }}
-                />
+                {isEditableLinked ? (
+                  // Type is locked for linked transactions
+                  <Input value={transactionTypes.find(t => t.value === form.type)?.label || (form.type as string)} disabled />
+                ) : (
+                  <Select
+                    options={transactionTypes}
+                    value={form.type as string}
+                    onChange={(e) => { setField('type', e.target.value); setField('categoryId', ''); }}
+                  />
+                )}
               </FormField>
 
               <FormField label="Amount" required error={errors.amount}>
@@ -167,8 +246,37 @@ export default function EditTransactionPage() {
               </FormField>
             </div>
 
+            {/* Committee-specific: profit deduction */}
+            {txType === 'COMMITTEE_CONTRIBUTION' && (
+              <FormField label="Profit Deduction">
+                <Input
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  value={profitDeduction}
+                  onChange={(e) => setProfitDeduction(e.target.value)}
+                  placeholder="0.00"
+                />
+              </FormField>
+            )}
+
+            {/* Plot-specific: due date */}
+            {isPlot && (
+              <FormField label="Due Date">
+                <Input
+                  type="date"
+                  value={dueDate}
+                  onChange={(e) => setDueDate(e.target.value)}
+                />
+              </FormField>
+            )}
+
             <div className="grid gap-4 sm:grid-cols-2">
-              <FormField label={(form.type as string) === 'TRANSFER' ? 'From Account' : 'Account'} required error={errors.sourceAccountId}>
+              <FormField
+                label={isTransfer ? 'From Account' : txType === 'COMMITTEE_RECEIVING' ? 'Into Account' : 'Account'}
+                required
+                error={errors.sourceAccountId}
+              >
                 <Select
                   options={accounts.map((a) => ({ value: a.id, label: a.name }))}
                   value={form.sourceAccountId as string}
@@ -177,7 +285,7 @@ export default function EditTransactionPage() {
                 />
               </FormField>
 
-              {(form.type as string) === 'TRANSFER' ? (
+              {isTransfer ? (
                 <FormField label="To Account" error={errors.destAccountId}>
                   <Select
                     options={accounts
@@ -188,7 +296,7 @@ export default function EditTransactionPage() {
                     placeholder="Select destination"
                   />
                 </FormField>
-              ) : (
+              ) : !isCommittee && !isPlot ? (
                 <FormField label="Category" error={errors.categoryId}>
                   <Select
                     options={filteredCategories.map((c) => ({ value: c.id, label: c.name }))}
@@ -197,17 +305,19 @@ export default function EditTransactionPage() {
                     placeholder="Select category"
                   />
                 </FormField>
-              )}
+              ) : null}
             </div>
 
-            <FormField label="Person" error={errors.personId}>
-              <Select
-                options={persons.map((p) => ({ value: p.id, label: p.name }))}
-                value={form.personId as string}
-                onChange={(e) => setField('personId', e.target.value)}
-                placeholder="Select person (optional)"
-              />
-            </FormField>
+            {!isCommittee && !isPlot && (
+              <FormField label="Person" error={errors.personId}>
+                <Select
+                  options={persons.map((p) => ({ value: p.id, label: p.name }))}
+                  value={form.personId as string}
+                  onChange={(e) => setField('personId', e.target.value)}
+                  placeholder="Select person (optional)"
+                />
+              </FormField>
+            )}
 
             <FormField label="Description" error={errors.description}>
               <Input

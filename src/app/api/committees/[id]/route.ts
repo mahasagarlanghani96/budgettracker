@@ -21,10 +21,10 @@ export async function GET(_request: NextRequest, { params }: { params: Promise<{
         rounds: {
           include: {
             contributions: {
-              include: { entry: true },
+              include: { entry: true, account: true },
             },
             receivings: {
-              include: { entry: true },
+              include: { entry: true, account: true },
             },
           },
           orderBy: { roundNumber: 'asc' },

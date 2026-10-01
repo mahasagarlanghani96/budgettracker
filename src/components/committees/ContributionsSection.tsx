@@ -97,12 +97,12 @@ export function ContributionsSection({
   const [contribForm, setContribForm] = useState({
     entryId: '', roundId: '', accountId: '', expectedAmount: monthlyContribution,
     actualAmount: monthlyContribution, profitDeduction: '0', status: 'PAID',
-    transactionDate: new Date().toISOString().split('T')[0], notes: '',
+    transactionDate: new Date().toISOString().split('T')[0], notes: '', isHistorical: false,
   });
 
   const [recForm, setRecForm] = useState({
     entryId: '', roundId: '', accountId: '', expectedAmount: '',
-    actualAmount: '', transactionDate: new Date().toISOString().split('T')[0], notes: '',
+    actualAmount: '', transactionDate: new Date().toISOString().split('T')[0], notes: '', isHistorical: false,
   });
 
   const entryOptions = entries.map((e) => ({ value: e.id, label: `Slot ${e.slotNumber}` }));
@@ -114,7 +114,7 @@ export function ContributionsSection({
       entryId: entries[0]?.id || '', roundId: '', accountId: accounts[0]?.id || '',
       expectedAmount: monthlyContribution, actualAmount: monthlyContribution,
       profitDeduction: '0', status: 'PAID',
-      transactionDate: new Date().toISOString().split('T')[0], notes: '',
+      transactionDate: new Date().toISOString().split('T')[0], notes: '', isHistorical: false,
     });
   }
 
@@ -122,7 +122,7 @@ export function ContributionsSection({
     setRecForm({
       entryId: entries[0]?.id || '', roundId: '', accountId: accounts[0]?.id || '',
       expectedAmount: '', actualAmount: '',
-      transactionDate: new Date().toISOString().split('T')[0], notes: '',
+      transactionDate: new Date().toISOString().split('T')[0], notes: '', isHistorical: false,
     });
   }
 
@@ -141,6 +141,7 @@ export function ContributionsSection({
       status: contribForm.status,
       transactionDate: contribForm.transactionDate,
       notes: contribForm.notes || undefined,
+      isHistorical: contribForm.isHistorical,
     };
 
     try {
@@ -180,6 +181,7 @@ export function ContributionsSection({
       actualAmount: parseFloat(recForm.actualAmount) || 0,
       transactionDate: recForm.transactionDate,
       notes: recForm.notes || undefined,
+      isHistorical: recForm.isHistorical,
     };
 
     try {
@@ -229,6 +231,7 @@ export function ContributionsSection({
       status: c.status,
       transactionDate: c.transactionDate.split('T')[0],
       notes: c.notes || '',
+      isHistorical: false,
     });
     setEditingContrib(c);
     setShowAddContrib(true);
@@ -243,6 +246,7 @@ export function ContributionsSection({
       actualAmount: r.actualAmount.toString(),
       transactionDate: r.transactionDate.split('T')[0],
       notes: r.notes || '',
+      isHistorical: false,
     });
     setEditingReceiving(r);
     setShowAddReceiving(true);
@@ -282,6 +286,7 @@ export function ContributionsSection({
                   <TableHead>Slot</TableHead>
                   <TableHead>Account</TableHead>
                   <TableHead className="text-right">Amount</TableHead>
+                  <TableHead className="text-right">Profit Ded.</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead>Date</TableHead>
                   <TableHead className="text-right">Actions</TableHead>
@@ -294,6 +299,7 @@ export function ContributionsSection({
                     <TableCell>Slot {c.entry?.slotNumber ?? '—'}</TableCell>
                     <TableCell>{c.account?.name ?? '—'}</TableCell>
                     <TableCell className="text-right tabular-nums">{formatCurrency(c.actualAmount.toString())}</TableCell>
+                    <TableCell className="text-right tabular-nums">{Number(c.profitDeduction?.toString()) > 0 ? formatCurrency(c.profitDeduction.toString()) : '—'}</TableCell>
                     <TableCell><Badge variant={statusBadgeVariant[c.status] || 'secondary'} className="text-xs">{c.status}</Badge></TableCell>
                     <TableCell className="text-sm">{formatDate(c.transactionDate)}</TableCell>
                     <TableCell className="text-right">
@@ -405,6 +411,17 @@ export function ContributionsSection({
               <Input value={contribForm.notes} onChange={(e) => setContribForm((f) => ({ ...f, notes: e.target.value }))} placeholder="Optional" />
             </FormField>
 
+            <FormField label="Historical Entry">
+              <label className="flex items-center gap-2 text-sm">
+                <input
+                  type="checkbox"
+                  checked={contribForm.isHistorical}
+                  onChange={(e) => setContribForm((f) => ({ ...f, isHistorical: e.target.checked }))}
+                />
+                Tracking only — don&apos;t affect account balance
+              </label>
+            </FormField>
+
             {error && <p className="text-sm text-destructive bg-destructive/10 rounded-md px-3 py-2">{error}</p>}
             <DialogFooter>
               <Button type="button" variant="outline" onClick={() => { setShowAddContrib(false); setEditingContrib(null); }}>Cancel</Button>
@@ -447,6 +464,17 @@ export function ContributionsSection({
 
             <FormField label="Notes">
               <Input value={recForm.notes} onChange={(e) => setRecForm((f) => ({ ...f, notes: e.target.value }))} placeholder="Optional" />
+            </FormField>
+
+            <FormField label="Historical Entry">
+              <label className="flex items-center gap-2 text-sm">
+                <input
+                  type="checkbox"
+                  checked={recForm.isHistorical}
+                  onChange={(e) => setRecForm((f) => ({ ...f, isHistorical: e.target.checked }))}
+                />
+                Tracking only — don&apos;t affect account balance
+              </label>
             </FormField>
 
             {error && <p className="text-sm text-destructive bg-destructive/10 rounded-md px-3 py-2">{error}</p>}
