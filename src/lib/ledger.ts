@@ -26,7 +26,9 @@ interface LedgerLookup {
   userId: string;
   type: string;
   amount: { toString(): string };
-  sourceAccountId: string;
+  sourceAccountId?: string;
+  accountId?: string;
+  accountField?: 'sourceAccountId' | 'destAccountId';
   transactionDate: Date;
   personId?: string | null;
 }
@@ -40,6 +42,9 @@ export async function findLedgerEntry(tx: any, lookup: LedgerLookup) {
   });
   if (linked) return linked;
 
+  const acctField = lookup.accountField || 'sourceAccountId';
+  const acctId = lookup.accountId || lookup.sourceAccountId;
+
   const unlinked = Object.fromEntries(LINK_FIELDS.map((f) => [f, null]));
   return tx.transaction.findFirst({
     where: {
@@ -48,7 +53,7 @@ export async function findLedgerEntry(tx: any, lookup: LedgerLookup) {
       type,
       isDeleted: false,
       amount: lookup.amount.toString(),
-      sourceAccountId: lookup.sourceAccountId,
+      [acctField]: acctId,
       transactionDate: lookup.transactionDate,
       ...(lookup.personId ? { personId: lookup.personId } : {}),
     },

@@ -52,12 +52,15 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
         },
       });
 
-      // Create corresponding transaction
+      // Create corresponding transaction (balance-affecting)
       const txType = loan.direction === 'GIVEN' ? 'LOAN_REPAYMENT_RECEIVED' : 'LOAN_REPAYMENT_MADE';
+      const isInflow = loan.direction === 'GIVEN';
       await tx.transaction.create({
         data: {
           userId,
-          sourceAccountId: validated.accountId,
+          ...(isInflow
+            ? { destAccountId: validated.accountId }
+            : { sourceAccountId: validated.accountId }),
           type: txType,
           amount: validated.amount,
           description: `Loan repayment ${loan.direction === 'GIVEN' ? 'from' : 'to'} ${loan.person.name}`,

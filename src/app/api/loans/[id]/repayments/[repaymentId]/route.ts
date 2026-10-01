@@ -26,6 +26,7 @@ export async function PUT(request: NextRequest, { params }: Params) {
 
     const repDate = validated.transactionDate ? new Date(validated.transactionDate) : repayment.transactionDate;
     const txType = loan.direction === 'GIVEN' ? 'LOAN_REPAYMENT_RECEIVED' : 'LOAN_REPAYMENT_MADE';
+    const isInflow = loan.direction === 'GIVEN';
 
     await prisma.$transaction(async (tx: any) => {
       // Soft-delete old ledger row
@@ -34,7 +35,8 @@ export async function PUT(request: NextRequest, { params }: Params) {
         userId,
         type: txType,
         amount: repayment.amount,
-        sourceAccountId: repayment.accountId,
+        accountId: repayment.accountId,
+        accountField: isInflow ? 'destAccountId' : 'sourceAccountId',
         transactionDate: repayment.transactionDate,
         personId: loan.personId,
       });
@@ -54,7 +56,9 @@ export async function PUT(request: NextRequest, { params }: Params) {
       await tx.transaction.create({
         data: {
           userId,
-          sourceAccountId: validated.accountId,
+          ...(isInflow
+            ? { destAccountId: validated.accountId }
+            : { sourceAccountId: validated.accountId }),
           type: txType,
           amount: validated.amount,
           description: `Loan repayment ${loan.direction === 'GIVEN' ? 'from' : 'to'} ${loan.person.name}`,
@@ -94,6 +98,7 @@ export async function DELETE(_request: NextRequest, { params }: Params) {
     if (!repayment) return NextResponse.json({ error: 'Repayment not found' }, { status: 404 });
 
     const txType = loan.direction === 'GIVEN' ? 'LOAN_REPAYMENT_RECEIVED' : 'LOAN_REPAYMENT_MADE';
+    const isInflow = loan.direction === 'GIVEN';
 
     await prisma.$transaction(async (tx: any) => {
       await softDeleteLedgerEntry(tx, {
@@ -101,7 +106,8 @@ export async function DELETE(_request: NextRequest, { params }: Params) {
         userId,
         type: txType,
         amount: repayment.amount,
-        sourceAccountId: repayment.accountId,
+        accountId: repayment.accountId,
+        accountField: isInflow ? 'destAccountId' : 'sourceAccountId',
         transactionDate: repayment.transactionDate,
         personId: loan.personId,
       });

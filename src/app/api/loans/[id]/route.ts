@@ -112,11 +112,12 @@ export async function DELETE(_request: NextRequest, { params }: { params: Promis
         data: { isDeleted: true, deletedAt: new Date() },
       });
       const type = existing.direction === 'GIVEN' ? 'LOAN_GIVEN' : 'LOAN_TAKEN';
+      const acctField = existing.direction === 'TAKEN' ? 'destAccountId' : 'sourceAccountId';
       await tx.transaction.updateMany({
         where: {
           userId, type, loanId: null, isDeleted: false,
           amount: existing.amount.toString(),
-          sourceAccountId: existing.accountId,
+          [acctField]: existing.accountId,
           transactionDate: existing.transactionDate,
           personId: existing.personId,
         },
