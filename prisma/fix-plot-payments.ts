@@ -105,7 +105,7 @@ async function main() {
 
   // Check installment numbers are exactly 1-32
   const instNums = instRecords.map(p => {
-    const match = p.notes.match(/Installment #(\d+)/);
+    const match = p.notes?.match(/Installment #(\d+)/);
     return match ? parseInt(match[1]) : 0;
   }).sort((a, b) => a - b);
   const hasExact1to32 = instNums.length === 32 && instNums[0] === 1 && instNums[31] === 32;
