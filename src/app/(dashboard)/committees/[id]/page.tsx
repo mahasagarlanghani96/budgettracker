@@ -219,10 +219,27 @@ export default function CommitteeDetailPage() {
   const members = (committee.members || []) as Array<Record<string, unknown>>;
   const rounds = (committee.rounds || []) as Array<Record<string, unknown>>;
   const entries = (committee.entries || []) as Array<{ id: string; slotNumber: number }>;
+  const contributions = (committee.contributions || []) as Array<Record<string, unknown>>;
+  const receivings = (committee.receivings || []) as Array<Record<string, unknown>>;
   const isWaiyk = committee.type === 'WAIYK';
   const editIsWaiyk = (editForm.form.type as string) === 'WAIYK';
   const latestRoundNumber = rounds.reduce((max, r) => Math.max(max, r.roundNumber as number), 0);
   const personOptions = persons.map((p) => ({ value: p.id, label: p.name }));
+
+  const monthlyAmt = Number(committee.monthlyContribution) || 0;
+  const totalSlots = entries.length || (committee.memberCount as number);
+  const totalRounds = committee.memberCount as number;
+  const totalExpected = monthlyAmt * totalSlots * totalRounds;
+  const totalPaid = contributions
+    .filter((c) => (c.status as string) === 'PAID')
+    .reduce((sum, c) => sum + Number(c.actualAmount), 0);
+  const totalPending = contributions
+    .filter((c) => (c.status as string) === 'PENDING')
+    .reduce((sum, c) => sum + Number(c.actualAmount || c.expectedAmount), 0);
+  const totalReceived = receivings.reduce((sum, r) => sum + Number(r.actualAmount), 0);
+  const totalProfitEarned = contributions.reduce((sum, c) => sum + Number(c.profitDeduction || 0), 0);
+  const remainingToPay = totalExpected - totalPaid;
+  const netPosition = totalReceived - totalPaid;
 
   return (
     <div className="space-y-6">
@@ -256,6 +273,48 @@ export default function CommitteeDetailPage() {
         <Card><CardContent className="pt-6"><p className="text-xs text-muted-foreground">Total Pool</p><p className="text-xl font-bold tabular-nums">{formatCurrency((committee.totalAmount as { toString(): string }).toString())}</p></CardContent></Card>
         <Card><CardContent className="pt-6"><p className="text-xs text-muted-foreground">Progress</p><p className="text-xl font-bold">{rounds.length} / {committee.memberCount as number} rounds</p></CardContent></Card>
       </div>
+
+      {/* Financial Tracking */}
+      <Card>
+        <CardHeader><CardTitle className="text-base">Financial Tracking</CardTitle></CardHeader>
+        <CardContent>
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            <div className="rounded-lg border p-4">
+              <p className="text-xs text-muted-foreground">Total Expected</p>
+              <p className="text-lg font-bold tabular-nums">{formatCurrency(totalExpected.toString())}</p>
+              <p className="text-xs text-muted-foreground mt-1">{formatCurrency(monthlyAmt.toString())} × {totalSlots} slots × {totalRounds} rounds</p>
+            </div>
+            <div className="rounded-lg border p-4">
+              <p className="text-xs text-muted-foreground">Total Paid</p>
+              <p className="text-lg font-bold tabular-nums text-green-600">{formatCurrency(totalPaid.toString())}</p>
+              {totalPending > 0 && <p className="text-xs text-yellow-600 mt-1">{formatCurrency(totalPending.toString())} pending</p>}
+            </div>
+            <div className="rounded-lg border p-4">
+              <p className="text-xs text-muted-foreground">Total Received</p>
+              <p className="text-lg font-bold tabular-nums text-blue-600">{formatCurrency(totalReceived.toString())}</p>
+            </div>
+            <div className="rounded-lg border p-4">
+              <p className="text-xs text-muted-foreground">Remaining to Pay</p>
+              <p className="text-lg font-bold tabular-nums text-orange-600">{formatCurrency(remainingToPay.toString())}</p>
+              <p className="text-xs text-muted-foreground mt-1">{totalRounds - rounds.length} rounds left</p>
+            </div>
+            {isWaiyk && (
+              <div className="rounded-lg border p-4">
+                <p className="text-xs text-muted-foreground">Profit Earned</p>
+                <p className="text-lg font-bold tabular-nums text-emerald-600">{formatCurrency(totalProfitEarned.toString())}</p>
+                <p className="text-xs text-muted-foreground mt-1">from Waiyk profit deductions</p>
+              </div>
+            )}
+            <div className="rounded-lg border p-4">
+              <p className="text-xs text-muted-foreground">Net Position</p>
+              <p className={`text-lg font-bold tabular-nums ${netPosition >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                {netPosition >= 0 ? '+' : ''}{formatCurrency(netPosition.toString())}
+              </p>
+              <p className="text-xs text-muted-foreground mt-1">received − paid</p>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
 
       {/* Members */}
       <Card>
@@ -304,10 +363,10 @@ export default function CommitteeDetailPage() {
                 <TableRow>
                   <TableHead>#</TableHead>
                   <TableHead>Date</TableHead>
-                  <TableHead>Payout</TableHead>
+                  <TableHead>Winner Payout</TableHead>
                   <TableHead>Winner</TableHead>
                   {isWaiyk && <TableHead>Winning Bid</TableHead>}
-                  {isWaiyk && <TableHead>Profit/Member</TableHead>}
+                  {isWaiyk && <TableHead>Profit/Slot</TableHead>}
                   <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
               </TableHeader>
@@ -319,7 +378,7 @@ export default function CommitteeDetailPage() {
                     <TableCell className="font-medium tabular-nums">{formatCurrency((r.payoutAmount as { toString(): string }).toString())}</TableCell>
                     <TableCell>{(r.winningMember as string) || '—'}</TableCell>
                     {isWaiyk && <TableCell className="tabular-nums">{r.winningBid ? formatCurrency((r.winningBid as { toString(): string }).toString()) : '—'}</TableCell>}
-                    {isWaiyk && <TableCell className="tabular-nums">{r.profitPerMember ? formatCurrency((r.profitPerMember as { toString(): string }).toString()) : '—'}</TableCell>}
+                    {isWaiyk && <TableCell className="tabular-nums">{r.profitPerMember ? formatCurrency((r.profitPerMember as { toString(): string }).toString()) : '—'}{r.profitAmount ? ` (${formatCurrency((r.profitAmount as { toString(): string }).toString())} total)` : ''}</TableCell>}
                     <TableCell className="text-right">
                       <div className="flex justify-end gap-1">
                         <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => openEditRound(r)}><Pencil className="h-3.5 w-3.5" /></Button>
@@ -484,7 +543,7 @@ export default function CommitteeDetailPage() {
 
             {isWaiyk && (
               <>
-                <FormField label="Winning Bid Amount" error={addRoundForm.errors.winningBid} hint="Profit = Total Amount - Winning Bid, split among all members">
+                <FormField label="Winning Bid Amount" error={addRoundForm.errors.winningBid} hint="Profit = Total Amount - Winning Bid, split among all slots">
                   <Input
                     type="number"
                     step="0.01"
@@ -541,7 +600,7 @@ export default function CommitteeDetailPage() {
             </FormField>
 
             {isWaiyk && (
-              <FormField label="Winning Bid Amount" error={editRoundForm.errors.winningBid} hint="Profit = Total Amount - Winning Bid, split among all members">
+              <FormField label="Winning Bid Amount" error={editRoundForm.errors.winningBid} hint="Profit = Total Amount - Winning Bid, split among all slots">
                 <Input
                   type="number"
                   step="0.01"

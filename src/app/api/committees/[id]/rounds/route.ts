@@ -35,25 +35,22 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     // Count total entry slots
     const totalEntries = committee.entries.length || committee.memberCount;
 
-    let profitAmount: Decimal | undefined;
-    let profitPerMember: Decimal | undefined;
-    let payoutAmount = committee.totalAmount
+    const committeeValue = committee.totalAmount
       ? new Decimal(committee.totalAmount.toString())
       : new Decimal(committee.monthlyContribution.toString()).times(committee.memberCount);
 
-    // Waiyk-specific calculations
-    if (committee.type === 'WAIYK' && body.winningBid) {
-      const totalForCalc = committee.totalAmount
-        ? new Decimal(committee.totalAmount.toString())
-        : new Decimal(committee.monthlyContribution.toString()).times(committee.memberCount);
+    let profitAmount: Decimal | undefined;
+    let profitPerSlot: Decimal | undefined;
+    let payoutAmount = committeeValue;
 
+    if (committee.type === 'WAIYK' && body.winningBid) {
       const profitShare = calculateProfitShare(
-        totalForCalc.toString(),
+        committeeValue.toString(),
         String(body.winningBid),
         totalEntries
       );
       profitAmount = profitShare.profitTotal;
-      profitPerMember = profitShare.profitPerMember;
+      profitPerSlot = profitShare.profitPerSlot;
       payoutAmount = new Decimal(String(body.winningBid));
     }
 
@@ -62,12 +59,12 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
         committeeId,
         roundNumber: nextRound,
         roundDate: body.roundDate ? new Date(body.roundDate) : new Date(),
-        totalAmount: payoutAmount,
+        totalAmount: committeeValue,
         winningBid: body.winningBid || undefined,
         winningMember: body.winningMember || undefined,
         payoutAmount,
         profitAmount,
-        profitPerMember,
+        profitPerMember: profitPerSlot,
         memberCount: totalEntries,
         notes: body.notes,
       },

@@ -1,34 +1,24 @@
 import Decimal from 'decimal.js';
 
-/**
- * Waiyk Committee Calculation Functions
- *
- * In a Waiyk committee:
- * - Members contribute a fixed amount monthly
- * - Each month, the total pool is available for bidding
- * - A member bids a lower amount (e.g., Rs. 1,400,000 out of Rs. 1,600,000)
- * - The difference (Rs. 200,000) is profit, distributed among ALL members
- * - Each member's effective contribution = base contribution - their share of profit
- */
+Decimal.set({ precision: 20 });
 
 export interface WaiykProfitResult {
-  /** Total profit = totalAmount - winningBid */
   profitTotal: Decimal;
-  /** Profit per member = profitTotal / memberCount */
-  profitPerMember: Decimal;
+  profitPerSlot: Decimal;
 }
 
 /**
  * Calculate profit distribution for a Waiyk round.
+ * Profit is distributed per SLOT, not per unique member.
  *
- * @param totalAmount   The committee's total pot for the round
- * @param winningBid    The winning bid (lower than totalAmount)
- * @param memberCount   Number of active members sharing the profit
+ * @param totalAmount  The committee's total value for the round
+ * @param winningBid   The winning bid (must be <= totalAmount)
+ * @param totalSlots   Total number of slots in the committee
  */
 export function calculateProfitShare(
   totalAmount: number | string,
   winningBid: number | string,
-  memberCount: number
+  totalSlots: number
 ): WaiykProfitResult {
   const total = new Decimal(totalAmount.toString());
   const bid = new Decimal(winningBid.toString());
@@ -36,50 +26,58 @@ export function calculateProfitShare(
   if (bid.greaterThan(total)) {
     throw new Error('Winning bid cannot exceed the total committee amount');
   }
-  if (memberCount <= 0) {
-    throw new Error('Member count must be positive');
+  if (totalSlots <= 0) {
+    throw new Error('Total slots must be positive');
   }
 
   const profitTotal = total.minus(bid);
-  // Use floor to avoid distributing more than available
-  const profitPerMember = profitTotal.dividedBy(memberCount).toDecimalPlaces(2, Decimal.ROUND_FLOOR);
+  const profitPerSlot = profitTotal.dividedBy(totalSlots);
 
-  return { profitTotal, profitPerMember };
+  return { profitTotal, profitPerSlot };
 }
 
 /**
- * Calculate the effective monthly contribution after profit deduction.
- *
- * @param monthlyContribution  The base monthly contribution
- * @param profitPerMember      The profit share to deduct
+ * Calculate the adjusted payment per slot after profit deduction.
  */
-export function calculateEffectiveContribution(
-  monthlyContribution: number | string,
-  profitPerMember: number | string
+export function calculateAdjustedPaymentPerSlot(
+  monthlyContributionPerSlot: number | string,
+  profitPerSlot: number | string
 ): Decimal {
-  const contribution = new Decimal(monthlyContribution.toString());
-  const profit = new Decimal(profitPerMember.toString());
+  const contribution = new Decimal(monthlyContributionPerSlot.toString());
+  const profit = new Decimal(profitPerSlot.toString());
   return contribution.minus(profit);
 }
 
 /**
- * Check if a committee entry is eligible for bidding.
- * An entry that has already been taken (received its payout) is not eligible.
+ * Calculate a member's total profit share based on their slot count.
  */
+export function calculateMemberProfit(
+  profitPerSlot: number | string,
+  slotsOwned: number
+): Decimal {
+  return new Decimal(profitPerSlot.toString()).times(slotsOwned);
+}
+
+/**
+ * Calculate a member's adjusted total payment based on their slot count.
+ */
+export function calculateMemberPayment(
+  adjustedPaymentPerSlot: number | string,
+  slotsOwned: number
+): Decimal {
+  return new Decimal(adjustedPaymentPerSlot.toString()).times(slotsOwned);
+}
+
 export function isEntryEligibleForBidding(entry: { isTaken: boolean }): boolean {
   return !entry.isTaken;
 }
 
-/**
- * Check if a user has any remaining eligible entries in a committee.
- */
 export function hasEligibleEntries(entries: { isTaken: boolean }[]): boolean {
   return entries.some((e) => !e.isTaken);
 }
 
 /**
- * Calculate the user's remaining dues for a committee.
- * Total expected contributions - total actual contributions paid.
+ * Calculate remaining dues for a user across all their slots.
  */
 export function calculateRemainingDues(
   totalRounds: number,
@@ -94,39 +92,44 @@ export function calculateRemainingDues(
   return totalExpected.minus(paid);
 }
 
-/**
- * Summary of a Waiyk round for display purposes.
- */
 export interface WaiykRoundSummary {
   roundNumber: number;
-  totalAmount: string;
+  committeeValue: string;
   winningBid: string;
-  payoutAmount: string;
+  winnerPayout: string;
   profitTotal: string;
-  profitPerMember: string;
-  effectiveContribution: string;
+  profitPerSlot: string;
+  paymentPerSlot: string;
   winningMember: string;
 }
 
+/**
+ * Build a display-ready summary for a Waiyk round.
+ * Only rounds to 2 decimal places at this final display layer.
+ */
 export function calculateRoundSummary(
   roundNumber: number,
   totalAmount: number | string,
   winningBid: number | string,
-  memberCount: number,
+  totalSlots: number,
   monthlyContribution: number | string,
   winningMember: string
 ): WaiykRoundSummary {
-  const { profitTotal, profitPerMember } = calculateProfitShare(totalAmount, winningBid, memberCount);
-  const effective = calculateEffectiveContribution(monthlyContribution, profitPerMember.toString());
+  const { profitTotal, profitPerSlot } = calculateProfitShare(totalAmount, winningBid, totalSlots);
+  const paymentPerSlot = calculateAdjustedPaymentPerSlot(monthlyContribution, profitPerSlot.toString());
 
   return {
     roundNumber,
-    totalAmount: new Decimal(totalAmount.toString()).toFixed(2),
+    committeeValue: new Decimal(totalAmount.toString()).toFixed(2),
     winningBid: new Decimal(winningBid.toString()).toFixed(2),
-    payoutAmount: new Decimal(winningBid.toString()).toFixed(2),
+    winnerPayout: new Decimal(winningBid.toString()).toFixed(2),
     profitTotal: profitTotal.toFixed(2),
-    profitPerMember: profitPerMember.toFixed(2),
-    effectiveContribution: effective.toFixed(2),
+    profitPerSlot: profitPerSlot.toFixed(2),
+    paymentPerSlot: paymentPerSlot.toFixed(2),
     winningMember,
   };
 }
+
+// Backwards-compatible aliases for existing API route code
+/** @deprecated Use profitPerSlot */
+export type { WaiykProfitResult as WaiykProfitResultCompat };

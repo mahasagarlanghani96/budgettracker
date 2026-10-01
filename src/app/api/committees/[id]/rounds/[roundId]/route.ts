@@ -26,19 +26,17 @@ export async function PUT(request: NextRequest, { params }: Params) {
     if (!round) return NextResponse.json({ error: 'Round not found' }, { status: 404 });
 
     const totalEntries = committee.entries.length || committee.memberCount;
-    let payoutAmount = committee.totalAmount
+    const committeeValue = committee.totalAmount
       ? new Decimal(committee.totalAmount.toString())
       : new Decimal(committee.monthlyContribution.toString()).times(committee.memberCount);
     let profitAmount: Decimal | undefined;
-    let profitPerMember: Decimal | undefined;
+    let profitPerSlot: Decimal | undefined;
+    let payoutAmount = committeeValue;
 
     if (committee.type === 'WAIYK' && validated.winningBid) {
-      const totalForCalc = committee.totalAmount
-        ? new Decimal(committee.totalAmount.toString())
-        : new Decimal(committee.monthlyContribution.toString()).times(committee.memberCount);
-      const ps = calculateProfitShare(totalForCalc.toString(), String(validated.winningBid), totalEntries);
+      const ps = calculateProfitShare(committeeValue.toString(), String(validated.winningBid), totalEntries);
       profitAmount = ps.profitTotal;
-      profitPerMember = ps.profitPerMember;
+      profitPerSlot = ps.profitPerSlot;
       payoutAmount = new Decimal(String(validated.winningBid));
     }
 
@@ -46,11 +44,12 @@ export async function PUT(request: NextRequest, { params }: Params) {
       where: { id: roundId },
       data: {
         roundDate: new Date(validated.roundDate),
+        totalAmount: committeeValue,
         winningBid: validated.winningBid ?? undefined,
         winningMember: validated.winningMember ?? undefined,
         payoutAmount,
         profitAmount,
-        profitPerMember,
+        profitPerMember: profitPerSlot,
         notes: validated.notes,
       },
     });
