@@ -128,7 +128,7 @@ async function main() {
 
   let datesMatch = true;
   for (const rec of instRecords) {
-    const match = rec.notes.match(/Installment #(\d+)/);
+    const match = rec.notes?.match(/Installment #(\d+)/);
     if (!match) { datesMatch = false; continue; }
     const num = parseInt(match[1]);
     const expected = new Date(expectedDates[num]).toISOString().split('T')[0];
