@@ -36,21 +36,39 @@ export async function POST(
       return NextResponse.json({ error: 'Account not found' }, { status: 404 });
     }
 
-    const receiving = await prisma.committeeReceiving.create({
-      data: {
-        committeeId,
-        entryId: validated.entryId,
-        roundId: validated.roundId || null,
-        accountId: validated.accountId,
-        expectedAmount: validated.expectedAmount ?? null,
-        actualAmount: validated.actualAmount,
-        transactionDate: new Date(validated.transactionDate),
-        notes: validated.notes,
-      },
-      include: { entry: true, account: true, round: true },
+    const txDate = new Date(validated.transactionDate);
+
+    const result = await prisma.$transaction(async (tx: any) => {
+      const receiving = await tx.committeeReceiving.create({
+        data: {
+          committeeId,
+          entryId: validated.entryId,
+          roundId: validated.roundId || null,
+          accountId: validated.accountId,
+          expectedAmount: validated.expectedAmount ?? null,
+          actualAmount: validated.actualAmount,
+          transactionDate: txDate,
+          notes: validated.notes,
+        },
+        include: { entry: true, account: true, round: true },
+      });
+
+      await tx.transaction.create({
+        data: {
+          userId,
+          destAccountId: validated.accountId,
+          type: 'COMMITTEE_RECEIVING',
+          amount: validated.actualAmount,
+          description: `Committee receiving: ${committee.name}`,
+          transactionDate: txDate,
+          committeeRecvId: receiving.id,
+        },
+      });
+
+      return receiving;
     });
 
-    return NextResponse.json({ data: receiving }, { status: 201 });
+    return NextResponse.json({ data: result }, { status: 201 });
   } catch (error: unknown) {
     if (error instanceof Error && error.message === 'Unauthorized') {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });

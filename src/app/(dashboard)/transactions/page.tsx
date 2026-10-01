@@ -26,6 +26,9 @@ const typeOptions = [
   { value: 'LOAN_TAKEN', label: 'Loan Taken' },
   { value: 'LOAN_REPAYMENT_RECEIVED', label: 'Repayment Received' },
   { value: 'LOAN_REPAYMENT_MADE', label: 'Repayment Made' },
+  { value: 'COMMITTEE_CONTRIBUTION', label: 'Committee Contribution' },
+  { value: 'COMMITTEE_RECEIVING', label: 'Committee Receiving' },
+  { value: 'PLOT_PAYMENT', label: 'Plot Payment' },
 ];
 
 const typeBadgeVariant: Record<string, 'default' | 'success' | 'destructive' | 'secondary' | 'warning' | 'outline'> = {
@@ -36,6 +39,9 @@ const typeBadgeVariant: Record<string, 'default' | 'success' | 'destructive' | '
   LOAN_TAKEN: 'warning',
   LOAN_REPAYMENT_RECEIVED: 'success',
   LOAN_REPAYMENT_MADE: 'destructive',
+  COMMITTEE_CONTRIBUTION: 'destructive',
+  COMMITTEE_RECEIVING: 'success',
+  PLOT_PAYMENT: 'destructive',
 };
 
 interface Transaction {

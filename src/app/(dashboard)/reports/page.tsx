@@ -8,12 +8,18 @@ import { Select } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { PageLoading } from '@/components/ui/loading';
 import { formatCurrency } from '@/lib/utils';
-import { BarChart3, Download } from 'lucide-react';
+import { BarChart3 } from 'lucide-react';
 
 interface ReportData {
-  summary?: { totalIncome: string; totalExpense: string; netSavings: string; transactionCount: number };
-  categories?: Array<{ category: string; type: string; total: string; count: number; percentage: number }>;
-  daily?: Array<{ date: string; income: string; expense: string; net: string }>;
+  type?: string;
+  totalIncome?: string;
+  totalExpense?: string;
+  netSavings?: string;
+  totalTransfers?: string;
+  transactionCounts?: { income: number; expense: number; transfers: number };
+  incomeByCategory?: Array<{ name: string; total: string }>;
+  expenseByCategory?: Array<{ name: string; total: string }>;
+  dailyData?: Array<{ date: string; income: string; expense: string; net: string }>;
 }
 
 export default function ReportsPage() {
@@ -28,7 +34,7 @@ export default function ReportsPage() {
 
   function fetchReport() {
     setLoading(true);
-    const params = new URLSearchParams({ type: reportType, startDate, endDate });
+    const params = new URLSearchParams({ type: reportType, from: startDate, to: endDate });
     fetch(`/api/reports?${params}`)
       .then((r) => r.json())
       .then((res) => setData(res.data || {}))
@@ -77,31 +83,31 @@ export default function ReportsPage() {
       ) : (
         <>
           {/* Summary Report */}
-          {reportType === 'summary' && data.summary && (
+          {reportType === 'summary' && data.type === 'summary' && (
             <div className="space-y-4">
               <div className="grid gap-4 sm:grid-cols-4">
                 <Card>
                   <CardContent className="pt-6">
                     <p className="text-xs text-muted-foreground">Total Income</p>
-                    <p className="text-xl font-bold tabular-nums text-green-600">{formatCurrency(data.summary.totalIncome)}</p>
+                    <p className="text-xl font-bold tabular-nums text-green-600">{formatCurrency(data.totalIncome || '0')}</p>
                   </CardContent>
                 </Card>
                 <Card>
                   <CardContent className="pt-6">
                     <p className="text-xs text-muted-foreground">Total Expenses</p>
-                    <p className="text-xl font-bold tabular-nums text-red-600">{formatCurrency(data.summary.totalExpense)}</p>
+                    <p className="text-xl font-bold tabular-nums text-red-600">{formatCurrency(data.totalExpense || '0')}</p>
                   </CardContent>
                 </Card>
                 <Card>
                   <CardContent className="pt-6">
                     <p className="text-xs text-muted-foreground">Net Savings</p>
-                    <p className={`text-xl font-bold tabular-nums ${parseFloat(data.summary.netSavings) >= 0 ? 'text-green-600' : 'text-red-600'}`}>{formatCurrency(data.summary.netSavings)}</p>
+                    <p className={`text-xl font-bold tabular-nums ${parseFloat(data.netSavings || '0') >= 0 ? 'text-green-600' : 'text-red-600'}`}>{formatCurrency(data.netSavings || '0')}</p>
                   </CardContent>
                 </Card>
                 <Card>
                   <CardContent className="pt-6">
                     <p className="text-xs text-muted-foreground">Transactions</p>
-                    <p className="text-xl font-bold">{data.summary.transactionCount}</p>
+                    <p className="text-xl font-bold">{(data.transactionCounts?.income || 0) + (data.transactionCounts?.expense || 0) + (data.transactionCounts?.transfers || 0)}</p>
                   </CardContent>
                 </Card>
               </div>
@@ -109,46 +115,67 @@ export default function ReportsPage() {
           )}
 
           {/* Category Report */}
-          {reportType === 'income-expense' && data.categories && (
-            <Card>
-              <CardHeader><CardTitle className="text-base">Income & Expense by Category</CardTitle></CardHeader>
-              <CardContent className="p-0">
-                {data.categories.length === 0 ? (
-                  <p className="text-sm text-muted-foreground text-center py-8">No data for selected period</p>
-                ) : (
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Category</TableHead>
-                        <TableHead>Type</TableHead>
-                        <TableHead className="text-right">Total</TableHead>
-                        <TableHead className="text-right">Count</TableHead>
-                        <TableHead className="text-right">%</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {data.categories.map((cat, i) => (
-                        <TableRow key={i}>
-                          <TableCell className="font-medium">{cat.category}</TableCell>
-                          <TableCell>{cat.type}</TableCell>
-                          <TableCell className="text-right tabular-nums">{formatCurrency(cat.total)}</TableCell>
-                          <TableCell className="text-right">{cat.count}</TableCell>
-                          <TableCell className="text-right">{cat.percentage.toFixed(1)}%</TableCell>
+          {reportType === 'income-expense' && data.type === 'income-expense' && (
+            <div className="space-y-4">
+              <Card>
+                <CardHeader><CardTitle className="text-base">Income by Category</CardTitle></CardHeader>
+                <CardContent className="p-0">
+                  {(!data.incomeByCategory || data.incomeByCategory.length === 0) ? (
+                    <p className="text-sm text-muted-foreground text-center py-8">No income for selected period</p>
+                  ) : (
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Category</TableHead>
+                          <TableHead className="text-right">Total</TableHead>
                         </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                )}
-              </CardContent>
-            </Card>
+                      </TableHeader>
+                      <TableBody>
+                        {data.incomeByCategory.map((cat, i) => (
+                          <TableRow key={i}>
+                            <TableCell className="font-medium">{cat.name}</TableCell>
+                            <TableCell className="text-right tabular-nums text-green-600">{formatCurrency(cat.total)}</TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  )}
+                </CardContent>
+              </Card>
+              <Card>
+                <CardHeader><CardTitle className="text-base">Expenses by Category</CardTitle></CardHeader>
+                <CardContent className="p-0">
+                  {(!data.expenseByCategory || data.expenseByCategory.length === 0) ? (
+                    <p className="text-sm text-muted-foreground text-center py-8">No expenses for selected period</p>
+                  ) : (
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Category</TableHead>
+                          <TableHead className="text-right">Total</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {data.expenseByCategory.map((cat, i) => (
+                          <TableRow key={i}>
+                            <TableCell className="font-medium">{cat.name}</TableCell>
+                            <TableCell className="text-right tabular-nums text-red-600">{formatCurrency(cat.total)}</TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  )}
+                </CardContent>
+              </Card>
+            </div>
           )}
 
           {/* Daily Report */}
-          {reportType === 'daily' && data.daily && (
+          {reportType === 'daily' && data.type === 'daily' && (
             <Card>
               <CardHeader><CardTitle className="text-base">Daily Breakdown</CardTitle></CardHeader>
               <CardContent className="p-0">
-                {data.daily.length === 0 ? (
+                {(!data.dailyData || data.dailyData.length === 0) ? (
                   <p className="text-sm text-muted-foreground text-center py-8">No data for selected period</p>
                 ) : (
                   <Table>
@@ -161,7 +188,7 @@ export default function ReportsPage() {
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {data.daily.map((day, i) => (
+                      {data.dailyData.map((day, i) => (
                         <TableRow key={i}>
                           <TableCell className="font-medium">{new Date(day.date).toLocaleDateString('en-PK', { weekday: 'short', day: 'numeric', month: 'short' })}</TableCell>
                           <TableCell className="text-right tabular-nums text-green-600">{formatCurrency(day.income)}</TableCell>

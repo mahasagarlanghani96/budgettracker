@@ -2,12 +2,12 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { requireAuth } from '@/lib/auth';
 import { committeeContributionSchema } from '@/lib/validations/schemas';
+import { softDeleteLedgerEntry } from '@/lib/ledger';
+
+type Params = { params: Promise<{ id: string; contribId: string }> };
 
 // PUT /api/committees/:id/contributions/:contribId
-export async function PUT(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string; contribId: string }> },
-) {
+export async function PUT(request: NextRequest, { params }: Params) {
   try {
     const session = await requireAuth();
     const { id: committeeId, contribId } = await params;
@@ -29,23 +29,50 @@ export async function PUT(
       return NextResponse.json({ error: 'Contribution not found' }, { status: 404 });
     }
 
-    const contribution = await prisma.committeeContribution.update({
-      where: { id: contribId },
-      data: {
-        entryId: validated.entryId,
-        roundId: validated.roundId || null,
-        accountId: validated.accountId,
-        expectedAmount: validated.expectedAmount,
-        actualAmount: validated.actualAmount,
-        profitDeduction: validated.profitDeduction ?? 0,
-        status: validated.status ?? 'PAID',
-        transactionDate: new Date(validated.transactionDate),
-        notes: validated.notes,
-      },
-      include: { entry: true, account: true, round: true },
+    const txDate = new Date(validated.transactionDate);
+
+    const result = await prisma.$transaction(async (tx: any) => {
+      await softDeleteLedgerEntry(tx, {
+        link: { committeeContribId: contribId },
+        userId,
+        type: 'COMMITTEE_CONTRIBUTION',
+        amount: existing.actualAmount,
+        sourceAccountId: existing.accountId,
+        transactionDate: existing.transactionDate,
+      });
+
+      const contribution = await tx.committeeContribution.update({
+        where: { id: contribId },
+        data: {
+          entryId: validated.entryId,
+          roundId: validated.roundId || null,
+          accountId: validated.accountId,
+          expectedAmount: validated.expectedAmount,
+          actualAmount: validated.actualAmount,
+          profitDeduction: validated.profitDeduction ?? 0,
+          status: validated.status ?? 'PAID',
+          transactionDate: txDate,
+          notes: validated.notes,
+        },
+        include: { entry: true, account: true, round: true },
+      });
+
+      await tx.transaction.create({
+        data: {
+          userId,
+          sourceAccountId: validated.accountId,
+          type: 'COMMITTEE_CONTRIBUTION',
+          amount: validated.actualAmount,
+          description: `Committee contribution: ${committee.name}`,
+          transactionDate: txDate,
+          committeeContribId: contribId,
+        },
+      });
+
+      return contribution;
     });
 
-    return NextResponse.json({ data: contribution });
+    return NextResponse.json({ data: result });
   } catch (error: unknown) {
     if (error instanceof Error && error.message === 'Unauthorized') {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -58,10 +85,7 @@ export async function PUT(
 }
 
 // DELETE /api/committees/:id/contributions/:contribId
-export async function DELETE(
-  _request: NextRequest,
-  { params }: { params: Promise<{ id: string; contribId: string }> },
-) {
+export async function DELETE(_request: NextRequest, { params }: Params) {
   try {
     const session = await requireAuth();
     const { id: committeeId, contribId } = await params;
@@ -81,7 +105,17 @@ export async function DELETE(
       return NextResponse.json({ error: 'Contribution not found' }, { status: 404 });
     }
 
-    await prisma.committeeContribution.delete({ where: { id: contribId } });
+    await prisma.$transaction(async (tx: any) => {
+      await softDeleteLedgerEntry(tx, {
+        link: { committeeContribId: contribId },
+        userId,
+        type: 'COMMITTEE_CONTRIBUTION',
+        amount: existing.actualAmount,
+        sourceAccountId: existing.accountId,
+        transactionDate: existing.transactionDate,
+      });
+      await tx.committeeContribution.delete({ where: { id: contribId } });
+    });
 
     return NextResponse.json({ data: { success: true } });
   } catch (error: unknown) {

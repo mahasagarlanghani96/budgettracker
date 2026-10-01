@@ -36,23 +36,41 @@ export async function POST(
       return NextResponse.json({ error: 'Account not found' }, { status: 404 });
     }
 
-    const contribution = await prisma.committeeContribution.create({
-      data: {
-        committeeId,
-        entryId: validated.entryId,
-        roundId: validated.roundId || null,
-        accountId: validated.accountId,
-        expectedAmount: validated.expectedAmount,
-        actualAmount: validated.actualAmount,
-        profitDeduction: validated.profitDeduction ?? 0,
-        status: validated.status ?? 'PAID',
-        transactionDate: new Date(validated.transactionDate),
-        notes: validated.notes,
-      },
-      include: { entry: true, account: true, round: true },
+    const txDate = new Date(validated.transactionDate);
+
+    const result = await prisma.$transaction(async (tx: any) => {
+      const contribution = await tx.committeeContribution.create({
+        data: {
+          committeeId,
+          entryId: validated.entryId,
+          roundId: validated.roundId || null,
+          accountId: validated.accountId,
+          expectedAmount: validated.expectedAmount,
+          actualAmount: validated.actualAmount,
+          profitDeduction: validated.profitDeduction ?? 0,
+          status: validated.status ?? 'PAID',
+          transactionDate: txDate,
+          notes: validated.notes,
+        },
+        include: { entry: true, account: true, round: true },
+      });
+
+      await tx.transaction.create({
+        data: {
+          userId,
+          sourceAccountId: validated.accountId,
+          type: 'COMMITTEE_CONTRIBUTION',
+          amount: validated.actualAmount,
+          description: `Committee contribution: ${committee.name}`,
+          transactionDate: txDate,
+          committeeContribId: contribution.id,
+        },
+      });
+
+      return contribution;
     });
 
-    return NextResponse.json({ data: contribution }, { status: 201 });
+    return NextResponse.json({ data: result }, { status: 201 });
   } catch (error: unknown) {
     if (error instanceof Error && error.message === 'Unauthorized') {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });

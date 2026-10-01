@@ -226,20 +226,42 @@ export default function CommitteeDetailPage() {
   const latestRoundNumber = rounds.reduce((max, r) => Math.max(max, r.roundNumber as number), 0);
   const personOptions = persons.map((p) => ({ value: p.id, label: p.name }));
 
+  // Committee-wide totals
   const monthlyAmt = Number(committee.monthlyContribution) || 0;
   const totalSlots = entries.length || (committee.memberCount as number);
   const totalRounds = committee.memberCount as number;
-  const totalExpected = monthlyAmt * totalSlots * totalRounds;
-  const totalPaid = contributions
+  const committeeLifetimeValue = monthlyAmt * totalSlots * totalRounds;
+  const allPaid = contributions
     .filter((c) => (c.status as string) === 'PAID')
     .reduce((sum, c) => sum + Number(c.actualAmount), 0);
-  const totalPending = contributions
+  const allPending = contributions
     .filter((c) => (c.status as string) === 'PENDING')
     .reduce((sum, c) => sum + Number(c.actualAmount || c.expectedAmount), 0);
-  const totalReceived = receivings.reduce((sum, r) => sum + Number(r.actualAmount), 0);
-  const totalProfitEarned = contributions.reduce((sum, c) => sum + Number(c.profitDeduction || 0), 0);
-  const remainingToPay = totalExpected - totalPaid;
-  const netPosition = totalReceived - totalPaid;
+  const allReceived = receivings.reduce((sum, r) => sum + Number(r.actualAmount), 0);
+
+  // User's personal tracking
+  const userMember = members.find((m) => m.isUser === true);
+  const userSlots = userMember ? Number(userMember.slots) || 1 : 0;
+  const userEntryIds = new Set(
+    entries
+      .filter((e) => (e as Record<string, unknown>).userId === (committee as Record<string, unknown>).userId)
+      .map((e) => e.id)
+  );
+  const myExpectedPerSlot = monthlyAmt * totalRounds;
+  const myTotalExpected = myExpectedPerSlot * userSlots;
+  const myContributions = contributions.filter((c) => userEntryIds.has(c.entryId as string));
+  const myPaid = myContributions
+    .filter((c) => (c.status as string) === 'PAID')
+    .reduce((sum, c) => sum + Number(c.actualAmount), 0);
+  const myPending = myContributions
+    .filter((c) => (c.status as string) === 'PENDING')
+    .reduce((sum, c) => sum + Number(c.actualAmount || c.expectedAmount), 0);
+  const myReceived = receivings
+    .filter((r) => userEntryIds.has(r.entryId as string))
+    .reduce((sum, r) => sum + Number(r.actualAmount), 0);
+  const myProfitEarned = myContributions.reduce((sum, c) => sum + Number(c.profitDeduction || 0), 0);
+  const myRemaining = myTotalExpected - myPaid;
+  const myNetPosition = myReceived - myPaid;
 
   return (
     <div className="space-y-6">
@@ -274,43 +296,73 @@ export default function CommitteeDetailPage() {
         <Card><CardContent className="pt-6"><p className="text-xs text-muted-foreground">Progress</p><p className="text-xl font-bold">{rounds.length} / {committee.memberCount as number} rounds</p></CardContent></Card>
       </div>
 
-      {/* Financial Tracking */}
+      {/* Your Tracking */}
+      {userSlots > 0 && (
+        <Card>
+          <CardHeader><CardTitle className="text-base">Your Tracking ({userSlots} {userSlots === 1 ? 'slot' : 'slots'})</CardTitle></CardHeader>
+          <CardContent>
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+              <div className="rounded-lg border p-4">
+                <p className="text-xs text-muted-foreground">Expected per Slot</p>
+                <p className="text-lg font-bold tabular-nums">{formatCurrency(myExpectedPerSlot.toString())}</p>
+                <p className="text-xs text-muted-foreground mt-1">{formatCurrency(monthlyAmt.toString())} × {totalRounds} rounds</p>
+              </div>
+              <div className="rounded-lg border p-4">
+                <p className="text-xs text-muted-foreground">Your Total Expected</p>
+                <p className="text-lg font-bold tabular-nums">{formatCurrency(myTotalExpected.toString())}</p>
+                <p className="text-xs text-muted-foreground mt-1">{formatCurrency(myExpectedPerSlot.toString())} × {userSlots} {userSlots === 1 ? 'slot' : 'slots'}</p>
+              </div>
+              <div className="rounded-lg border p-4">
+                <p className="text-xs text-muted-foreground">Your Total Paid</p>
+                <p className="text-lg font-bold tabular-nums text-green-600">{formatCurrency(myPaid.toString())}</p>
+                {myPending > 0 && <p className="text-xs text-yellow-600 mt-1">{formatCurrency(myPending.toString())} pending</p>}
+              </div>
+              <div className="rounded-lg border p-4">
+                <p className="text-xs text-muted-foreground">Your Total Received</p>
+                <p className="text-lg font-bold tabular-nums text-blue-600">{formatCurrency(myReceived.toString())}</p>
+              </div>
+              <div className="rounded-lg border p-4">
+                <p className="text-xs text-muted-foreground">Remaining to Pay</p>
+                <p className="text-lg font-bold tabular-nums text-orange-600">{formatCurrency(myRemaining.toString())}</p>
+                <p className="text-xs text-muted-foreground mt-1">{totalRounds - rounds.length} rounds left</p>
+              </div>
+              {isWaiyk && (
+                <div className="rounded-lg border p-4">
+                  <p className="text-xs text-muted-foreground">Profit Earned</p>
+                  <p className="text-lg font-bold tabular-nums text-emerald-600">{formatCurrency(myProfitEarned.toString())}</p>
+                  <p className="text-xs text-muted-foreground mt-1">from Waiyk profit deductions</p>
+                </div>
+              )}
+              <div className="rounded-lg border p-4">
+                <p className="text-xs text-muted-foreground">Net Position</p>
+                <p className={`text-lg font-bold tabular-nums ${myNetPosition >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                  {myNetPosition >= 0 ? '+' : ''}{formatCurrency(myNetPosition.toString())}
+                </p>
+                <p className="text-xs text-muted-foreground mt-1">received − paid</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Committee Overview */}
       <Card>
-        <CardHeader><CardTitle className="text-base">Financial Tracking</CardTitle></CardHeader>
+        <CardHeader><CardTitle className="text-base">Committee Overview</CardTitle></CardHeader>
         <CardContent>
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             <div className="rounded-lg border p-4">
-              <p className="text-xs text-muted-foreground">Total Expected</p>
-              <p className="text-lg font-bold tabular-nums">{formatCurrency(totalExpected.toString())}</p>
+              <p className="text-xs text-muted-foreground">Lifetime Value</p>
+              <p className="text-lg font-bold tabular-nums">{formatCurrency(committeeLifetimeValue.toString())}</p>
               <p className="text-xs text-muted-foreground mt-1">{formatCurrency(monthlyAmt.toString())} × {totalSlots} slots × {totalRounds} rounds</p>
             </div>
             <div className="rounded-lg border p-4">
-              <p className="text-xs text-muted-foreground">Total Paid</p>
-              <p className="text-lg font-bold tabular-nums text-green-600">{formatCurrency(totalPaid.toString())}</p>
-              {totalPending > 0 && <p className="text-xs text-yellow-600 mt-1">{formatCurrency(totalPending.toString())} pending</p>}
+              <p className="text-xs text-muted-foreground">Total Collected</p>
+              <p className="text-lg font-bold tabular-nums text-green-600">{formatCurrency(allPaid.toString())}</p>
+              {allPending > 0 && <p className="text-xs text-yellow-600 mt-1">{formatCurrency(allPending.toString())} pending</p>}
             </div>
             <div className="rounded-lg border p-4">
-              <p className="text-xs text-muted-foreground">Total Received</p>
-              <p className="text-lg font-bold tabular-nums text-blue-600">{formatCurrency(totalReceived.toString())}</p>
-            </div>
-            <div className="rounded-lg border p-4">
-              <p className="text-xs text-muted-foreground">Remaining to Pay</p>
-              <p className="text-lg font-bold tabular-nums text-orange-600">{formatCurrency(remainingToPay.toString())}</p>
-              <p className="text-xs text-muted-foreground mt-1">{totalRounds - rounds.length} rounds left</p>
-            </div>
-            {isWaiyk && (
-              <div className="rounded-lg border p-4">
-                <p className="text-xs text-muted-foreground">Profit Earned</p>
-                <p className="text-lg font-bold tabular-nums text-emerald-600">{formatCurrency(totalProfitEarned.toString())}</p>
-                <p className="text-xs text-muted-foreground mt-1">from Waiyk profit deductions</p>
-              </div>
-            )}
-            <div className="rounded-lg border p-4">
-              <p className="text-xs text-muted-foreground">Net Position</p>
-              <p className={`text-lg font-bold tabular-nums ${netPosition >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                {netPosition >= 0 ? '+' : ''}{formatCurrency(netPosition.toString())}
-              </p>
-              <p className="text-xs text-muted-foreground mt-1">received − paid</p>
+              <p className="text-xs text-muted-foreground">Total Disbursed</p>
+              <p className="text-lg font-bold tabular-nums text-blue-600">{formatCurrency(allReceived.toString())}</p>
             </div>
           </div>
         </CardContent>

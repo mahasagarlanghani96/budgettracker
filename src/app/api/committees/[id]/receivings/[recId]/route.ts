@@ -2,12 +2,12 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { requireAuth } from '@/lib/auth';
 import { committeeReceivingSchema } from '@/lib/validations/schemas';
+import { softDeleteLedgerEntry } from '@/lib/ledger';
+
+type Params = { params: Promise<{ id: string; recId: string }> };
 
 // PUT /api/committees/:id/receivings/:recId
-export async function PUT(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string; recId: string }> },
-) {
+export async function PUT(request: NextRequest, { params }: Params) {
   try {
     const session = await requireAuth();
     const { id: committeeId, recId } = await params;
@@ -29,21 +29,48 @@ export async function PUT(
       return NextResponse.json({ error: 'Receiving not found' }, { status: 404 });
     }
 
-    const receiving = await prisma.committeeReceiving.update({
-      where: { id: recId },
-      data: {
-        entryId: validated.entryId,
-        roundId: validated.roundId || null,
-        accountId: validated.accountId,
-        expectedAmount: validated.expectedAmount ?? null,
-        actualAmount: validated.actualAmount,
-        transactionDate: new Date(validated.transactionDate),
-        notes: validated.notes,
-      },
-      include: { entry: true, account: true, round: true },
+    const txDate = new Date(validated.transactionDate);
+
+    const result = await prisma.$transaction(async (tx: any) => {
+      await softDeleteLedgerEntry(tx, {
+        link: { committeeRecvId: recId },
+        userId,
+        type: 'COMMITTEE_RECEIVING',
+        amount: existing.actualAmount,
+        sourceAccountId: existing.accountId,
+        transactionDate: existing.transactionDate,
+      });
+
+      const receiving = await tx.committeeReceiving.update({
+        where: { id: recId },
+        data: {
+          entryId: validated.entryId,
+          roundId: validated.roundId || null,
+          accountId: validated.accountId,
+          expectedAmount: validated.expectedAmount ?? null,
+          actualAmount: validated.actualAmount,
+          transactionDate: txDate,
+          notes: validated.notes,
+        },
+        include: { entry: true, account: true, round: true },
+      });
+
+      await tx.transaction.create({
+        data: {
+          userId,
+          destAccountId: validated.accountId,
+          type: 'COMMITTEE_RECEIVING',
+          amount: validated.actualAmount,
+          description: `Committee receiving: ${committee.name}`,
+          transactionDate: txDate,
+          committeeRecvId: recId,
+        },
+      });
+
+      return receiving;
     });
 
-    return NextResponse.json({ data: receiving });
+    return NextResponse.json({ data: result });
   } catch (error: unknown) {
     if (error instanceof Error && error.message === 'Unauthorized') {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -56,10 +83,7 @@ export async function PUT(
 }
 
 // DELETE /api/committees/:id/receivings/:recId
-export async function DELETE(
-  _request: NextRequest,
-  { params }: { params: Promise<{ id: string; recId: string }> },
-) {
+export async function DELETE(_request: NextRequest, { params }: Params) {
   try {
     const session = await requireAuth();
     const { id: committeeId, recId } = await params;
@@ -79,7 +103,17 @@ export async function DELETE(
       return NextResponse.json({ error: 'Receiving not found' }, { status: 404 });
     }
 
-    await prisma.committeeReceiving.delete({ where: { id: recId } });
+    await prisma.$transaction(async (tx: any) => {
+      await softDeleteLedgerEntry(tx, {
+        link: { committeeRecvId: recId },
+        userId,
+        type: 'COMMITTEE_RECEIVING',
+        amount: existing.actualAmount,
+        sourceAccountId: existing.accountId,
+        transactionDate: existing.transactionDate,
+      });
+      await tx.committeeReceiving.delete({ where: { id: recId } });
+    });
 
     return NextResponse.json({ data: { success: true } });
   } catch (error: unknown) {
