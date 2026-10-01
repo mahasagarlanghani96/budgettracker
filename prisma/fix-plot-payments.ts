@@ -95,11 +95,11 @@ async function main() {
 
   const payments = await prisma.plotPayment.findMany({ where: { plotId }, orderBy: { transactionDate: 'asc' } });
 
-  const instRecords = payments.filter(p => p.notes.startsWith('Installment #'));
-  const initialRec = payments.filter(p => p.notes.startsWith('Initial Payment'));
-  const after20Rec = payments.filter(p => p.notes.startsWith('After 20'));
-  const after40Rec = payments.filter(p => p.notes.startsWith('After 40'));
-  const finalRec = payments.filter(p => p.notes.startsWith('Final Payment'));
+  const instRecords = payments.filter(p => p.notes?.startsWith('Installment #'));
+  const initialRec = payments.filter(p => p.notes?.startsWith('Initial Payment'));
+  const after20Rec = payments.filter(p => p.notes?.startsWith('After 20'));
+  const after40Rec = payments.filter(p => p.notes?.startsWith('After 40'));
+  const finalRec = payments.filter(p => p.notes?.startsWith('Final Payment'));
   const totalPaid = payments.reduce((s, p) => s + Number(p.amount), 0);
   const allSC = payments.every(p => p.accountId === accountId);
 
@@ -149,7 +149,7 @@ async function main() {
     ['Installments #1-32 exist (exactly 32)', hasExact1to32, `${instNums.length} records`],
     ['No installments #33-60 created', instNums.every(n => n <= 32)],
     ['Dates match source table exactly', datesMatch],
-    ['All installments marked Paid (in notes)', instRecords.every(p => p.notes.includes('(Paid)'))],
+    ['All installments marked Paid (in notes)', instRecords.every(p => p.notes?.includes('(Paid)'))],
     ['Initial payment Rs. 200,000 exists', initialRec.length === 1 && Number(initialRec[0].amount) === 200000],
     ['After 20 months Rs. 100,000 exists', after20Rec.length === 1 && Number(after20Rec[0].amount) === 100000],
     ['No after-40-months payment (remaining)', after40Rec.length === 0],
