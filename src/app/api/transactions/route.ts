@@ -18,7 +18,7 @@ export async function GET(request: NextRequest) {
     const type = searchParams.get('type');
     const from = searchParams.get('from');
     const to = searchParams.get('to');
-    const search = searchParams.get('search');
+    const search = searchParams.get('search')?.slice(0, 200);
 
     const where: Record<string, unknown> = {
       userId: (session.user as { id: string }).id,
@@ -108,13 +108,18 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // For transfers, verify destination account
-    if (validated.type === 'TRANSFER' && validated.destAccountId) {
-      const destAccount = await prisma.account.findFirst({
-        where: { id: validated.destAccountId, userId },
-      });
-      if (!destAccount) {
-        return NextResponse.json({ error: 'Destination account not found' }, { status: 404 });
+    // For transfers, verify destination account and ensure different accounts
+    if (validated.type === 'TRANSFER') {
+      if (validated.sourceAccountId && validated.destAccountId && validated.sourceAccountId === validated.destAccountId) {
+        return NextResponse.json({ error: 'Source and destination accounts must be different' }, { status: 400 });
+      }
+      if (validated.destAccountId) {
+        const destAccount = await prisma.account.findFirst({
+          where: { id: validated.destAccountId, userId },
+        });
+        if (!destAccount) {
+          return NextResponse.json({ error: 'Destination account not found' }, { status: 404 });
+        }
       }
     }
 

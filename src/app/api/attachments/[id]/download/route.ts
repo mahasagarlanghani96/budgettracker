@@ -30,7 +30,7 @@ export async function GET(
     return new NextResponse(buffer, {
       headers: {
         'Content-Type': attachment.mimeType,
-        'Content-Disposition': `attachment; filename="${attachment.fileName}"`,
+        'Content-Disposition': `attachment; filename="${attachment.fileName.replace(/[\r\n"\\]/g, '_')}"`,
         'Content-Length': String(buffer.length),
       },
     });

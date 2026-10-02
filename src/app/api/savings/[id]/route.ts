@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { requireAuth } from '@/lib/auth';
-import { savingsGoalSchema } from '@/lib/validations/schemas';
+import { savingsGoalUpdateSchema } from '@/lib/validations/schemas';
 import Decimal from 'decimal.js';
 
 // GET /api/savings/:id
@@ -46,7 +46,7 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
     const session = await requireAuth();
     const { id } = await params;
     const body = await request.json();
-    const validated = savingsGoalSchema.parse(body);
+    const validated = savingsGoalUpdateSchema.parse(body);
 
     const existing = await prisma.savingsGoal.findFirst({
       where: { id, userId: (session.user as { id: string }).id },
@@ -63,7 +63,7 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
         targetAmount: validated.targetAmount,
         targetDate: validated.targetDate ? new Date(validated.targetDate) : validated.targetDate === null ? null : undefined,
         notes: validated.notes,
-        isActive: typeof body.isActive === 'boolean' ? body.isActive : undefined,
+        isActive: validated.isActive,
       },
     });
 

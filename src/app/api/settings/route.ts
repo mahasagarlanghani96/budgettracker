@@ -45,9 +45,28 @@ export async function PUT(request: NextRequest) {
 
     const updateData: Record<string, unknown> = {};
 
-    if (body.name) updateData.name = body.name;
-    if (body.currency) updateData.currency = body.currency;
-    if (body.timezone) updateData.timezone = body.timezone;
+    if (body.name !== undefined) {
+      const trimmed = String(body.name).trim();
+      if (trimmed.length < 2) {
+        return NextResponse.json({ error: 'Name must be at least 2 characters' }, { status: 400 });
+      }
+      if (trimmed.length > 100) {
+        return NextResponse.json({ error: 'Name must be at most 100 characters' }, { status: 400 });
+      }
+      updateData.name = trimmed;
+    }
+    if (body.currency) {
+      if (typeof body.currency !== 'string' || body.currency.length > 10) {
+        return NextResponse.json({ error: 'Invalid currency' }, { status: 400 });
+      }
+      updateData.currency = body.currency;
+    }
+    if (body.timezone) {
+      if (typeof body.timezone !== 'string' || body.timezone.length > 50) {
+        return NextResponse.json({ error: 'Invalid timezone' }, { status: 400 });
+      }
+      updateData.timezone = body.timezone;
+    }
 
     // Password change
     if (body.currentPassword && body.newPassword) {
@@ -66,6 +85,9 @@ export async function PUT(request: NextRequest) {
 
       if (body.newPassword.length < 8) {
         return NextResponse.json({ error: 'New password must be at least 8 characters' }, { status: 400 });
+      }
+      if (!/[A-Z]/.test(body.newPassword) || !/[a-z]/.test(body.newPassword) || !/[0-9]/.test(body.newPassword)) {
+        return NextResponse.json({ error: 'Password must contain uppercase, lowercase, and a number' }, { status: 400 });
       }
 
       updateData.passwordHash = await bcrypt.hash(body.newPassword, 12);

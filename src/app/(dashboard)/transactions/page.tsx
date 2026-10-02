@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useRef } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -11,6 +11,7 @@ import { PageLoading, EmptyState } from '@/components/ui/loading';
 import { formatCurrency, formatDate } from '@/lib/utils';
 import { Plus, Search, ArrowLeftRight, Pencil, Trash2, Lock, AlertCircle } from 'lucide-react';
 import Link from 'next/link';
+import { useConfirm } from '@/hooks/use-confirm';
 
 // Editable types: plain ledger entries + committee/plot types (the API now
 // syncs the linked module record on edit/delete).  Loan/Savings/Investment
@@ -66,6 +67,17 @@ export default function TransactionsPage() {
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [filters, setFilters] = useState({ type: '', search: '', from: '', to: '' });
+  const [searchInput, setSearchInput] = useState('');
+  const searchTimer = useRef<ReturnType<typeof setTimeout>>();
+
+  useEffect(() => {
+    clearTimeout(searchTimer.current);
+    searchTimer.current = setTimeout(() => {
+      setFilters((f) => ({ ...f, search: searchInput }));
+      setPage(1);
+    }, 300);
+    return () => clearTimeout(searchTimer.current);
+  }, [searchInput]);
 
   const fetchTransactions = useCallback(() => {
     const params = new URLSearchParams();
@@ -90,9 +102,10 @@ export default function TransactionsPage() {
   useEffect(() => { fetchTransactions(); }, [fetchTransactions]);
 
   const [deleteError, setDeleteError] = useState<string | null>(null);
+  const { confirm, ConfirmDialog } = useConfirm();
 
   async function handleDelete(tx: Transaction) {
-    if (!confirm('Delete this transaction? This cannot be undone.')) return;
+    if (!(await confirm('Delete this transaction? This cannot be undone.'))) return;
     setDeleteError(null);
     const res = await fetch(`/api/transactions/${tx.id}`, { method: 'DELETE' });
     if (res.ok) {
@@ -105,6 +118,7 @@ export default function TransactionsPage() {
 
   return (
     <div className="space-y-6">
+      {ConfirmDialog}
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold">Transactions</h1>
         <Link href="/transactions/new">
@@ -121,8 +135,8 @@ export default function TransactionsPage() {
               <Input
                 placeholder="Search..."
                 className="pl-9"
-                value={filters.search}
-                onChange={(e) => { setFilters({ ...filters, search: e.target.value }); setPage(1); }}
+                value={searchInput}
+                onChange={(e) => setSearchInput(e.target.value)}
               />
             </div>
             <Select

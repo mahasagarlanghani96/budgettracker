@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback } from 'react';
+import { useSyncExternalStore, useCallback } from 'react';
 
 export type ToastVariant = 'default' | 'destructive' | 'success';
 
@@ -11,22 +11,55 @@ export interface Toast {
   variant: ToastVariant;
 }
 
+let toasts: Toast[] = [];
+let listeners: Array<() => void> = [];
+let idCounter = 0;
+
+function emitChange() {
+  for (const listener of listeners) {
+    listener();
+  }
+}
+
+function subscribe(listener: () => void) {
+  listeners.push(listener);
+  return () => {
+    listeners = listeners.filter((l) => l !== listener);
+  };
+}
+
+function getSnapshot() {
+  return toasts;
+}
+
+function addToast({ title, description, variant = 'default' }: Omit<Toast, 'id'>) {
+  const id = `toast-${++idCounter}`;
+  toasts = [...toasts, { id, title, description, variant }];
+  emitChange();
+
+  setTimeout(() => {
+    toasts = toasts.filter((t) => t.id !== id);
+    emitChange();
+  }, 4000);
+}
+
+function dismissToast(id: string) {
+  toasts = toasts.filter((t) => t.id !== id);
+  emitChange();
+}
+
 export function useToast() {
-  const [toasts, setToasts] = useState<Toast[]>([]);
+  const currentToasts = useSyncExternalStore(subscribe, getSnapshot, getSnapshot);
 
-  const toast = useCallback(({ title, description, variant = 'default' }: Omit<Toast, 'id'>) => {
-    const id = Date.now().toString();
-    setToasts((prev) => [...prev, { id, title, description, variant }]);
+  const toast = useCallback(
+    (opts: Omit<Toast, 'id'>) => addToast(opts),
+    []
+  );
 
-    // Auto-dismiss after 4 seconds
-    setTimeout(() => {
-      setToasts((prev) => prev.filter((t) => t.id !== id));
-    }, 4000);
-  }, []);
+  const dismiss = useCallback(
+    (id: string) => dismissToast(id),
+    []
+  );
 
-  const dismiss = useCallback((id: string) => {
-    setToasts((prev) => prev.filter((t) => t.id !== id));
-  }, []);
-
-  return { toasts, toast, dismiss };
+  return { toasts: currentToasts, toast, dismiss };
 }

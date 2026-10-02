@@ -13,6 +13,7 @@ import { FormField } from '@/components/forms/FormField';
 import { useResourceForm } from '@/hooks/useResourceForm';
 import { categorySchema, categoryUpdateSchema } from '@/lib/validations/schemas';
 import { Tags, Plus, Pencil, Trash2 } from 'lucide-react';
+import { useConfirm } from '@/hooks/use-confirm';
 
 interface Category {
   id: string;
@@ -37,6 +38,7 @@ export default function CategoriesPage() {
   const [showForm, setShowForm] = useState(false);
   const [editing, setEditing] = useState<Category | null>(null);
   const [deleteError, setDeleteError] = useState<string | null>(null);
+  const { confirm, ConfirmDialog } = useConfirm();
 
   const fetchCategories = useCallback(() => {
     fetch('/api/categories')
@@ -92,7 +94,7 @@ export default function CategoriesPage() {
   }
 
   async function handleDelete(cat: Category) {
-    if (!confirm(`Delete "${cat.name}"? This cannot be undone.`)) return;
+    if (!(await confirm(`Delete "${cat.name}"? This cannot be undone.`))) return;
     setDeleteError(null);
     const res = await fetch(`/api/categories/${cat.id}`, { method: 'DELETE' });
     if (res.ok) { fetchCategories(); }
@@ -171,6 +173,8 @@ export default function CategoriesPage() {
           })}
         </div>
       )}
+
+      {ConfirmDialog}
 
       {/* Create / Edit Category Modal */}
       <Dialog open={showForm} onOpenChange={(open) => !open && closeForm()}>

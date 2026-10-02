@@ -16,6 +16,7 @@ import { useResourceForm } from '@/hooks/useResourceForm';
 import { loanUpdateSchema, loanRepaymentInputSchema } from '@/lib/validations/schemas';
 import { formatCurrency, formatDate } from '@/lib/utils';
 import { ArrowLeft, Plus, Pencil, Trash2 } from 'lucide-react';
+import { useConfirm } from '@/hooks/use-confirm';
 import Link from 'next/link';
 
 const loanStatusOptions = [
@@ -25,9 +26,8 @@ const loanStatusOptions = [
   { value: 'CANCELLED', label: 'Cancelled' },
 ];
 
-const today = new Date().toISOString().split('T')[0];
-
 export default function LoanDetailPage() {
+  const today = new Date().toISOString().split('T')[0];
   const { id } = useParams<{ id: string }>();
   const router = useRouter();
   const [loan, setLoan] = useState<Record<string, unknown> | null>(null);
@@ -39,6 +39,7 @@ export default function LoanDetailPage() {
   const [settleError, setSettleError] = useState<string | null>(null);
   const [deleteError, setDeleteError] = useState<string | null>(null);
   const [deleteRepayError, setDeleteRepayError] = useState<string | null>(null);
+  const { confirm, ConfirmDialog } = useConfirm();
 
   const fetchLoan = useCallback(() => {
     fetch(`/api/loans/${id}`)
@@ -105,11 +106,15 @@ export default function LoanDetailPage() {
       notes: (loan.notes as string) || '',
       isPrivate: (loan.isPrivate as boolean) ?? true,
     });
+    setSettleError(null);
+    setDeleteError(null);
+    setDeleteRepayError(null);
     setShowEdit(true);
   }
 
   function openEditRepayment(r: Record<string, unknown>) {
     setEditingRepayment(r.id as string);
+    setDeleteRepayError(null);
     repayEditForm.setForm({
       amount: parseFloat((r.amount as { toString(): string }).toString()) || 0,
       accountId: (r.accountId as string) || '',
@@ -119,7 +124,11 @@ export default function LoanDetailPage() {
   }
 
   async function handleSettle() {
-    if (!confirm('Mark this loan as settled?')) return;
+    const remaining = loan ? parseFloat((loan.remainingAmount as { toString(): string }).toString()) : 0;
+    const msg = remaining > 0
+      ? `This loan still has a remaining balance of ${remaining.toLocaleString()}. Mark as settled anyway?`
+      : 'Mark this loan as settled?';
+    if (!(await confirm(msg))) return;
     setSettleError(null);
     const res = await fetch(`/api/loans/${id}`, {
       method: 'PUT',
@@ -131,7 +140,7 @@ export default function LoanDetailPage() {
   }
 
   async function handleDelete() {
-    if (!confirm('Delete this loan? This cannot be undone.')) return;
+    if (!(await confirm('Delete this loan? This cannot be undone.'))) return;
     setDeleteError(null);
     const res = await fetch(`/api/loans/${id}`, { method: 'DELETE' });
     if (res.ok) { router.push('/loans'); }
@@ -139,7 +148,7 @@ export default function LoanDetailPage() {
   }
 
   async function handleDeleteRepayment(repaymentId: string) {
-    if (!confirm('Delete this repayment? This cannot be undone.')) return;
+    if (!(await confirm('Delete this repayment? This cannot be undone.'))) return;
     setDeleteRepayError(null);
     const res = await fetch(`/api/loans/${id}/repayments/${repaymentId}`, { method: 'DELETE' });
     if (res.ok) { fetchLoan(); }
@@ -155,6 +164,7 @@ export default function LoanDetailPage() {
 
   return (
     <div className="space-y-6">
+      {ConfirmDialog}
       <div className="flex items-center gap-4">
         <Link href="/loans"><Button variant="ghost" size="icon"><ArrowLeft className="h-4 w-4" /></Button></Link>
         <div className="flex-1">
@@ -169,7 +179,7 @@ export default function LoanDetailPage() {
           <Button variant="outline" onClick={handleDelete}><Trash2 className="h-4 w-4 mr-1" /> Delete</Button>
           {loan.status === 'ACTIVE' && (
             <>
-              <Button onClick={() => setShowRepayment(true)}><Plus className="h-4 w-4 mr-1" /> Repayment</Button>
+              <Button onClick={() => { repayForm.reset(); setShowRepayment(true); }}><Plus className="h-4 w-4 mr-1" /> Repayment</Button>
               <Button variant="outline" onClick={handleSettle}>Settle</Button>
             </>
           )}

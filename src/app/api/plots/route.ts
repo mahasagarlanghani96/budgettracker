@@ -56,7 +56,7 @@ export async function POST(request: NextRequest) {
     const plot = await prisma.plot.create({
       data: {
         userId: (session.user as { id: string }).id,
-        name: validated.name,
+        name: validated.name.trim(),
         location: validated.location,
         totalPrice: validated.totalPrice,
         notes: validated.notes,

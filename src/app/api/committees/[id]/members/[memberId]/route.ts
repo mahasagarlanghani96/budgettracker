@@ -89,15 +89,38 @@ export async function DELETE(_request: NextRequest, { params }: Params) {
       );
     }
 
-    // Delete entries for the member's slots (last N entries by slot number)
-    const entries = await prisma.committeeEntry.findMany({
+    // Delete entries belonging to this member's userId (if isUser) or that were
+    // created for this member's slot range. Since CommitteeEntry has no direct FK
+    // to CommitteeMember, we identify them by the userId that matches and the
+    // slot numbers that belong to this member.
+    // Find all entries, determine which belong to this member by matching the
+    // member's userId (for isUser members) or by finding the entries that were
+    // created when this member was added (highest slot numbers matching member.slots).
+    const allEntries = await prisma.committeeEntry.findMany({
       where: { committeeId },
-      orderBy: { slotNumber: 'desc' },
-      take: member.slots,
+      orderBy: { slotNumber: 'asc' },
     });
 
+    // For isUser members, match by userId; for others, take the last N entries
+    // that were added for this member (identified by matching slot count from the end)
+    let entriesToDelete: typeof allEntries;
+    if (member.isUser) {
+      entriesToDelete = allEntries.filter(e => e.userId === userId).slice(-member.slots);
+    } else {
+      // Find entries that belong to this specific member by looking at the entries
+      // that were created for their person. Since entries store userId (the committee
+      // owner), we must match by slot position. Get the highest N slot numbers.
+      const maxSlot = allEntries.length > 0 ? Math.max(...allEntries.map(e => e.slotNumber)) : 0;
+      const memberSlotStart = maxSlot - member.slots + 1;
+      entriesToDelete = allEntries.filter(e => e.slotNumber >= memberSlotStart);
+    }
+
+    if (entriesToDelete.length === 0) {
+      entriesToDelete = [];
+    }
+
     await prisma.$transaction(async (tx: any) => {
-      for (const entry of entries) {
+      for (const entry of entriesToDelete) {
         await tx.committeeEntry.delete({ where: { id: entry.id } });
       }
       await tx.committeeMember.delete({ where: { id: memberId } });

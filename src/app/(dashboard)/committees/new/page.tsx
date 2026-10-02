@@ -14,20 +14,20 @@ import { committeeSchema } from '@/lib/validations/schemas';
 import { ArrowLeft } from 'lucide-react';
 import Link from 'next/link';
 
-const today = new Date().toISOString().split('T')[0];
-
-const initialForm = {
-  name: '',
-  type: 'NORMAL',
-  memberCount: 0,
-  monthlyContribution: 0,
-  totalAmount: null as number | null,
-  startDate: today,
-  endDate: null as string | null,
-  userSlots: 1,
-  notes: '',
-  isPrivate: true,
-};
+function getInitialForm() {
+  return {
+    name: '',
+    type: 'NORMAL',
+    memberCount: 0,
+    monthlyContribution: 0,
+    totalAmount: null as number | null,
+    startDate: new Date().toISOString().split('T')[0],
+    endDate: null as string | null,
+    userSlots: 1,
+    notes: '',
+    isPrivate: true,
+  };
+}
 
 export default function NewCommitteePage() {
   const router = useRouter();
@@ -35,7 +35,7 @@ export default function NewCommitteePage() {
 
   const { form, errors, serverError, saving, setField, handleSubmit } = useResourceForm({
     schema: committeeSchema,
-    initial: initialForm,
+    initial: getInitialForm(),
     onSubmit: async (data) => {
       const res = await fetch('/api/committees', {
         method: 'POST',

@@ -46,17 +46,17 @@ interface Account {
   isActive: boolean;
 }
 
-const today = new Date().toISOString().split('T')[0];
-
-const initialForm = {
-  name: '',
-  accountType: 'CASH',
-  openingBalance: 0,
-  openingDate: today,
-  notes: '',
-  currency: 'PKR',
-  isShared: false,
-};
+function getInitialForm() {
+  return {
+    name: '',
+    accountType: 'CASH',
+    openingBalance: 0,
+    openingDate: new Date().toISOString().split('T')[0],
+    notes: '',
+    currency: 'PKR',
+    isShared: false,
+  };
+}
 
 export default function AccountsPage() {
   const [accounts, setAccounts] = useState<Account[]>([]);
@@ -66,7 +66,7 @@ export default function AccountsPage() {
   const fetchAccounts = useCallback(() => {
     fetch('/api/accounts')
       .then((r) => r.json())
-      .then((res) => setAccounts(res.data || []))
+      .then((res) => setAccounts([...(res.data || []), ...(res.shared || [])]))
       .catch(console.error)
       .finally(() => setLoading(false));
   }, []);
@@ -75,7 +75,7 @@ export default function AccountsPage() {
 
   const { form, errors, serverError, saving, setField, handleSubmit, reset } = useResourceForm({
     schema: accountSchema,
-    initial: initialForm,
+    initial: getInitialForm(),
     onSubmit: (data) =>
       fetch('/api/accounts', {
         method: 'POST',
@@ -131,7 +131,7 @@ export default function AccountsPage() {
                       </div>
                     </div>
                     <Badge variant="outline" className="text-xs">
-                      {account.accountType.replace('_', ' ')}
+                      {account.accountType.replaceAll('_', ' ')}
                     </Badge>
                   </div>
                 </CardHeader>
@@ -181,7 +181,7 @@ export default function AccountsPage() {
               />
             </FormField>
 
-            <FormField label="Opening Date" error={errors.openingDate}>
+            <FormField label="Opening Date (defaults to today)" error={errors.openingDate}>
               <Input
                 type="date"
                 value={form.openingDate as string}

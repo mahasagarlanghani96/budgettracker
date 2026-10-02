@@ -12,6 +12,9 @@ export async function GET(request: NextRequest) {
     if (!q || q.length < 2) {
       return NextResponse.json({ data: { transactions: [], accounts: [], persons: [], loans: [] } });
     }
+    if (q.length > 200) {
+      return NextResponse.json({ error: 'Search query too long' }, { status: 400 });
+    }
 
     const userId = (session.user as { id: string }).id;
     const search = { contains: q, mode: 'insensitive' as const };

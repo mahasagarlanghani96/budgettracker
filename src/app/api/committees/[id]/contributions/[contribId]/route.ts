@@ -31,7 +31,10 @@ export async function PUT(request: NextRequest, { params }: Params) {
 
     const txDate = new Date(validated.transactionDate);
 
+    const isHistorical = body.isHistorical ?? false;
+
     const result = await prisma.$transaction(async (tx: any) => {
+      // Soft-delete old ledger entry first
       await softDeleteLedgerEntry(tx, {
         link: { committeeContribId: contribId },
         userId,
@@ -40,6 +43,22 @@ export async function PUT(request: NextRequest, { params }: Params) {
         sourceAccountId: existing.accountId,
         transactionDate: existing.transactionDate,
       });
+
+      // Verify the old entry was actually soft-deleted before creating replacement
+      const orphanCheck = await tx.transaction.findFirst({
+        where: {
+          committeeContribId: contribId,
+          userId,
+          isDeleted: false,
+        },
+      });
+      if (orphanCheck) {
+        // Force soft-delete the specific linked entry to prevent double-counting
+        await tx.transaction.update({
+          where: { id: orphanCheck.id },
+          data: { isDeleted: true, deletedAt: new Date() },
+        });
+      }
 
       const contribution = await tx.committeeContribution.update({
         where: { id: contribId },
@@ -66,6 +85,7 @@ export async function PUT(request: NextRequest, { params }: Params) {
           description: `Committee contribution: ${committee.name}`,
           transactionDate: txDate,
           committeeContribId: contribId,
+          isHistorical,
         },
       });
 

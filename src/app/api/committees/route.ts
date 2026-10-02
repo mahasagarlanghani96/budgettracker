@@ -41,7 +41,7 @@ export async function POST(request: NextRequest) {
     const committee = await prisma.committee.create({
       data: {
         userId: (session.user as { id: string }).id,
-        name: validated.name,
+        name: validated.name.trim(),
         type: validated.type,
         memberCount: validated.memberCount,
         monthlyContribution: validated.monthlyContribution,

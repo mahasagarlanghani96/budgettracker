@@ -10,6 +10,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/modal';
 import { FormField } from '@/components/forms/FormField';
 import { formatCurrency, formatDate } from '@/lib/utils';
+import { useConfirm } from '@/hooks/use-confirm';
 import { Plus, Pencil, Trash2, ArrowDownCircle, ArrowUpCircle } from 'lucide-react';
 
 interface Entry {
@@ -76,6 +77,8 @@ interface ContributionsSectionProps {
   rounds: Round[];
   accounts: Account[];
   monthlyContribution: string;
+  topLevelContributions?: Contribution[];
+  topLevelReceivings?: Receiving[];
   onRefresh: () => void;
 }
 
@@ -85,6 +88,8 @@ export function ContributionsSection({
   rounds,
   accounts,
   monthlyContribution,
+  topLevelContributions,
+  topLevelReceivings,
   onRefresh,
 }: ContributionsSectionProps) {
   const [showAddContrib, setShowAddContrib] = useState(false);
@@ -93,6 +98,7 @@ export function ContributionsSection({
   const [editingReceiving, setEditingReceiving] = useState<Receiving | null>(null);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const { confirm, ConfirmDialog } = useConfirm();
 
   const [contribForm, setContribForm] = useState({
     entryId: '', roundId: '', accountId: '', expectedAmount: monthlyContribution,
@@ -209,13 +215,13 @@ export function ContributionsSection({
   }
 
   async function handleDeleteContrib(contribId: string) {
-    if (!confirm('Delete this contribution?')) return;
+    if (!(await confirm('Delete this contribution?'))) return;
     const res = await fetch(`/api/committees/${committeeId}/contributions/${contribId}`, { method: 'DELETE' });
     if (res.ok) onRefresh();
   }
 
   async function handleDeleteReceiving(recId: string) {
-    if (!confirm('Delete this receiving?')) return;
+    if (!(await confirm('Delete this receiving?'))) return;
     const res = await fetch(`/api/committees/${committeeId}/receivings/${recId}`, { method: 'DELETE' });
     if (res.ok) onRefresh();
   }
@@ -252,15 +258,31 @@ export function ContributionsSection({
     setShowAddReceiving(true);
   }
 
-  const allContributions = rounds.flatMap((r) =>
+  // Contributions linked to rounds
+  const roundContributions = rounds.flatMap((r) =>
     r.contributions.map((c) => ({ ...c, roundNumber: r.roundNumber }))
   );
-  const allReceivings = rounds.flatMap((r) =>
+  // Contributions NOT linked to any round (roundId is null)
+  const roundContribIds = new Set(roundContributions.map((c) => c.id));
+  const unlinkedContributions = (topLevelContributions || [])
+    .filter((c) => !c.roundId && !roundContribIds.has(c.id))
+    .map((c) => ({ ...c, roundNumber: null as number | null }));
+  const allContributions = [...roundContributions, ...unlinkedContributions];
+
+  // Receivings linked to rounds
+  const roundReceivings = rounds.flatMap((r) =>
     r.receivings.map((rec) => ({ ...rec, roundNumber: r.roundNumber }))
   );
+  // Receivings NOT linked to any round
+  const roundRecIds = new Set(roundReceivings.map((r) => r.id));
+  const unlinkedReceivings = (topLevelReceivings || [])
+    .filter((r) => !r.roundId && !roundRecIds.has(r.id))
+    .map((r) => ({ ...r, roundNumber: null as number | null }));
+  const allReceivings = [...roundReceivings, ...unlinkedReceivings];
 
   return (
     <>
+      {ConfirmDialog}
       {/* Contributions Card */}
       <Card>
         <CardHeader className="flex flex-row items-center justify-between pb-3">
@@ -295,7 +317,7 @@ export function ContributionsSection({
               <TableBody>
                 {allContributions.map((c) => (
                   <TableRow key={c.id}>
-                    <TableCell>R{c.roundNumber}</TableCell>
+                    <TableCell>{c.roundNumber != null ? `R${c.roundNumber}` : '—'}</TableCell>
                     <TableCell>Slot {c.entry?.slotNumber ?? '—'}</TableCell>
                     <TableCell>{c.account?.name ?? '—'}</TableCell>
                     <TableCell className="text-right tabular-nums">{formatCurrency(c.actualAmount.toString())}</TableCell>
@@ -348,7 +370,7 @@ export function ContributionsSection({
               <TableBody>
                 {allReceivings.map((r) => (
                   <TableRow key={r.id}>
-                    <TableCell>R{r.roundNumber}</TableCell>
+                    <TableCell>{r.roundNumber != null ? `R${r.roundNumber}` : '—'}</TableCell>
                     <TableCell>Slot {r.entry?.slotNumber ?? '—'}</TableCell>
                     <TableCell>{r.account?.name ?? '—'}</TableCell>
                     <TableCell className="text-right tabular-nums">{formatCurrency(r.actualAmount.toString())}</TableCell>

@@ -13,6 +13,7 @@ import { FormField } from '@/components/forms/FormField';
 import { useResourceForm } from '@/hooks/useResourceForm';
 import { personSchema, personUpdateSchema } from '@/lib/validations/schemas';
 import { Contact, Plus, Pencil, Trash2 } from 'lucide-react';
+import { useConfirm } from '@/hooks/use-confirm';
 
 interface Person {
   id: string;
@@ -47,6 +48,7 @@ export default function PeoplePage() {
   const [showForm, setShowForm] = useState(false);
   const [editing, setEditing] = useState<Person | null>(null);
   const [deleteError, setDeleteError] = useState<string | null>(null);
+  const { confirm, ConfirmDialog } = useConfirm();
 
   const fetchPersons = useCallback(() => {
     fetch('/api/persons')
@@ -109,10 +111,10 @@ export default function PeoplePage() {
   }
 
   async function handleDelete(p: Person) {
-    if (!confirm(`Delete "${p.name}"? This cannot be undone.`)) return;
+    if (!(await confirm(`Delete "${p.name}"? This cannot be undone.`))) return;
     setDeleteError(null);
     const res = await fetch(`/api/persons/${p.id}`, { method: 'DELETE' });
-    if (res.ok) { fetchPersons(); }
+    if (res.ok) { setDeleteError(null); fetchPersons(); }
     else {
       try { const d = await res.json(); setDeleteError(d.error || 'Failed to delete person'); }
       catch { setDeleteError('Failed to delete person'); }
@@ -171,6 +173,8 @@ export default function PeoplePage() {
           </CardContent>
         </Card>
       )}
+
+      {ConfirmDialog}
 
       {/* Create / Edit Person Modal */}
       <Dialog open={showForm} onOpenChange={(open) => !open && closeForm()}>

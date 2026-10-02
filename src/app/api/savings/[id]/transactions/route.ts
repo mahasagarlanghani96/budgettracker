@@ -25,6 +25,23 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
       return NextResponse.json({ error: 'Account not found' }, { status: 404 });
     }
 
+    if (validated.type === 'WITHDRAWAL') {
+      const existing = await prisma.savingsTransaction.findMany({
+        where: { savingsGoalId: goalId },
+        select: { type: true, amount: true },
+      });
+      let balance = 0;
+      for (const t of existing) {
+        balance += t.type === 'DEPOSIT' ? parseFloat(t.amount.toString()) : -parseFloat(t.amount.toString());
+      }
+      if (validated.amount > balance) {
+        return NextResponse.json(
+          { error: `Withdrawal amount (${validated.amount}) exceeds current savings balance (${balance.toFixed(2)})` },
+          { status: 400 }
+        );
+      }
+    }
+
     const txDate = validated.transactionDate ? new Date(validated.transactionDate) : new Date();
 
     const result = await prisma.$transaction(async (tx: any) => {
@@ -40,11 +57,15 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
       });
 
       // Create linked financial transaction
+      // DEPOSIT = money leaves account (source), WITHDRAWAL = money returns to account (dest)
       const financialTxType = validated.type === 'DEPOSIT' ? 'SAVINGS_DEPOSIT' : 'SAVINGS_WITHDRAWAL';
+      const accountField = validated.type === 'DEPOSIT'
+        ? { sourceAccountId: validated.accountId }
+        : { destAccountId: validated.accountId };
       await tx.transaction.create({
         data: {
           userId,
-          sourceAccountId: validated.accountId,
+          ...accountField,
           type: financialTxType,
           amount: validated.amount,
           description: `Savings ${validated.type.toLowerCase()}: ${goal.name}`,

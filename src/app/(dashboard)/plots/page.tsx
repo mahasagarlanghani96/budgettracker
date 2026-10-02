@@ -13,6 +13,7 @@ import { FormField } from '@/components/forms/FormField';
 import { useResourceForm } from '@/hooks/useResourceForm';
 import { plotSchema, plotUpdateSchema, plotPaymentInputSchema } from '@/lib/validations/schemas';
 import { formatCurrency, formatDate } from '@/lib/utils';
+import { useConfirm } from '@/hooks/use-confirm';
 import { MapPin, Plus, Banknote, Pencil, Trash2, History } from 'lucide-react';
 
 interface PlotPayment {
@@ -36,9 +37,8 @@ interface Plot {
   notes?: string | null;
 }
 
-const today = new Date().toISOString().split('T')[0];
-
 export default function PlotsPage() {
+  const today = new Date().toISOString().split('T')[0];
   const [plots, setPlots] = useState<Plot[]>([]);
   const [accounts, setAccounts] = useState<Array<{ id: string; name: string }>>([]);
   const [loading, setLoading] = useState(true);
@@ -49,6 +49,7 @@ export default function PlotsPage() {
   const [payments, setPayments] = useState<PlotPayment[]>([]);
   const [historyLoading, setHistoryLoading] = useState(false);
   const [editingPayment, setEditingPayment] = useState<PlotPayment | null>(null);
+  const { confirm, ConfirmDialog } = useConfirm();
 
   function fetchPlots() {
     fetch('/api/plots').then((r) => r.json()).then((res) => setPlots(res.data || [])).catch(console.error).finally(() => setLoading(false));
@@ -120,7 +121,7 @@ export default function PlotsPage() {
 
   async function handleDeletePayment(p: PlotPayment) {
     if (!historyPlot) return;
-    if (!confirm('Delete this payment? This cannot be undone.')) return;
+    if (!(await confirm('Delete this payment? This cannot be undone.'))) return;
     const res = await fetch(`/api/plots/${historyPlot.id}/payments/${p.id}`, { method: 'DELETE' });
     if (res.ok) { fetchHistory(historyPlot.id); fetchPlots(); }
   }
@@ -137,9 +138,13 @@ export default function PlotsPage() {
   }
 
   async function handleDelete(plot: Plot) {
-    if (!confirm(`Delete "${plot.name}"? This cannot be undone.`)) return;
+    if (!(await confirm(`Delete "${plot.name}"? This cannot be undone.`))) return;
     const res = await fetch(`/api/plots/${plot.id}`, { method: 'DELETE' });
-    if (res.ok) fetchPlots();
+    if (res.ok) { fetchPlots(); }
+    else {
+      try { const d = await res.json(); alert(d.error || 'Failed to delete plot'); }
+      catch { alert('Failed to delete plot'); }
+    }
   }
 
   if (loading) return <PageLoading />;
@@ -148,6 +153,7 @@ export default function PlotsPage() {
 
   return (
     <div className="space-y-6">
+      {ConfirmDialog}
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold">Plot Payments</h1>
         <Button onClick={() => setShowCreate(true)}><Plus className="h-4 w-4 mr-2" /> Add Plot</Button>
@@ -181,7 +187,7 @@ export default function PlotsPage() {
                   </div>
                   <div className="flex justify-between mt-1">
                     <p className="text-xs text-muted-foreground">{plot.progress.toFixed(1)}% paid</p>
-                    <p className="text-xs text-muted-foreground">Remaining: {formatCurrency(plot.remainingAmount)}</p>
+                    <p className="text-xs text-muted-foreground">Remaining: {formatCurrency(Math.max(0, parseFloat(plot.remainingAmount)).toString())}</p>
                   </div>
                 </div>
                 <div className="flex gap-2">

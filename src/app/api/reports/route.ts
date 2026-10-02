@@ -16,9 +16,14 @@ export async function GET(request: NextRequest) {
     const to = searchParams.get('to')
       ? new Date(searchParams.get('to')!)
       : new Date();
+    if (isNaN(from.getTime()) || isNaN(to.getTime())) {
+      return NextResponse.json({ error: 'Invalid date format' }, { status: 400 });
+    }
     const reportType = searchParams.get('type') || 'summary';
 
     const dateFilter = { gte: from, lte: to };
+    const allInflowTypes: string[] = ['INCOME', 'LOAN_REPAYMENT_RECEIVED', 'COMMITTEE_RECEIVING', 'SAVINGS_WITHDRAWAL', 'INVESTMENT_RETURN', 'LOAN_TAKEN'];
+    const allOutflowTypes: string[] = ['EXPENSE', 'LOAN_GIVEN', 'LOAN_REPAYMENT_MADE', 'COMMITTEE_CONTRIBUTION', 'SAVINGS_DEPOSIT', 'INVESTMENT'];
 
     if (reportType === 'income-expense') {
       // Group income and expenses by category
@@ -27,7 +32,7 @@ export async function GET(request: NextRequest) {
           userId,
           isDeleted: false,
           transactionDate: dateFilter,
-          type: { in: ['INCOME', 'EXPENSE'] },
+          type: { in: [...allInflowTypes, ...allOutflowTypes] as any },
         },
         include: { category: true },
       });
@@ -38,7 +43,7 @@ export async function GET(request: NextRequest) {
       for (const tx of transactions) {
         const catName = tx.category?.name || 'Uncategorized';
         const catId = tx.categoryId || 'uncategorized';
-        const target = tx.type === 'INCOME' ? incomeByCategory : expenseByCategory;
+        const target = (allInflowTypes as readonly string[]).includes(tx.type) ? incomeByCategory : expenseByCategory;
 
         if (!target[catId]) {
           target[catId] = { name: catName, total: '0' };
@@ -63,7 +68,7 @@ export async function GET(request: NextRequest) {
           userId,
           isDeleted: false,
           transactionDate: dateFilter,
-          type: { in: ['INCOME', 'EXPENSE'] },
+          type: { in: [...allInflowTypes, ...allOutflowTypes] as any },
         },
         orderBy: { transactionDate: 'asc' },
       });
@@ -75,7 +80,7 @@ export async function GET(request: NextRequest) {
         if (!dailyMap[dateKey]) {
           dailyMap[dateKey] = { income: new Decimal(0), expense: new Decimal(0) };
         }
-        if (tx.type === 'INCOME') {
+        if ((allInflowTypes as readonly string[]).includes(tx.type)) {
           dailyMap[dateKey].income = dailyMap[dateKey].income.plus(tx.amount.toString());
         } else {
           dailyMap[dateKey].expense = dailyMap[dateKey].expense.plus(tx.amount.toString());
@@ -99,12 +104,12 @@ export async function GET(request: NextRequest) {
     // Default: summary report
     const [income, expense, transfers] = await Promise.all([
       prisma.transaction.aggregate({
-        where: { userId, isDeleted: false, transactionDate: dateFilter, type: 'INCOME' },
+        where: { userId, isDeleted: false, transactionDate: dateFilter, type: { in: allInflowTypes as any } },
         _sum: { amount: true },
         _count: true,
       }),
       prisma.transaction.aggregate({
-        where: { userId, isDeleted: false, transactionDate: dateFilter, type: 'EXPENSE' },
+        where: { userId, isDeleted: false, transactionDate: dateFilter, type: { in: allOutflowTypes as any } },
         _sum: { amount: true },
         _count: true,
       }),

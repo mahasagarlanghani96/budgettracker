@@ -31,19 +31,24 @@ export const OUTFLOW_TYPES = [
 /**
  * Calculate the current balance of an account from its opening balance + transactions.
  * Balance = Opening Balance + SUM(inflows) - SUM(outflows)
+ * The userId parameter ensures we only aggregate transactions belonging to the account owner.
  */
-export async function calculateAccountBalance(accountId: string): Promise<Decimal> {
+export async function calculateAccountBalance(accountId: string, userId?: string): Promise<Decimal> {
   const account = await prisma.account.findUnique({
     where: { id: accountId },
-    select: { openingBalance: true },
+    select: { openingBalance: true, userId: true },
   });
 
   if (!account) throw new Error(`Account ${accountId} not found`);
+
+  // Use the account's own userId to scope transaction aggregation
+  const ownerUserId = userId || account.userId;
 
   // Sum all inflows (transactions where this account is the destination)
   const inflowResult = await prisma.transaction.aggregate({
     where: {
       destAccountId: accountId,
+      userId: ownerUserId,
       isDeleted: false,
       isHistorical: false,
       type: { in: INFLOW_TYPES as any },
@@ -55,6 +60,7 @@ export async function calculateAccountBalance(accountId: string): Promise<Decima
   const outflowResult = await prisma.transaction.aggregate({
     where: {
       sourceAccountId: accountId,
+      userId: ownerUserId,
       isDeleted: false,
       isHistorical: false,
       type: { in: OUTFLOW_TYPES as any },
@@ -99,37 +105,33 @@ export async function getTotalBalance(userId: string): Promise<Decimal> {
 }
 
 /**
- * Calculate total outstanding receivables (loans given - repayments received).
+ * Calculate total outstanding receivables using the authoritative remainingAmount field.
  */
 export async function getOutstandingReceivables(userId: string): Promise<Decimal> {
   const loans = await prisma.loan.findMany({
     where: { userId, direction: 'GIVEN', status: 'ACTIVE' },
-    include: { repayments: true },
+    select: { remainingAmount: true },
   });
 
-  return loans.reduce((total: Decimal, loan: { amount: { toString(): string }; repayments: { amount: { toString(): string } }[] }) => {
-    const repaid = loan.repayments.reduce(
-      (sum: Decimal, r: { amount: { toString(): string } }) => sum.plus(new Decimal(r.amount.toString())),
-      new Decimal(0)
-    );
-    return total.plus(new Decimal(loan.amount.toString()).minus(repaid));
-  }, new Decimal(0));
+  return loans.reduce(
+    (total: Decimal, loan: { remainingAmount: { toString(): string } }) =>
+      total.plus(new Decimal(loan.remainingAmount.toString())),
+    new Decimal(0)
+  );
 }
 
 /**
- * Calculate total outstanding payables (loans taken - repayments made).
+ * Calculate total outstanding payables using the authoritative remainingAmount field.
  */
 export async function getOutstandingPayables(userId: string): Promise<Decimal> {
   const loans = await prisma.loan.findMany({
     where: { userId, direction: 'TAKEN', status: 'ACTIVE' },
-    include: { repayments: true },
+    select: { remainingAmount: true },
   });
 
-  return loans.reduce((total: Decimal, loan: { amount: { toString(): string }; repayments: { amount: { toString(): string } }[] }) => {
-    const repaid = loan.repayments.reduce(
-      (sum: Decimal, r: { amount: { toString(): string } }) => sum.plus(new Decimal(r.amount.toString())),
-      new Decimal(0)
-    );
-    return total.plus(new Decimal(loan.amount.toString()).minus(repaid));
-  }, new Decimal(0));
+  return loans.reduce(
+    (total: Decimal, loan: { remainingAmount: { toString(): string } }) =>
+      total.plus(new Decimal(loan.remainingAmount.toString())),
+    new Decimal(0)
+  );
 }

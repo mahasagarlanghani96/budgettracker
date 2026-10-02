@@ -25,7 +25,29 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
       return NextResponse.json({ error: 'Account not found' }, { status: 404 });
     }
 
+    const existingPayments = await prisma.plotPayment.aggregate({
+      where: { plotId },
+      _sum: { amount: true },
+    });
+    const totalPaid = parseFloat((existingPayments._sum.amount || 0).toString());
+    const totalPrice = parseFloat(plot.totalPrice.toString());
+    const remaining = totalPrice - totalPaid;
+    if (validated.amount > remaining) {
+      return NextResponse.json(
+        { error: `Payment amount (${validated.amount}) exceeds remaining balance (${remaining.toFixed(2)})` },
+        { status: 400 }
+      );
+    }
+
     const paymentDate = validated.transactionDate ? new Date(validated.transactionDate) : new Date();
+
+    // DEF-086: Validate payment date is not before the plot creation date
+    if (paymentDate < new Date(plot.createdAt)) {
+      return NextResponse.json(
+        { error: 'Payment date cannot be before the plot was created' },
+        { status: 400 }
+      );
+    }
 
     const result = await prisma.$transaction(async (tx: any) => {
       const payment = await tx.plotPayment.create({

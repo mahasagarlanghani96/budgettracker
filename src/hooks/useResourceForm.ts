@@ -1,7 +1,14 @@
 'use client';
 
 import { useState, useCallback } from 'react';
-import { ZodNumber, type ZodObject, type ZodRawShape, type ZodError, type ZodIssue, type ZodTypeAny } from 'zod';
+import { ZodNumber, ZodEffects, type ZodObject, type ZodRawShape, type ZodError, type ZodIssue, type ZodTypeAny } from 'zod';
+
+type AcceptedSchema = ZodObject<ZodRawShape> | ZodEffects<ZodObject<ZodRawShape>>;
+
+function getShape(schema: AcceptedSchema): ZodRawShape {
+  if (schema instanceof ZodEffects) return (schema._def.schema as ZodObject<ZodRawShape>).shape;
+  return schema.shape;
+}
 
 // ---------------------------------------------------------------------------
 // useResourceForm
@@ -14,7 +21,7 @@ import { ZodNumber, type ZodObject, type ZodRawShape, type ZodError, type ZodIss
 //     = useResourceForm({ schema, initial, onSubmit, onSuccess });
 // ---------------------------------------------------------------------------
 
-interface UseResourceFormOptions<S extends ZodObject<ZodRawShape>> {
+interface UseResourceFormOptions<S extends AcceptedSchema> {
   /** The Zod schema to validate against before submission */
   schema: S;
   /** Initial form values — the keys must match the schema */
@@ -49,7 +56,7 @@ function mapZodErrors(issues: ZodIssue[]): Record<string, string> {
   return errors;
 }
 
-export function useResourceForm<S extends ZodObject<ZodRawShape>>({
+export function useResourceForm<S extends AcceptedSchema>({
   schema,
   initial,
   onSubmit,
@@ -88,7 +95,7 @@ export function useResourceForm<S extends ZodObject<ZodRawShape>>({
 
   /** Client-only validation; returns true when valid */
   const validate = useCallback((): boolean => {
-    const shape = schema.shape;
+    const shape = getShape(schema);
     const cleaned: Record<string, unknown> = {};
     for (const [k, v] of Object.entries(form)) {
       if (v === '' || v === undefined || v === null) {
@@ -116,7 +123,7 @@ export function useResourceForm<S extends ZodObject<ZodRawShape>>({
       setServerError(null);
 
       // Clean form values: empty strings → undefined, string-numbers → numbers
-      const shape = schema.shape;
+      const shape = getShape(schema);
       const cleaned: Record<string, unknown> = {};
       for (const [k, v] of Object.entries(form)) {
         if (v === '' || v === undefined || v === null) {

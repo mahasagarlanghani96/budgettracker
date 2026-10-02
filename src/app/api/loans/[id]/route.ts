@@ -62,6 +62,21 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
       return NextResponse.json({ error: 'Loan not found' }, { status: 404 });
     }
 
+    if (validated.status === 'SETTLED') {
+      const repayments = await prisma.transaction.findMany({
+        where: { loanId: id, isDeleted: false, type: { in: ['LOAN_REPAYMENT_RECEIVED', 'LOAN_REPAYMENT_MADE'] } },
+        select: { amount: true },
+      });
+      const totalRepaid = repayments.reduce((sum, r) => sum.plus(r.amount.toString()), new Decimal(0));
+      const outstanding = new Decimal(existing.amount.toString()).minus(totalRepaid);
+      if (outstanding.greaterThan(0)) {
+        return NextResponse.json(
+          { error: `Cannot settle loan with outstanding balance of ${outstanding.toFixed(2)}. Record all repayments first.` },
+          { status: 400 }
+        );
+      }
+    }
+
     const loan = await prisma.loan.update({
       where: { id },
       data: {
@@ -106,19 +121,19 @@ export async function DELETE(_request: NextRequest, { params }: { params: Promis
     }
 
     await prisma.$transaction(async (tx: any) => {
-      // Soft-delete the initial loan transaction
+      // Soft-delete all transactions linked to this loan (both linked and unlinked legacy)
       await tx.transaction.updateMany({
         where: { loanId: id, userId, isDeleted: false },
         data: { isDeleted: true, deletedAt: new Date() },
       });
+
+      // Also catch unlinked legacy transactions by matching type + account + person
       const type = existing.direction === 'GIVEN' ? 'LOAN_GIVEN' : 'LOAN_TAKEN';
       const acctField = existing.direction === 'TAKEN' ? 'destAccountId' : 'sourceAccountId';
       await tx.transaction.updateMany({
         where: {
           userId, type, loanId: null, isDeleted: false,
-          amount: existing.amount.toString(),
           [acctField]: existing.accountId,
-          transactionDate: existing.transactionDate,
           personId: existing.personId,
         },
         data: { isDeleted: true, deletedAt: new Date() },

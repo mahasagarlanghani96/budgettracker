@@ -17,7 +17,9 @@ import { useResourceForm } from '@/hooks/useResourceForm';
 import { committeeUpdateSchema, committeeMemberSchema, committeeRoundUpdateSchema } from '@/lib/validations/schemas';
 import { ContributionsSection } from '@/components/committees/ContributionsSection';
 import { formatCurrency, formatDate } from '@/lib/utils';
+import Decimal from 'decimal.js';
 import { ArrowLeft, Plus, UserPlus, Pencil, Trash2 } from 'lucide-react';
+import { useConfirm } from '@/hooks/use-confirm';
 import Link from 'next/link';
 
 const committeeTypeOptions = [
@@ -44,6 +46,7 @@ export default function CommitteeDetailPage() {
   const [editingMember, setEditingMember] = useState<string | null>(null);
   const [editingRound, setEditingRound] = useState<string | null>(null);
   const [deleteError, setDeleteError] = useState<string | null>(null);
+  const { confirm, ConfirmDialog } = useConfirm();
 
   const fetchCommittee = useCallback(() => {
     fetch(`/api/committees/${id}`)
@@ -181,7 +184,7 @@ export default function CommitteeDetailPage() {
 
   // --- Delete handlers ---
   async function handleDelete() {
-    if (!confirm('Delete this committee? This cannot be undone.')) return;
+    if (!(await confirm('Delete this committee? This cannot be undone.'))) return;
     setDeleteError(null);
     const res = await fetch(`/api/committees/${id}`, { method: 'DELETE' });
     if (res.ok) { router.push('/committees'); }
@@ -192,7 +195,7 @@ export default function CommitteeDetailPage() {
   }
 
   async function handleDeleteMember(m: Record<string, unknown>) {
-    if (!confirm(`Remove "${m.name as string}" from this committee?`)) return;
+    if (!(await confirm(`Remove "${m.name as string}" from this committee?`))) return;
     setDeleteError(null);
     const res = await fetch(`/api/committees/${id}/members/${m.id as string}`, { method: 'DELETE' });
     if (res.ok) { fetchCommittee(); }
@@ -203,7 +206,7 @@ export default function CommitteeDetailPage() {
   }
 
   async function handleDeleteRound(r: Record<string, unknown>) {
-    if (!confirm(`Delete Round ${r.roundNumber as number}? This cannot be undone.`)) return;
+    if (!(await confirm(`Delete Round ${r.roundNumber as number}? This cannot be undone.`))) return;
     setDeleteError(null);
     const res = await fetch(`/api/committees/${id}/rounds/${r.id as string}`, { method: 'DELETE' });
     if (res.ok) { fetchCommittee(); }
@@ -226,18 +229,18 @@ export default function CommitteeDetailPage() {
   const latestRoundNumber = rounds.reduce((max, r) => Math.max(max, r.roundNumber as number), 0);
   const personOptions = persons.map((p) => ({ value: p.id, label: p.name }));
 
-  // Committee-wide totals
-  const monthlyAmt = Number(committee.monthlyContribution) || 0;
+  // Committee-wide totals (using Decimal.js to avoid floating-point precision loss)
+  const monthlyAmt = new Decimal(String(committee.monthlyContribution ?? 0));
   const totalSlots = entries.length || (committee.memberCount as number);
   const totalRounds = committee.memberCount as number;
-  const committeeLifetimeValue = monthlyAmt * totalSlots * totalRounds;
+  const committeeLifetimeValue = monthlyAmt.times(totalSlots).times(totalRounds).toNumber();
   const allPaid = contributions
     .filter((c) => (c.status as string) === 'PAID')
-    .reduce((sum, c) => sum + Number(c.actualAmount), 0);
+    .reduce((sum, c) => sum.plus(String(c.actualAmount ?? 0)), new Decimal(0)).toNumber();
   const allPending = contributions
     .filter((c) => (c.status as string) === 'PENDING')
-    .reduce((sum, c) => sum + Number(c.actualAmount || c.expectedAmount), 0);
-  const allReceived = receivings.reduce((sum, r) => sum + Number(r.actualAmount), 0);
+    .reduce((sum, c) => sum.plus(String(c.actualAmount || c.expectedAmount || 0)), new Decimal(0)).toNumber();
+  const allReceived = receivings.reduce((sum, r) => sum.plus(String(r.actualAmount ?? 0)), new Decimal(0)).toNumber();
 
   // User's personal tracking
   const userMember = members.find((m) => m.isUser === true);
@@ -247,26 +250,27 @@ export default function CommitteeDetailPage() {
       .filter((e) => (e as Record<string, unknown>).userId === (committee as Record<string, unknown>).userId)
       .map((e) => e.id)
   );
-  const myExpectedPerSlot = monthlyAmt * totalRounds;
-  const myTotalExpected = myExpectedPerSlot * userSlots;
+  const myExpectedPerSlot = monthlyAmt.times(totalRounds).toNumber();
+  const myTotalExpected = monthlyAmt.times(totalRounds).times(userSlots).toNumber();
   const myContributions = contributions.filter((c) => userEntryIds.has(c.entryId as string));
   const myPaid = myContributions
     .filter((c) => (c.status as string) === 'PAID')
-    .reduce((sum, c) => sum + Number(c.actualAmount), 0);
+    .reduce((sum, c) => sum.plus(String(c.actualAmount ?? 0)), new Decimal(0)).toNumber();
   const myPending = myContributions
     .filter((c) => (c.status as string) === 'PENDING')
-    .reduce((sum, c) => sum + Number(c.actualAmount || c.expectedAmount), 0);
+    .reduce((sum, c) => sum.plus(String(c.actualAmount || c.expectedAmount || 0)), new Decimal(0)).toNumber();
   const myReceived = receivings
     .filter((r) => userEntryIds.has(r.entryId as string))
-    .reduce((sum, r) => sum + Number(r.actualAmount), 0);
-  const myProfitEarned = myContributions.reduce((sum, c) => sum + Number(c.profitDeduction || 0), 0);
-  const myRemaining = myTotalExpected - myPaid;
+    .reduce((sum, r) => sum.plus(String(r.actualAmount ?? 0)), new Decimal(0)).toNumber();
+  const myProfitEarned = myContributions.reduce((sum, c) => sum.plus(String(c.profitDeduction || 0)), new Decimal(0)).toNumber();
+  const myRemaining = Math.max(myTotalExpected - myPaid, 0);
   const myNetPosition = myReceived - myPaid;
 
   return (
     <div className="space-y-6">
+      {ConfirmDialog}
       <div className="flex items-center gap-4">
-        <Link href="/committees"><Button variant="ghost" size="icon"><ArrowLeft className="h-4 w-4" /></Button></Link>
+        <Link href="/committees"><Button variant="ghost" size="icon" aria-label="Back to committees"><ArrowLeft className="h-4 w-4" /></Button></Link>
         <div className="flex-1">
           <h1 className="text-2xl font-bold">{committee.name as string}</h1>
           <div className="flex gap-2 mt-1">
@@ -292,7 +296,7 @@ export default function CommitteeDetailPage() {
 
       <div className="grid gap-4 sm:grid-cols-3">
         <Card><CardContent className="pt-6"><p className="text-xs text-muted-foreground">Monthly Amount</p><p className="text-xl font-bold tabular-nums">{formatCurrency((committee.monthlyContribution as { toString(): string }).toString())}</p></CardContent></Card>
-        <Card><CardContent className="pt-6"><p className="text-xs text-muted-foreground">Total Pool</p><p className="text-xl font-bold tabular-nums">{formatCurrency((committee.totalAmount as { toString(): string }).toString())}</p></CardContent></Card>
+        <Card><CardContent className="pt-6"><p className="text-xs text-muted-foreground">Total Pool</p><p className="text-xl font-bold tabular-nums">{committee.totalAmount ? formatCurrency((committee.totalAmount as { toString(): string }).toString()) : formatCurrency(((committee.memberCount as number) * Number((committee.monthlyContribution as { toString(): string }).toString())).toString())}</p></CardContent></Card>
         <Card><CardContent className="pt-6"><p className="text-xs text-muted-foreground">Progress</p><p className="text-xl font-bold">{rounds.length} / {committee.memberCount as number} rounds</p></CardContent></Card>
       </div>
 
@@ -372,34 +376,36 @@ export default function CommitteeDetailPage() {
       <Card>
         <CardHeader><CardTitle className="text-base">Members ({members.length})</CardTitle></CardHeader>
         <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Name</TableHead>
-                <TableHead>Slots</TableHead>
-                <TableHead>Role</TableHead>
-                <TableHead className="text-right">Actions</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {members.map((m) => {
-                const slots = m.slots as number;
-                return (
-                  <TableRow key={m.id as string}>
-                    <TableCell className="font-medium">{m.name as string}</TableCell>
-                    <TableCell>{slots}</TableCell>
-                    <TableCell>{m.isUser ? <Badge variant="default" className="text-xs">You</Badge> : 'Member'}</TableCell>
-                    <TableCell className="text-right">
-                      <div className="flex justify-end gap-1">
-                        <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => openEditMember(m)}><Pencil className="h-3.5 w-3.5" /></Button>
-                        <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => handleDeleteMember(m)}><Trash2 className="h-3.5 w-3.5" /></Button>
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                );
-              })}
-            </TableBody>
-          </Table>
+          <div className="overflow-x-auto">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Name</TableHead>
+                  <TableHead>Slots</TableHead>
+                  <TableHead>Role</TableHead>
+                  <TableHead className="text-right">Actions</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {members.map((m) => {
+                  const slots = m.slots as number;
+                  return (
+                    <TableRow key={m.id as string}>
+                      <TableCell className="font-medium">{m.name as string}</TableCell>
+                      <TableCell>{slots}</TableCell>
+                      <TableCell>{m.isUser ? <Badge variant="default" className="text-xs">You</Badge> : 'Member'}</TableCell>
+                      <TableCell className="text-right">
+                        <div className="flex justify-end gap-1">
+                          <Button variant="ghost" size="icon" className="h-7 w-7" aria-label={`Edit ${m.name as string}`} onClick={() => openEditMember(m)}><Pencil className="h-3.5 w-3.5" /></Button>
+                          <Button variant="ghost" size="icon" className="h-7 w-7" aria-label={`Delete ${m.name as string}`} onClick={() => handleDeleteMember(m)}><Trash2 className="h-3.5 w-3.5" /></Button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
+              </TableBody>
+            </Table>
+          </div>
         </CardContent>
       </Card>
 
@@ -410,51 +416,55 @@ export default function CommitteeDetailPage() {
           {rounds.length === 0 ? (
             <p className="text-sm text-muted-foreground text-center py-4">No rounds recorded yet</p>
           ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>#</TableHead>
-                  <TableHead>Date</TableHead>
-                  <TableHead>Winner Payout</TableHead>
-                  <TableHead>Winner</TableHead>
-                  {isWaiyk && <TableHead>Winning Bid</TableHead>}
-                  {isWaiyk && <TableHead>Profit/Slot</TableHead>}
-                  <TableHead className="text-right">Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {rounds.map((r) => (
-                  <TableRow key={r.id as string}>
-                    <TableCell>Round {r.roundNumber as number}</TableCell>
-                    <TableCell>{formatDate(r.roundDate as string)}</TableCell>
-                    <TableCell className="font-medium tabular-nums">{formatCurrency((r.payoutAmount as { toString(): string }).toString())}</TableCell>
-                    <TableCell>{(r.winningMember as string) || '—'}</TableCell>
-                    {isWaiyk && <TableCell className="tabular-nums">{r.winningBid ? formatCurrency((r.winningBid as { toString(): string }).toString()) : '—'}</TableCell>}
-                    {isWaiyk && <TableCell className="tabular-nums">{r.profitPerMember ? formatCurrency((r.profitPerMember as { toString(): string }).toString()) : '—'}{r.profitAmount ? ` (${formatCurrency((r.profitAmount as { toString(): string }).toString())} total)` : ''}</TableCell>}
-                    <TableCell className="text-right">
-                      <div className="flex justify-end gap-1">
-                        <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => openEditRound(r)}><Pencil className="h-3.5 w-3.5" /></Button>
-                        {(r.roundNumber as number) === latestRoundNumber && (
-                          <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => handleDeleteRound(r)}><Trash2 className="h-3.5 w-3.5" /></Button>
-                        )}
-                      </div>
-                    </TableCell>
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>#</TableHead>
+                    <TableHead>Date</TableHead>
+                    <TableHead>Winner Payout</TableHead>
+                    <TableHead>Winner</TableHead>
+                    {isWaiyk && <TableHead>Winning Bid</TableHead>}
+                    {isWaiyk && <TableHead>Profit/Slot</TableHead>}
+                    <TableHead className="text-right">Actions</TableHead>
                   </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+                </TableHeader>
+                <TableBody>
+                  {rounds.map((r) => (
+                    <TableRow key={r.id as string}>
+                      <TableCell>Round {r.roundNumber as number}</TableCell>
+                      <TableCell>{formatDate(r.roundDate as string)}</TableCell>
+                      <TableCell className="font-medium tabular-nums">{formatCurrency((r.payoutAmount ?? 0).toString())}</TableCell>
+                      <TableCell>{(r.winningMember as string) || '—'}</TableCell>
+                      {isWaiyk && <TableCell className="tabular-nums">{r.winningBid ? formatCurrency((r.winningBid as { toString(): string }).toString()) : '—'}</TableCell>}
+                      {isWaiyk && <TableCell className="tabular-nums">{r.profitPerMember ? formatCurrency((r.profitPerMember as { toString(): string }).toString()) : '—'}{r.profitAmount ? ` (${formatCurrency((r.profitAmount as { toString(): string }).toString())} total)` : ''}</TableCell>}
+                      <TableCell className="text-right">
+                        <div className="flex justify-end gap-1">
+                          <Button variant="ghost" size="icon" className="h-7 w-7" aria-label={`Edit round ${r.roundNumber as number}`} onClick={() => openEditRound(r)}><Pencil className="h-3.5 w-3.5" /></Button>
+                          {(r.roundNumber as number) === latestRoundNumber && (
+                            <Button variant="ghost" size="icon" className="h-7 w-7" aria-label={`Delete round ${r.roundNumber as number}`} onClick={() => handleDeleteRound(r)}><Trash2 className="h-3.5 w-3.5" /></Button>
+                          )}
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
           )}
         </CardContent>
       </Card>
 
       {/* Contributions & Receivings */}
-      {entries.length > 0 && rounds.length > 0 && (
+      {entries.length > 0 && (rounds.length > 0 || contributions.length > 0 || receivings.length > 0) && (
         <ContributionsSection
           committeeId={id}
           entries={entries}
           rounds={rounds as any}
           accounts={accounts}
           monthlyContribution={(committee.monthlyContribution as { toString(): string }).toString()}
+          topLevelContributions={contributions as any}
+          topLevelReceivings={receivings as any}
           onRefresh={fetchCommittee}
         />
       )}

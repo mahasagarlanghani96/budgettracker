@@ -42,7 +42,7 @@ export async function PUT(request: NextRequest, { params }: Params) {
           amount: validated.amount,
           accountId: validated.accountId,
           transactionDate: payDate,
-          dueDate: validated.dueDate ? new Date(validated.dueDate) : undefined,
+          dueDate: validated.dueDate ? new Date(validated.dueDate) : validated.dueDate === null ? null : undefined,
           notes: validated.notes,
         },
       });

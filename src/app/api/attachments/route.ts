@@ -75,9 +75,17 @@ export async function POST(request: NextRequest) {
 
     await mkdir(UPLOAD_DIR, { recursive: true });
 
-    const ext = path.extname(file.name) || '';
+    // Sanitize: extract only the extension from the basename to prevent path traversal
+    const baseName = path.basename(file.name);
+    const ext = path.extname(baseName).replace(/[^a-zA-Z0-9.]/g, '') || '';
     const storedName = `${randomUUID()}${ext}`;
     const filePath = path.join(UPLOAD_DIR, storedName);
+
+    // Verify resolved path stays within UPLOAD_DIR
+    const resolvedPath = path.resolve(filePath);
+    if (!resolvedPath.startsWith(path.resolve(UPLOAD_DIR))) {
+      return NextResponse.json({ error: 'Invalid file path' }, { status: 400 });
+    }
 
     const buffer = Buffer.from(await file.arrayBuffer());
     await writeFile(filePath, buffer);

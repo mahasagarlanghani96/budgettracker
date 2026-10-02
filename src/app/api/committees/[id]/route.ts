@@ -13,26 +13,59 @@ export async function GET(_request: NextRequest, { params }: { params: Promise<{
       where: { id, userId: (session.user as { id: string }).id },
       include: {
         members: {
-          include: {
-            person: true,
+          select: {
+            id: true,
+            name: true,
+            slots: true,
+            isUser: true,
+            personId: true,
+            notes: true,
           },
         },
-        entries: true,
+        entries: {
+          select: { id: true, slotNumber: true, userId: true },
+        },
         rounds: {
           include: {
             contributions: {
-              include: { entry: true, account: true },
+              include: { entry: { select: { slotNumber: true } }, account: { select: { name: true } } },
             },
             receivings: {
-              include: { entry: true, account: true },
+              include: { entry: { select: { slotNumber: true } }, account: { select: { name: true } } },
             },
           },
           orderBy: { roundNumber: 'asc' },
         },
         contributions: {
+          select: {
+            id: true,
+            entryId: true,
+            roundId: true,
+            accountId: true,
+            expectedAmount: true,
+            actualAmount: true,
+            profitDeduction: true,
+            status: true,
+            transactionDate: true,
+            notes: true,
+            entry: { select: { slotNumber: true } },
+            account: { select: { name: true } },
+          },
           orderBy: { transactionDate: 'desc' },
         },
         receivings: {
+          select: {
+            id: true,
+            entryId: true,
+            roundId: true,
+            accountId: true,
+            expectedAmount: true,
+            actualAmount: true,
+            transactionDate: true,
+            notes: true,
+            entry: { select: { slotNumber: true } },
+            account: { select: { name: true } },
+          },
           orderBy: { transactionDate: 'desc' },
         },
       },
@@ -67,20 +100,59 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
       return NextResponse.json({ error: 'Committee not found' }, { status: 404 });
     }
 
-    const committee = await prisma.committee.update({
-      where: { id },
-      data: {
-        name: validated.name,
-        type: validated.type,
-        status: validated.status,
-        startDate: validated.startDate ? new Date(validated.startDate) : undefined,
-        endDate: validated.endDate ? new Date(validated.endDate) : validated.endDate === null ? null : undefined,
-        memberCount: validated.memberCount,
-        monthlyContribution: validated.monthlyContribution,
-        totalAmount: validated.totalAmount,
-        notes: validated.notes,
-        isPrivate: validated.isPrivate,
-      },
+    const newMemberCount = validated.memberCount ?? existing.memberCount;
+
+    // DEF-051: Prevent reducing slots below current member/entry count
+    if (newMemberCount < existing.memberCount) {
+      const currentEntryCount = await prisma.committeeEntry.count({ where: { committeeId: id } });
+      if (newMemberCount < currentEntryCount) {
+        return NextResponse.json(
+          { error: `Cannot reduce member count to ${newMemberCount}. There are ${currentEntryCount} existing entries. Remove entries first.` },
+          { status: 400 }
+        );
+      }
+    }
+
+    const committee = await prisma.$transaction(async (tx: any) => {
+      const updated = await tx.committee.update({
+        where: { id },
+        data: {
+          name: validated.name,
+          type: validated.type,
+          status: validated.status,
+          startDate: validated.startDate ? new Date(validated.startDate) : undefined,
+          endDate: validated.endDate ? new Date(validated.endDate) : validated.endDate === null ? null : undefined,
+          memberCount: validated.memberCount,
+          monthlyContribution: validated.monthlyContribution,
+          totalAmount: validated.totalAmount,
+          notes: validated.notes,
+          isPrivate: validated.isPrivate,
+        },
+      });
+
+      // When totalSlots (memberCount) increases, create new empty entries
+      if (newMemberCount > existing.memberCount) {
+        const currentEntryCount = await tx.committeeEntry.count({ where: { committeeId: id } });
+        const slotsToAdd = newMemberCount - currentEntryCount;
+        if (slotsToAdd > 0) {
+          const last = await tx.committeeEntry.findFirst({
+            where: { committeeId: id },
+            orderBy: { slotNumber: 'desc' },
+          });
+          const nextSlot = (last?.slotNumber || 0) + 1;
+          for (let i = 0; i < slotsToAdd; i++) {
+            await tx.committeeEntry.create({
+              data: {
+                committeeId: id,
+                userId: (session.user as { id: string }).id,
+                slotNumber: nextSlot + i,
+              },
+            });
+          }
+        }
+      }
+
+      return updated;
     });
 
     return NextResponse.json({ data: committee });

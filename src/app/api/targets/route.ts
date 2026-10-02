@@ -25,24 +25,31 @@ export async function GET(request: NextRequest) {
     const endOfMonth = new Date(filterYear, filterMonth, 0, 23, 59, 59);
     const dateFilter = { gte: startOfMonth, lte: endOfMonth };
 
+    const inflowTypes: string[] = ['INCOME', 'LOAN_REPAYMENT_RECEIVED', 'COMMITTEE_RECEIVING', 'SAVINGS_WITHDRAWAL', 'INVESTMENT_RETURN', 'LOAN_TAKEN'];
+    const outflowTypes: string[] = ['EXPENSE', 'LOAN_GIVEN', 'LOAN_REPAYMENT_MADE', 'COMMITTEE_CONTRIBUTION', 'SAVINGS_DEPOSIT', 'INVESTMENT'];
+
     // Calculate current vs target for each
     const targetsWithProgress = await Promise.all(
       targets.map(async (target: { type: string; categoryId: string | null; amount: { toString(): string }; id: string; [key: string]: unknown }) => {
         let currentAmount = new Decimal(0);
 
         switch (target.type) {
-          case 'MAX_EXPENSE':
+          case 'MAX_EXPENSE': {
+            const where: any = { userId, isDeleted: false, transactionDate: dateFilter };
             if (target.categoryId) {
-              const result = await prisma.transaction.aggregate({
-                where: { userId, isDeleted: false, transactionDate: dateFilter, type: 'EXPENSE', categoryId: target.categoryId },
-                _sum: { amount: true },
-              });
-              currentAmount = new Decimal((result._sum.amount || 0).toString());
+              where.categoryId = target.categoryId;
+              where.type = { in: outflowTypes as any };
+            } else {
+              // No category filter: sum all EXPENSE-type transactions
+              where.type = 'EXPENSE';
             }
+            const result = await prisma.transaction.aggregate({ where, _sum: { amount: true } });
+            currentAmount = new Decimal((result._sum.amount || 0).toString());
             break;
+          }
           case 'MAX_TOTAL_EXPENSE': {
             const result = await prisma.transaction.aggregate({
-              where: { userId, isDeleted: false, transactionDate: dateFilter, type: 'EXPENSE' },
+              where: { userId, isDeleted: false, transactionDate: dateFilter, type: { in: outflowTypes as any } },
               _sum: { amount: true },
             });
             currentAmount = new Decimal((result._sum.amount || 0).toString());
@@ -50,7 +57,7 @@ export async function GET(request: NextRequest) {
           }
           case 'MIN_INCOME': {
             const result = await prisma.transaction.aggregate({
-              where: { userId, isDeleted: false, transactionDate: dateFilter, type: 'INCOME' },
+              where: { userId, isDeleted: false, transactionDate: dateFilter, type: { in: inflowTypes as any } },
               _sum: { amount: true },
             });
             currentAmount = new Decimal((result._sum.amount || 0).toString());
@@ -59,11 +66,11 @@ export async function GET(request: NextRequest) {
           case 'MIN_SAVINGS': {
             const [inc, exp] = await Promise.all([
               prisma.transaction.aggregate({
-                where: { userId, isDeleted: false, transactionDate: dateFilter, type: 'INCOME' },
+                where: { userId, isDeleted: false, transactionDate: dateFilter, type: { in: inflowTypes as any } },
                 _sum: { amount: true },
               }),
               prisma.transaction.aggregate({
-                where: { userId, isDeleted: false, transactionDate: dateFilter, type: 'EXPENSE' },
+                where: { userId, isDeleted: false, transactionDate: dateFilter, type: { in: outflowTypes as any } },
                 _sum: { amount: true },
               }),
             ]);
@@ -72,6 +79,19 @@ export async function GET(request: NextRequest) {
             );
             break;
           }
+          case 'CUSTOM': {
+            // For CUSTOM targets, sum all transactions linked to the target's category in the period
+            if (target.categoryId) {
+              const result = await prisma.transaction.aggregate({
+                where: { userId, isDeleted: false, transactionDate: dateFilter, categoryId: target.categoryId },
+                _sum: { amount: true },
+              });
+              currentAmount = new Decimal((result._sum.amount || 0).toString());
+            }
+            break;
+          }
+          default:
+            break;
         }
 
         const targetAmount = new Decimal(target.amount.toString());
@@ -109,10 +129,28 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const validated = targetSchema.parse(body);
 
+    const userId = (session.user as { id: string }).id;
+
+    // Check for duplicate target name for the same user, month, and year
+    const existing = await prisma.financialTarget.findFirst({
+      where: {
+        userId,
+        name: validated.name.trim(),
+        month: validated.month,
+        year: validated.year,
+      },
+    });
+    if (existing) {
+      return NextResponse.json(
+        { error: `A target named "${validated.name.trim()}" already exists for ${validated.month}/${validated.year}.` },
+        { status: 409 }
+      );
+    }
+
     const target = await prisma.financialTarget.create({
       data: {
-        userId: (session.user as { id: string }).id,
-        name: validated.name,
+        userId,
+        name: validated.name.trim(),
         type: validated.type,
         amount: validated.amount,
         month: validated.month,

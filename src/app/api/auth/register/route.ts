@@ -1,7 +1,8 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import bcrypt from 'bcryptjs';
 import prisma from '@/lib/prisma';
 import { registerSchema } from '@/lib/validations/schemas';
+import { rateLimit } from '@/lib/rate-limit';
 
 const DEFAULT_INCOME_CATEGORIES = [
   { name: 'Salary', icon: '💼' },
@@ -32,8 +33,17 @@ const DEFAULT_EXPENSE_CATEGORIES = [
   { name: 'Other Expense', icon: '💸' },
 ];
 
-export async function POST(request: Request) {
+export async function POST(request: NextRequest) {
   try {
+    const ip = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || 'unknown';
+    const { allowed } = rateLimit(`register:${ip}`, 3, 60_000);
+    if (!allowed) {
+      return NextResponse.json(
+        { error: 'Too many registration attempts. Please try again later.' },
+        { status: 429 }
+      );
+    }
+
     const body = await request.json();
     const parsed = registerSchema.safeParse(body);
 
@@ -53,8 +63,8 @@ export async function POST(request: Request) {
 
     if (existing) {
       return NextResponse.json(
-        { error: 'An account with this email already exists' },
-        { status: 409 }
+        { error: 'Unable to create account. Please try a different email.' },
+        { status: 400 }
       );
     }
 
@@ -63,7 +73,7 @@ export async function POST(request: Request) {
     const user = await prisma.$transaction(async (tx: any) => {
       const newUser = await tx.user.create({
         data: {
-          name,
+          name: name.trim(),
           email: normalizedEmail,
           passwordHash,
         },
@@ -100,7 +110,7 @@ export async function POST(request: Request) {
       email: user.email,
     }, { status: 201 });
   } catch (error: any) {
-    console.error('Registration error:', error);
+    console.error('Registration error:', error instanceof Error ? error.message : 'Unknown error');
     return NextResponse.json(
       { error: 'Something went wrong. Please try again.' },
       { status: 500 }

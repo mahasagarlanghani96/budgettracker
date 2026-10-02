@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { requireAuth } from '@/lib/auth';
-import { plotSchema } from '@/lib/validations/schemas';
+import { plotUpdateSchema } from '@/lib/validations/schemas';
 import Decimal from 'decimal.js';
 
 // GET /api/plots/:id
@@ -49,7 +49,7 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
     const session = await requireAuth();
     const { id } = await params;
     const body = await request.json();
-    const validated = plotSchema.parse(body);
+    const validated = plotUpdateSchema.parse(body);
 
     const existing = await prisma.plot.findFirst({
       where: { id, userId: (session.user as { id: string }).id },
@@ -66,7 +66,7 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
         totalPrice: validated.totalPrice,
         location: validated.location,
         notes: validated.notes,
-        isActive: typeof body.isActive === 'boolean' ? body.isActive : undefined,
+        isActive: validated.isActive,
       },
     });
 

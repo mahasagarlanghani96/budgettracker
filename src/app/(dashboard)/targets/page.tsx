@@ -13,6 +13,7 @@ import { FormField } from '@/components/forms/FormField';
 import { useResourceForm } from '@/hooks/useResourceForm';
 import { targetSchema } from '@/lib/validations/schemas';
 import { formatCurrency } from '@/lib/utils';
+import { useConfirm } from '@/hooks/use-confirm';
 import { Target, Plus, Pencil, Trash2 } from 'lucide-react';
 
 interface FinancialTarget {
@@ -58,6 +59,7 @@ export default function TargetsPage() {
   const [loading, setLoading] = useState(true);
   const [showCreate, setShowCreate] = useState(false);
   const [editing, setEditing] = useState<FinancialTarget | null>(null);
+  const { confirm, ConfirmDialog } = useConfirm();
 
   function fetchTargets() {
     fetch('/api/targets').then((r) => r.json()).then((res) => setTargets(res.data || [])).catch(console.error).finally(() => setLoading(false));
@@ -98,7 +100,7 @@ export default function TargetsPage() {
   }
 
   async function handleDelete(t: FinancialTarget) {
-    if (!confirm(`Delete "${t.name}"? This cannot be undone.`)) return;
+    if (!(await confirm(`Delete "${t.name}"? This cannot be undone.`))) return;
     const res = await fetch(`/api/targets/${t.id}`, { method: 'DELETE' });
     if (res.ok) fetchTargets();
   }
@@ -117,6 +119,7 @@ export default function TargetsPage() {
 
   return (
     <div className="space-y-6">
+      {ConfirmDialog}
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold">Financial Targets</h1>
         <Button onClick={() => setShowCreate(true)}><Plus className="h-4 w-4 mr-2" /> New Target</Button>
@@ -141,7 +144,7 @@ export default function TargetsPage() {
                     <CardTitle className="text-base">{t.name}</CardTitle>
                     <div className="flex items-center gap-1">
                       <Badge variant={t.onTrack ? 'success' : 'destructive'} className="text-xs">
-                        {t.onTrack ? 'On Track' : 'Over'}
+                        {t.onTrack ? 'On Track' : t.type.startsWith('MIN_') ? 'Behind' : 'Over'}
                       </Badge>
                       <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => openEdit(t)}><Pencil className="h-3.5 w-3.5" /></Button>
                       <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => handleDelete(t)}><Trash2 className="h-3.5 w-3.5" /></Button>

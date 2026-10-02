@@ -72,7 +72,7 @@ export default function CommitteesPage() {
                   </div>
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">Total Pool</span>
-                    <span className="font-medium tabular-nums">{formatCurrency(c.totalAmount.toString())}</span>
+                    <span className="font-medium tabular-nums">{c.totalAmount ? formatCurrency(c.totalAmount.toString()) : formatCurrency((c.memberCount * Number(c.monthlyContribution.toString())).toString())}</span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">Members</span>

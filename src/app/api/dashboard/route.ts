@@ -29,23 +29,23 @@ export async function GET() {
       getTotalBalance(userId),
       getOutstandingReceivables(userId),
       getOutstandingPayables(userId),
-      // Monthly income (exclude transfers, loan principal)
+      // Monthly income (all inflow types)
       prisma.transaction.aggregate({
         where: {
           userId,
           isDeleted: false,
           transactionDate: { gte: startOfMonth, lte: endOfMonth },
-          type: { in: ['INCOME', 'LOAN_REPAYMENT_RECEIVED'] },
+          type: { in: ['INCOME', 'LOAN_REPAYMENT_RECEIVED', 'COMMITTEE_RECEIVING', 'SAVINGS_WITHDRAWAL', 'INVESTMENT_RETURN', 'LOAN_TAKEN'] },
         },
         _sum: { amount: true },
       }),
-      // Monthly expense (exclude transfers, loan given)
+      // Monthly expense (all outflow types)
       prisma.transaction.aggregate({
         where: {
           userId,
           isDeleted: false,
           transactionDate: { gte: startOfMonth, lte: endOfMonth },
-          type: { in: ['EXPENSE'] },
+          type: { in: ['EXPENSE', 'LOAN_GIVEN', 'LOAN_REPAYMENT_MADE', 'COMMITTEE_CONTRIBUTION', 'SAVINGS_DEPOSIT', 'INVESTMENT'] },
         },
         _sum: { amount: true },
       }),

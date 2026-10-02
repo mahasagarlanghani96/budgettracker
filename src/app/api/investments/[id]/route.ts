@@ -67,6 +67,12 @@ export async function DELETE(_request: NextRequest, { params }: { params: Promis
       return NextResponse.json({ error: 'Investment not found' }, { status: 404 });
     }
 
+    // Soft-delete linked transactions before deleting the investment
+    await prisma.transaction.updateMany({
+      where: { investmentId: id, isDeleted: false },
+      data: { isDeleted: true, deletedAt: new Date() },
+    });
+
     await prisma.investment.delete({ where: { id } });
     return NextResponse.json({ data: { success: true } });
   } catch (error: unknown) {

@@ -13,7 +13,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '
 import { FormField } from '@/components/forms/FormField';
 import { useResourceForm } from '@/hooks/useResourceForm';
 import { investmentSchema, investmentUpdateSchema, investmentProfitSchema } from '@/lib/validations/schemas';
-import { formatCurrency } from '@/lib/utils';
+import { formatCurrency, formatDate } from '@/lib/utils';
+import { useConfirm } from '@/hooks/use-confirm';
 import { TrendingUp, Plus, ArrowUp, ArrowDown, Pencil, Trash2, DollarSign, History } from 'lucide-react';
 
 interface Investment {
@@ -51,9 +52,8 @@ const investmentTypeOptions = [
   { value: 'other', label: 'Other' },
 ];
 
-const today = new Date().toISOString().split('T')[0];
-
 export default function InvestmentsPage() {
+  const today = new Date().toISOString().split('T')[0];
   const [investments, setInvestments] = useState<Investment[]>([]);
   const [loading, setLoading] = useState(true);
   const [showCreate, setShowCreate] = useState(false);
@@ -63,6 +63,7 @@ export default function InvestmentsPage() {
   const [viewingHistory, setViewingHistory] = useState<Investment | null>(null);
   const [profitHistory, setProfitHistory] = useState<ProfitEntry[]>([]);
   const [historyLoading, setHistoryLoading] = useState(false);
+  const { confirm, ConfirmDialog } = useConfirm();
 
   const fetchInvestments = useCallback(() => {
     fetch('/api/investments').then((r) => r.json()).then((res) => setInvestments(res.data || [])).catch(console.error).finally(() => setLoading(false));
@@ -125,7 +126,7 @@ export default function InvestmentsPage() {
   }
 
   async function handleDelete(inv: Investment) {
-    if (!confirm(`Delete "${inv.name}"? This cannot be undone.`)) return;
+    if (!(await confirm(`Delete "${inv.name}"? This cannot be undone.`))) return;
     const res = await fetch(`/api/investments/${inv.id}`, { method: 'DELETE' });
     if (res.ok) fetchInvestments();
   }
@@ -160,6 +161,7 @@ export default function InvestmentsPage() {
 
   return (
     <div className="space-y-6">
+      {ConfirmDialog}
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold">Investments</h1>
         <Button onClick={() => setShowCreate(true)}><Plus className="h-4 w-4 mr-2" /> Add Investment</Button>
@@ -211,10 +213,10 @@ export default function InvestmentsPage() {
                       <TableCell><Badge variant={inv.isActive ? 'success' : 'secondary'} className="text-xs">{inv.isActive ? 'Active' : 'Inactive'}</Badge></TableCell>
                       <TableCell className="text-right">
                         <div className="flex justify-end gap-1">
-                          <Button variant="ghost" size="icon" onClick={() => openProfitRecord(inv)} title="Record Profit"><DollarSign className="h-4 w-4" /></Button>
-                          <Button variant="ghost" size="icon" onClick={() => openHistory(inv)} title="Profit History"><History className="h-4 w-4" /></Button>
-                          <Button variant="ghost" size="icon" onClick={() => openEdit(inv)} title="Edit"><Pencil className="h-4 w-4" /></Button>
-                          <Button variant="ghost" size="icon" onClick={() => handleDelete(inv)} title="Delete"><Trash2 className="h-4 w-4" /></Button>
+                          <Button variant="ghost" size="icon" onClick={() => openProfitRecord(inv)} title="Record Profit" aria-label="Record profit"><DollarSign className="h-4 w-4" /></Button>
+                          <Button variant="ghost" size="icon" onClick={() => openHistory(inv)} title="Profit History" aria-label="Profit history"><History className="h-4 w-4" /></Button>
+                          <Button variant="ghost" size="icon" onClick={() => openEdit(inv)} title="Edit" aria-label={`Edit ${inv.name}`}><Pencil className="h-4 w-4" /></Button>
+                          <Button variant="ghost" size="icon" onClick={() => handleDelete(inv)} title="Delete" aria-label={`Delete ${inv.name}`}><Trash2 className="h-4 w-4" /></Button>
                         </div>
                       </TableCell>
                     </TableRow>
@@ -402,7 +404,7 @@ export default function InvestmentsPage() {
                 <TableBody>
                   {profitHistory.map((entry) => (
                     <TableRow key={entry.id}>
-                      <TableCell className="text-sm">{new Date(entry.transactionDate).toLocaleDateString()}</TableCell>
+                      <TableCell className="text-sm">{formatDate(entry.transactionDate)}</TableCell>
                       <TableCell className="text-right tabular-nums text-sm">{entry.expectedAmount ? formatCurrency(entry.expectedAmount.toString()) : '—'}</TableCell>
                       <TableCell className="text-right tabular-nums text-sm text-destructive">{entry.taxAmount ? `-${formatCurrency(entry.taxAmount.toString())}` : '—'}</TableCell>
                       <TableCell className="text-right tabular-nums text-sm font-medium text-green-600">{formatCurrency(entry.amount.toString())}</TableCell>

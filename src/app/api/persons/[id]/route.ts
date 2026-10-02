@@ -21,7 +21,7 @@ export async function PUT(request: NextRequest, { params }: Params) {
       where: { id },
       data: {
         name: validated.name,
-        phone: validated.phone,
+        phone: validated.phone || null,
         email: validated.email || null,
         relationship: validated.relationship,
         notes: validated.notes,

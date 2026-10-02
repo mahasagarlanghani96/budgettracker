@@ -10,13 +10,20 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const type = searchParams.get('type'); // INCOME or EXPENSE
 
-    const where: Record<string, unknown> = { userId: (session.user as { id: string }).id };
+    const userId = (session.user as { id: string }).id;
+    const groupFilter: Record<string, unknown> = {};
     if (type === 'INCOME' || type === 'EXPENSE') {
-      where.group = type;
+      groupFilter.group = type;
     }
 
     const categories = await prisma.category.findMany({
-      where,
+      where: {
+        ...groupFilter,
+        OR: [
+          { userId },
+          { isSystem: true },
+        ],
+      },
       orderBy: [{ group: 'asc' }, { name: 'asc' }],
     });
 
@@ -36,8 +43,25 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const validated = categorySchema.parse(body);
 
+    const userId = (session.user as { id: string }).id;
+
+    // DEF-090: Check for duplicate category names for the same user and group
+    const existing = await prisma.category.findFirst({
+      where: {
+        userId,
+        name: { equals: validated.name, mode: 'insensitive' },
+        group: validated.group,
+      },
+    });
+    if (existing) {
+      return NextResponse.json(
+        { error: `A ${validated.group.toLowerCase()} category named "${validated.name}" already exists` },
+        { status: 409 }
+      );
+    }
+
     const category = await prisma.category.create({
-      data: { ...validated, userId: (session.user as { id: string }).id },
+      data: { ...validated, userId },
     });
 
     return NextResponse.json({ data: category }, { status: 201 });

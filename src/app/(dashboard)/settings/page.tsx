@@ -1,6 +1,7 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
+import { signOut } from 'next-auth/react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -14,6 +15,7 @@ export default function SettingsPage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState('');
+  const [isSuccess, setIsSuccess] = useState(false);
   const [nameForm, setNameForm] = useState('');
   const [pwForm, setPwForm] = useState({ currentPassword: '', newPassword: '', confirmPassword: '' });
 
@@ -32,6 +34,7 @@ export default function SettingsPage() {
     e.preventDefault();
     setSaving(true);
     setMessage('');
+    setIsSuccess(false);
     try {
       const res = await fetch('/api/settings', {
         method: 'PUT',
@@ -39,10 +42,12 @@ export default function SettingsPage() {
         body: JSON.stringify({ name: nameForm }),
       });
       if (res.ok) {
+        setIsSuccess(true);
         setMessage('Profile updated successfully');
         const data = await res.json();
         setProfile(data.data);
       } else {
+        setIsSuccess(false);
         const data = await res.json();
         setMessage(data.error || 'Failed to update');
       }
@@ -52,15 +57,28 @@ export default function SettingsPage() {
   async function handleChangePassword(e: React.FormEvent) {
     e.preventDefault();
     if (pwForm.newPassword !== pwForm.confirmPassword) {
+      setIsSuccess(false);
       setMessage('Passwords do not match');
       return;
     }
     if (pwForm.newPassword.length < 8) {
+      setIsSuccess(false);
       setMessage('Password must be at least 8 characters');
+      return;
+    }
+    if (!/[A-Z]/.test(pwForm.newPassword) || !/[a-z]/.test(pwForm.newPassword) || !/[0-9]/.test(pwForm.newPassword)) {
+      setIsSuccess(false);
+      setMessage('Password must contain uppercase, lowercase, and a number');
+      return;
+    }
+    if (pwForm.newPassword.length > 72) {
+      setIsSuccess(false);
+      setMessage('Password must be at most 72 characters');
       return;
     }
     setSaving(true);
     setMessage('');
+    setIsSuccess(false);
     try {
       const res = await fetch('/api/settings', {
         method: 'PUT',
@@ -68,9 +86,12 @@ export default function SettingsPage() {
         body: JSON.stringify({ currentPassword: pwForm.currentPassword, newPassword: pwForm.newPassword }),
       });
       if (res.ok) {
-        setMessage('Password changed successfully');
+        setIsSuccess(true);
+        setMessage('Password changed. You will be signed out in 3 seconds...');
         setPwForm({ currentPassword: '', newPassword: '', confirmPassword: '' });
+        setTimeout(() => signOut({ callbackUrl: '/login' }), 3000);
       } else {
+        setIsSuccess(false);
         const data = await res.json();
         setMessage(data.error || 'Failed to change password');
       }
@@ -84,7 +105,7 @@ export default function SettingsPage() {
       <h1 className="text-2xl font-bold">Settings</h1>
 
       {message && (
-        <div className={`p-3 rounded-md text-sm ${message.includes('success') ? 'bg-green-50 text-green-700 border border-green-200' : 'bg-red-50 text-red-700 border border-red-200'}`}>
+        <div className={`p-3 rounded-md text-sm ${isSuccess ? 'bg-green-50 text-green-700 border border-green-200' : 'bg-red-50 text-red-700 border border-red-200'}`}>
           {message}
         </div>
       )}

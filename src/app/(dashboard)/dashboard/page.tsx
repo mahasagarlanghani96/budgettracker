@@ -70,7 +70,14 @@ export default function DashboardPage() {
     <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-bold">Dashboard</h1>
-        <p className="text-muted-foreground">Your financial overview at a glance</p>
+        <p className="text-muted-foreground">
+          {(() => {
+            const h = new Date().getHours();
+            if (h < 12) return 'Good morning';
+            if (h < 17) return 'Good afternoon';
+            return 'Good evening';
+          })()} — your financial overview at a glance
+        </p>
       </div>
 
       {/* Stat cards */}
@@ -151,14 +158,14 @@ export default function DashboardPage() {
                     </div>
                     <span
                       className={`font-medium tabular-nums ml-2 whitespace-nowrap ${
-                        tx.type === 'INCOME' || tx.type === 'LOAN_REPAYMENT_RECEIVED'
+                        ['INCOME', 'LOAN_REPAYMENT_RECEIVED', 'COMMITTEE_RECEIVING', 'SAVINGS_WITHDRAWAL', 'INVESTMENT_RETURN', 'LOAN_TAKEN'].includes(tx.type)
                           ? 'text-green-600'
                           : tx.type === 'TRANSFER'
                             ? 'text-blue-600'
                             : 'text-red-600'
                       }`}
                     >
-                      {tx.type === 'INCOME' || tx.type === 'LOAN_REPAYMENT_RECEIVED' ? '+' : '-'}
+                      {['INCOME', 'LOAN_REPAYMENT_RECEIVED', 'COMMITTEE_RECEIVING', 'SAVINGS_WITHDRAWAL', 'INVESTMENT_RETURN', 'LOAN_TAKEN'].includes(tx.type) ? '+' : '-'}
                       {formatCurrency(tx.amount.toString())}
                     </span>
                   </div>
@@ -194,7 +201,7 @@ export default function DashboardPage() {
                     <div className="h-2 bg-muted rounded-full overflow-hidden">
                       <div
                         className="h-full bg-primary rounded-full transition-all"
-                        style={{ width: `${goal.progress}%` }}
+                        style={{ width: `${Math.min(goal.progress, 100)}%` }}
                       />
                     </div>
                   </div>

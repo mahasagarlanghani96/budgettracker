@@ -31,19 +31,19 @@ interface Loan {
   account?: { name: string } | null;
 }
 
-const today = new Date().toISOString().split('T')[0];
-
-const initialForm = {
-  personId: '',
-  direction: 'GIVEN',
-  amount: 0,
-  accountId: '',
-  transactionDate: today,
+function getInitialForm() {
+  return {
+    personId: '',
+    direction: 'GIVEN',
+    amount: 0,
+    accountId: '',
+    transactionDate: new Date().toISOString().split('T')[0],
   dueDate: '',
   interestRate: null as number | null,
   notes: '',
   isPrivate: true,
-};
+  };
+}
 
 export default function LoansPage() {
   const [loans, setLoans] = useState<Loan[]>([]);
@@ -79,7 +79,7 @@ export default function LoansPage() {
 
   const { form, errors, serverError, saving, setField, handleSubmit, reset } = useResourceForm({
     schema: loanSchema,
-    initial: initialForm,
+    initial: getInitialForm(),
     onSubmit: (data) =>
       fetch('/api/loans', {
         method: 'POST',
@@ -102,7 +102,7 @@ export default function LoansPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold">Loans</h1>
-        <Button onClick={() => setShowCreate(true)}><Plus className="h-4 w-4 mr-2" /> New Loan</Button>
+        <Button onClick={() => { reset(getInitialForm()); setShowCreate(true); }}><Plus className="h-4 w-4 mr-2" /> New Loan</Button>
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2">
@@ -134,7 +134,7 @@ export default function LoansPage() {
           className="w-40"
         />
         <Select
-          options={[{ value: '', label: 'All Status' }, { value: 'ACTIVE', label: 'Active' }, { value: 'SETTLED', label: 'Settled' }]}
+          options={[{ value: '', label: 'All Status' }, { value: 'ACTIVE', label: 'Active' }, { value: 'SETTLED', label: 'Settled' }, { value: 'WRITTEN_OFF', label: 'Written Off' }, { value: 'CANCELLED', label: 'Cancelled' }]}
           value={filter.status}
           onChange={(e) => setFilter({ ...filter, status: e.target.value })}
           className="w-40"
@@ -146,7 +146,7 @@ export default function LoansPage() {
           icon={<HandCoins className="h-12 w-12" />}
           title="No loans found"
           description="Track loans given and taken with ease"
-          action={<Button onClick={() => setShowCreate(true)}>Add Loan</Button>}
+          action={<Button onClick={() => { reset(getInitialForm()); setShowCreate(true); }}>Add Loan</Button>}
         />
       ) : (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
@@ -179,6 +179,7 @@ export default function LoansPage() {
                     <span className="text-muted-foreground">Outstanding</span>
                     <span className="font-bold tabular-nums text-primary">{formatCurrency(loan.remainingAmount)}</span>
                   </div>
+                  {loan.account && <p className="text-xs text-muted-foreground">{loan.account.name}</p>}
                   {loan.notes && <p className="text-xs text-muted-foreground truncate">{loan.notes}</p>}
                   <p className="text-xs text-muted-foreground">{formatDate(loan.transactionDate)}</p>
                 </CardContent>

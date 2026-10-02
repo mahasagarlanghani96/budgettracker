@@ -9,7 +9,7 @@ export async function GET() {
     const session = await requireAuth();
 
     const persons = await prisma.person.findMany({
-      where: { userId: (session.user as { id: string }).id },
+      where: { userId: (session.user as { id: string }).id, isActive: true },
       include: {
         _count: { select: { loans: true, committeeMembers: true, transactions: true } },
       },
@@ -32,8 +32,24 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const validated = personSchema.parse(body);
 
+    const userId = (session.user as { id: string }).id;
+    const trimmedName = validated.name.trim();
+
+    const existing = await prisma.person.findFirst({
+      where: { userId, name: { equals: trimmedName, mode: 'insensitive' }, isActive: true },
+    });
+    if (existing) {
+      return NextResponse.json({ error: `A person named "${trimmedName}" already exists` }, { status: 409 });
+    }
+
     const person = await prisma.person.create({
-      data: { ...validated, userId: (session.user as { id: string }).id },
+      data: {
+        ...validated,
+        name: trimmedName,
+        email: validated.email || null,
+        phone: validated.phone || null,
+        userId,
+      },
     });
 
     return NextResponse.json({ data: person }, { status: 201 });

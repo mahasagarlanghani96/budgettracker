@@ -24,6 +24,11 @@ export default function RegisterPage() {
     e.preventDefault();
     setError('');
 
+    if (name.trim().length < 2) {
+      setError('Name must be at least 2 characters');
+      return;
+    }
+
     if (password !== confirmPassword) {
       setError('Passwords do not match');
       return;
@@ -31,6 +36,14 @@ export default function RegisterPage() {
 
     if (password.length < 8) {
       setError('Password must be at least 8 characters');
+      return;
+    }
+    if (!/[A-Z]/.test(password) || !/[a-z]/.test(password) || !/[0-9]/.test(password)) {
+      setError('Password must contain uppercase, lowercase, and a number');
+      return;
+    }
+    if (password.length > 72) {
+      setError('Password must be at most 72 characters');
       return;
     }
 
@@ -104,7 +117,7 @@ export default function RegisterPage() {
               <Input
                 id="password"
                 type={showPassword ? 'text' : 'password'}
-                placeholder="Min 8 characters"
+                placeholder="Min 8 chars, uppercase, lowercase, number"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required

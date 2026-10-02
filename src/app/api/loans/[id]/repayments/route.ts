@@ -28,6 +28,14 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
       return NextResponse.json({ error: 'Can only add repayments to active loans' }, { status: 400 });
     }
 
+    const remaining = parseFloat(loan.remainingAmount?.toString() || loan.amount.toString());
+    if (validated.amount > remaining) {
+      return NextResponse.json(
+        { error: `Repayment amount (${validated.amount}) exceeds remaining balance (${remaining})` },
+        { status: 400 }
+      );
+    }
+
     // Verify account
     const account = await prisma.account.findFirst({
       where: { id: validated.accountId, userId },

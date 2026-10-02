@@ -13,6 +13,7 @@ import { FormField } from '@/components/forms/FormField';
 import { useResourceForm } from '@/hooks/useResourceForm';
 import { savingsGoalSchema, savingsGoalUpdateSchema, savingsTransactionInputSchema } from '@/lib/validations/schemas';
 import { formatCurrency, formatDate } from '@/lib/utils';
+import { useConfirm } from '@/hooks/use-confirm';
 import { PiggyBank, Plus, ArrowDownToLine, ArrowUpFromLine, Pencil, Trash2, History } from 'lucide-react';
 
 interface SavingsTx {
@@ -37,9 +38,8 @@ interface SavingsGoal {
   notes?: string | null;
 }
 
-const today = new Date().toISOString().split('T')[0];
-
 export default function SavingsPage() {
+  const today = new Date().toISOString().split('T')[0];
   const [goals, setGoals] = useState<SavingsGoal[]>([]);
   const [accounts, setAccounts] = useState<Array<{ id: string; name: string }>>([]);
   const [loading, setLoading] = useState(true);
@@ -50,6 +50,7 @@ export default function SavingsPage() {
   const [transactions, setTransactions] = useState<SavingsTx[]>([]);
   const [historyLoading, setHistoryLoading] = useState(false);
   const [editingTx, setEditingTx] = useState<SavingsTx | null>(null);
+  const { confirm, ConfirmDialog } = useConfirm();
 
   function fetchGoals() {
     fetch('/api/savings').then((r) => r.json()).then((res) => setGoals(res.data || [])).catch(console.error).finally(() => setLoading(false));
@@ -121,7 +122,7 @@ export default function SavingsPage() {
 
   async function handleDeleteTx(tx: SavingsTx) {
     if (!historyGoal) return;
-    if (!confirm('Delete this transaction? This cannot be undone.')) return;
+    if (!(await confirm('Delete this transaction? This cannot be undone.'))) return;
     const res = await fetch(`/api/savings/${historyGoal.id}/transactions/${tx.id}`, { method: 'DELETE' });
     if (res.ok) { fetchHistory(historyGoal.id); fetchGoals(); }
   }
@@ -138,9 +139,13 @@ export default function SavingsPage() {
   }
 
   async function handleDelete(goal: SavingsGoal) {
-    if (!confirm(`Delete "${goal.name}"? This cannot be undone.`)) return;
+    if (!(await confirm(`Delete "${goal.name}"? This cannot be undone.`))) return;
     const res = await fetch(`/api/savings/${goal.id}`, { method: 'DELETE' });
-    if (res.ok) fetchGoals();
+    if (res.ok) { fetchGoals(); }
+    else {
+      try { const d = await res.json(); alert(d.error || 'Failed to delete goal'); }
+      catch { alert('Failed to delete goal'); }
+    }
   }
 
   if (loading) return <PageLoading />;
@@ -149,6 +154,7 @@ export default function SavingsPage() {
 
   return (
     <div className="space-y-6">
+      {ConfirmDialog}
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold">Savings Goals</h1>
         <Button onClick={() => setShowCreate(true)}><Plus className="h-4 w-4 mr-2" /> New Goal</Button>
@@ -165,8 +171,8 @@ export default function SavingsPage() {
                   <CardTitle className="text-base">{goal.name}</CardTitle>
                   <div className="flex items-center gap-1">
                     <Badge variant={goal.isActive ? 'success' : 'secondary'} className="text-xs">{goal.isActive ? 'Active' : 'Inactive'}</Badge>
-                    <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => openEdit(goal)}><Pencil className="h-3.5 w-3.5" /></Button>
-                    <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => handleDelete(goal)}><Trash2 className="h-3.5 w-3.5" /></Button>
+                    <Button variant="ghost" size="icon" className="h-7 w-7" aria-label={`Edit ${goal.name}`} onClick={() => openEdit(goal)}><Pencil className="h-3.5 w-3.5" /></Button>
+                    <Button variant="ghost" size="icon" className="h-7 w-7" aria-label={`Delete ${goal.name}`} onClick={() => handleDelete(goal)}><Trash2 className="h-3.5 w-3.5" /></Button>
                   </div>
                 </div>
               </CardHeader>
@@ -299,8 +305,8 @@ export default function SavingsPage() {
                     {tx.notes && <p className="text-xs text-muted-foreground truncate">{tx.notes}</p>}
                   </div>
                   <div className="flex items-center gap-1 shrink-0">
-                    <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => openEditTx(tx)}><Pencil className="h-3.5 w-3.5" /></Button>
-                    <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => handleDeleteTx(tx)}><Trash2 className="h-3.5 w-3.5" /></Button>
+                    <Button variant="ghost" size="icon" className="h-7 w-7" aria-label="Edit transaction" onClick={() => openEditTx(tx)}><Pencil className="h-3.5 w-3.5" /></Button>
+                    <Button variant="ghost" size="icon" className="h-7 w-7" aria-label="Delete transaction" onClick={() => handleDeleteTx(tx)}><Trash2 className="h-3.5 w-3.5" /></Button>
                   </div>
                 </div>
               ))}

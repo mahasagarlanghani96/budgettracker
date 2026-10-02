@@ -54,10 +54,20 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const validated = savingsGoalSchema.parse(body);
 
+    // DEF-081: Validate targetDate is not in the past
+    if (validated.targetDate) {
+      const target = new Date(validated.targetDate);
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      if (target < today) {
+        return NextResponse.json({ error: 'Target date cannot be in the past' }, { status: 400 });
+      }
+    }
+
     const goal = await prisma.savingsGoal.create({
       data: {
         userId: (session.user as { id: string }).id,
-        name: validated.name,
+        name: validated.name.trim(),
         targetAmount: validated.targetAmount,
         targetDate: validated.targetDate ? new Date(validated.targetDate) : undefined,
         notes: validated.notes,

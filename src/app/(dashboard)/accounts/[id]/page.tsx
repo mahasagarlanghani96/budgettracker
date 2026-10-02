@@ -19,6 +19,7 @@ import { SharedAccessSection } from '@/components/shared-access/SharedAccessSect
 import { formatCurrency, formatDate } from '@/lib/utils';
 import { ArrowLeft, Pencil, Trash2 } from 'lucide-react';
 import Link from 'next/link';
+import { useConfirm } from '@/hooks/use-confirm';
 
 const accountTypeOptions = [
   { value: 'CASH', label: 'Cash' },
@@ -36,6 +37,7 @@ export default function AccountDetailPage() {
   const [loading, setLoading] = useState(true);
   const [showEdit, setShowEdit] = useState(false);
   const [deleteError, setDeleteError] = useState<string | null>(null);
+  const { confirm, ConfirmDialog } = useConfirm();
 
   const fetchAccount = useCallback(() => {
     fetch(`/api/accounts/${id}`)
@@ -87,7 +89,7 @@ export default function AccountDetailPage() {
   }
 
   async function handleDelete() {
-    if (!confirm('Are you sure you want to delete this account?')) return;
+    if (!(await confirm('Are you sure you want to delete this account?'))) return;
     setDeleteError(null);
     const res = await fetch(`/api/accounts/${id}`, { method: 'DELETE' });
     if (res.ok) {
@@ -101,10 +103,38 @@ export default function AccountDetailPage() {
   if (loading) return <PageLoading />;
   if (!account) return <div className="text-center py-12 text-muted-foreground">Account not found</div>;
 
-  const transactions = (account.recentTransactions || []) as Array<Record<string, unknown>>;
+  const [transactions, setTransactions] = useState<Array<Record<string, unknown>>>([]);
+  const [totalTransactions, setTotalTransactions] = useState(0);
+  const [loadingMore, setLoadingMore] = useState(false);
+
+  // Sync transactions from account data on initial load
+  useEffect(() => {
+    if (account) {
+      setTransactions((account.recentTransactions || []) as Array<Record<string, unknown>>);
+      setTotalTransactions((account.totalTransactions as number) || 0);
+    }
+  }, [account]);
+
+  async function loadMoreTransactions() {
+    setLoadingMore(true);
+    try {
+      const res = await fetch(`/api/accounts/${id}?limit=50&offset=${transactions.length}`);
+      const json = await res.json();
+      if (json.data?.recentTransactions) {
+        setTransactions((prev) => [...prev, ...json.data.recentTransactions]);
+      }
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setLoadingMore(false);
+    }
+  }
+
+  const hasMore = transactions.length < totalTransactions;
 
   return (
     <div className="space-y-6">
+      {ConfirmDialog}
       <div className="flex items-center gap-4">
         <Link href="/accounts">
           <Button variant="ghost" size="icon"><ArrowLeft className="h-4 w-4" /></Button>
@@ -146,36 +176,52 @@ export default function AccountDetailPage() {
 
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">Recent Transactions</CardTitle>
+          <CardTitle className="text-base">
+            Transactions
+            {totalTransactions > 0 && (
+              <span className="text-sm font-normal text-muted-foreground ml-2">
+                ({transactions.length} of {totalTransactions})
+              </span>
+            )}
+          </CardTitle>
         </CardHeader>
         <CardContent>
           {transactions.length === 0 ? (
             <p className="text-sm text-muted-foreground text-center py-4">No transactions for this account</p>
           ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Date</TableHead>
-                  <TableHead>Description</TableHead>
-                  <TableHead>Type</TableHead>
-                  <TableHead className="text-right">Amount</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {transactions.map((tx) => (
-                  <TableRow key={tx.id as string}>
-                    <TableCell className="text-sm">{formatDate(tx.transactionDate as string)}</TableCell>
-                    <TableCell className="text-sm">{(tx.description as string) || (tx.type as string)}</TableCell>
-                    <TableCell>
-                      <Badge variant="outline" className="text-xs">{tx.type as string}</Badge>
-                    </TableCell>
-                    <TableCell className="text-right font-medium tabular-nums">
-                      {formatCurrency((tx.amount as { toString(): string }).toString())}
-                    </TableCell>
+            <>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Date</TableHead>
+                    <TableHead>Description</TableHead>
+                    <TableHead>Type</TableHead>
+                    <TableHead className="text-right">Amount</TableHead>
                   </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+                </TableHeader>
+                <TableBody>
+                  {transactions.map((tx) => (
+                    <TableRow key={tx.id as string}>
+                      <TableCell className="text-sm">{formatDate(tx.transactionDate as string)}</TableCell>
+                      <TableCell className="text-sm">{(tx.description as string) || (tx.type as string)}</TableCell>
+                      <TableCell>
+                        <Badge variant="outline" className="text-xs">{tx.type as string}</Badge>
+                      </TableCell>
+                      <TableCell className="text-right font-medium tabular-nums">
+                        {formatCurrency((tx.amount as { toString(): string }).toString())}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+              {hasMore && (
+                <div className="flex justify-center pt-4">
+                  <Button variant="outline" size="sm" onClick={loadMoreTransactions} disabled={loadingMore}>
+                    {loadingMore ? 'Loading...' : `Load more (${totalTransactions - transactions.length} remaining)`}
+                  </Button>
+                </div>
+              )}
+            </>
           )}
         </CardContent>
       </Card>

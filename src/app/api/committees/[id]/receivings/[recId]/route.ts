@@ -31,15 +31,34 @@ export async function PUT(request: NextRequest, { params }: Params) {
 
     const txDate = new Date(validated.transactionDate);
 
+    const isHistorical = body.isHistorical ?? false;
+
     const result = await prisma.$transaction(async (tx: any) => {
+      // Use destAccountId (not sourceAccountId) since receivings credit the account
       await softDeleteLedgerEntry(tx, {
         link: { committeeRecvId: recId },
         userId,
         type: 'COMMITTEE_RECEIVING',
         amount: existing.actualAmount,
-        sourceAccountId: existing.accountId,
+        accountField: 'destAccountId',
+        accountId: existing.accountId,
         transactionDate: existing.transactionDate,
       });
+
+      // Verify the old entry was actually soft-deleted before creating replacement
+      const orphanCheck = await tx.transaction.findFirst({
+        where: {
+          committeeRecvId: recId,
+          userId,
+          isDeleted: false,
+        },
+      });
+      if (orphanCheck) {
+        await tx.transaction.update({
+          where: { id: orphanCheck.id },
+          data: { isDeleted: true, deletedAt: new Date() },
+        });
+      }
 
       const receiving = await tx.committeeReceiving.update({
         where: { id: recId },
@@ -64,6 +83,7 @@ export async function PUT(request: NextRequest, { params }: Params) {
           description: `Committee receiving: ${committee.name}`,
           transactionDate: txDate,
           committeeRecvId: recId,
+          isHistorical,
         },
       });
 
@@ -104,12 +124,14 @@ export async function DELETE(_request: NextRequest, { params }: Params) {
     }
 
     await prisma.$transaction(async (tx: any) => {
+      // Use destAccountId (not sourceAccountId) since receivings credit the account
       await softDeleteLedgerEntry(tx, {
         link: { committeeRecvId: recId },
         userId,
         type: 'COMMITTEE_RECEIVING',
         amount: existing.actualAmount,
-        sourceAccountId: existing.accountId,
+        accountField: 'destAccountId',
+        accountId: existing.accountId,
         transactionDate: existing.transactionDate,
       });
       await tx.committeeReceiving.delete({ where: { id: recId } });

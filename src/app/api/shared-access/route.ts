@@ -60,13 +60,22 @@ export async function POST(request: NextRequest) {
     }
 
     // Verify ownership of the resource
-    if (validated.resourceType === 'account') {
-      const account = await prisma.account.findFirst({
-        where: { id: validated.resourceId, userId: session.user.id },
-      });
-      if (!account) {
-        return NextResponse.json({ error: 'Resource not found' }, { status: 404 });
-      }
+    const resourceChecks: Record<string, () => Promise<unknown>> = {
+      account: () => prisma.account.findFirst({ where: { id: validated.resourceId, userId: session.user.id } }),
+      committee: () => prisma.committee.findFirst({ where: { id: validated.resourceId, userId: session.user.id } }),
+      loan: () => prisma.loan.findFirst({ where: { id: validated.resourceId, userId: session.user.id } }),
+      savings: () => prisma.savingsGoal.findFirst({ where: { id: validated.resourceId, userId: session.user.id } }),
+      investment: () => prisma.investment.findFirst({ where: { id: validated.resourceId, userId: session.user.id } }),
+      plot: () => prisma.plot.findFirst({ where: { id: validated.resourceId, userId: session.user.id } }),
+    };
+
+    const checkOwnership = resourceChecks[validated.resourceType];
+    if (!checkOwnership) {
+      return NextResponse.json({ error: 'Unsupported resource type' }, { status: 400 });
+    }
+    const resource = await checkOwnership();
+    if (!resource) {
+      return NextResponse.json({ error: 'Resource not found' }, { status: 404 });
     }
 
     const share = await prisma.sharedAccess.upsert({
