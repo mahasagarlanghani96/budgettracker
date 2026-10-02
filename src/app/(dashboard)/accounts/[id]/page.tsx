@@ -38,6 +38,9 @@ export default function AccountDetailPage() {
   const [showEdit, setShowEdit] = useState(false);
   const [deleteError, setDeleteError] = useState<string | null>(null);
   const { confirm, ConfirmDialog } = useConfirm();
+  const [transactions, setTransactions] = useState<Array<Record<string, unknown>>>([]);
+  const [totalTransactions, setTotalTransactions] = useState(0);
+  const [loadingMore, setLoadingMore] = useState(false);
 
   const fetchAccount = useCallback(() => {
     fetch(`/api/accounts/${id}`)
@@ -100,14 +103,6 @@ export default function AccountDetailPage() {
     }
   }
 
-  if (loading) return <PageLoading />;
-  if (!account) return <div className="text-center py-12 text-muted-foreground">Account not found</div>;
-
-  const [transactions, setTransactions] = useState<Array<Record<string, unknown>>>([]);
-  const [totalTransactions, setTotalTransactions] = useState(0);
-  const [loadingMore, setLoadingMore] = useState(false);
-
-  // Sync transactions from account data on initial load
   useEffect(() => {
     if (account) {
       setTransactions((account.recentTransactions || []) as Array<Record<string, unknown>>);
@@ -131,6 +126,9 @@ export default function AccountDetailPage() {
   }
 
   const hasMore = transactions.length < totalTransactions;
+
+  if (loading) return <PageLoading />;
+  if (!account) return <div className="text-center py-12 text-muted-foreground">Account not found</div>;
 
   return (
     <div className="space-y-6">
