@@ -512,6 +512,7 @@ model Investment {
   investmentDate  DateTime
   notes           String?
   isActive        Boolean  @default(true)
+  isHistorical    Boolean  @default(false)
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
 

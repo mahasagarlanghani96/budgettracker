@@ -37,6 +37,7 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
         investmentDate: validated.investmentDate ? new Date(validated.investmentDate) : undefined,
         notes: validated.notes,
         isActive: validated.isActive,
+        isHistorical: validated.isHistorical,
       },
     });
 

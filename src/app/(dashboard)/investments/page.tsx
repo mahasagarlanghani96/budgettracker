@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -12,9 +12,9 @@ import { PageLoading, EmptyState } from '@/components/ui/loading';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/modal';
 import { FormField } from '@/components/forms/FormField';
 import { useResourceForm } from '@/hooks/useResourceForm';
-import { investmentSchema, investmentUpdateSchema } from '@/lib/validations/schemas';
+import { investmentSchema, investmentUpdateSchema, investmentProfitSchema } from '@/lib/validations/schemas';
 import { formatCurrency } from '@/lib/utils';
-import { TrendingUp, Plus, ArrowUp, ArrowDown, Pencil, Trash2 } from 'lucide-react';
+import { TrendingUp, Plus, ArrowUp, ArrowDown, Pencil, Trash2, DollarSign, History } from 'lucide-react';
 
 interface Investment {
   id: string;
@@ -29,6 +29,16 @@ interface Investment {
   accountId: string;
   notes?: string | null;
   isActive: boolean;
+  isHistorical: boolean;
+}
+
+interface ProfitEntry {
+  id: string;
+  amount: { toString(): string };
+  taxAmount: { toString(): string } | null;
+  expectedAmount: { toString(): string } | null;
+  transactionDate: string;
+  notes?: string | null;
 }
 
 const investmentTypeOptions = [
@@ -49,28 +59,39 @@ export default function InvestmentsPage() {
   const [showCreate, setShowCreate] = useState(false);
   const [editing, setEditing] = useState<Investment | null>(null);
   const [accounts, setAccounts] = useState<{ id: string; name: string }[]>([]);
+  const [recordingProfit, setRecordingProfit] = useState<Investment | null>(null);
+  const [viewingHistory, setViewingHistory] = useState<Investment | null>(null);
+  const [profitHistory, setProfitHistory] = useState<ProfitEntry[]>([]);
+  const [historyLoading, setHistoryLoading] = useState(false);
 
-  function fetchInvestments() {
+  const fetchInvestments = useCallback(() => {
     fetch('/api/investments').then((r) => r.json()).then((res) => setInvestments(res.data || [])).catch(console.error).finally(() => setLoading(false));
-  }
+  }, []);
 
   useEffect(() => {
     fetchInvestments();
     fetch('/api/accounts').then((r) => r.json()).then((res) => setAccounts(res.data || [])).catch(console.error);
-  }, []);
+  }, [fetchInvestments]);
 
   const createForm = useResourceForm({
     schema: investmentSchema,
-    initial: { name: '', investmentType: '', amountInvested: '', currentValue: null, accountId: '', investmentDate: today, notes: '' },
+    initial: { name: '', investmentType: '', amountInvested: '', currentValue: null, accountId: '', investmentDate: today, isHistorical: false, notes: '' },
     onSubmit: (data) => fetch('/api/investments', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) }),
     onSuccess: () => { setShowCreate(false); createForm.reset(); fetchInvestments(); },
   });
 
   const editFormHook = useResourceForm({
     schema: investmentUpdateSchema,
-    initial: { name: '', investmentType: '', amountInvested: '', currentValue: null, accountId: '', investmentDate: '', notes: '', isActive: true },
+    initial: { name: '', investmentType: '', amountInvested: '', currentValue: null, accountId: '', investmentDate: '', isHistorical: false, notes: '', isActive: true },
     onSubmit: (data) => fetch(`/api/investments/${editing!.id}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) }),
     onSuccess: () => { setEditing(null); fetchInvestments(); },
+  });
+
+  const profitForm = useResourceForm({
+    schema: investmentProfitSchema,
+    initial: { grossAmount: '', taxAmount: 0, taxPercent: '', netAmount: '', transactionDate: today, notes: '' },
+    onSubmit: (data) => fetch(`/api/investments/${recordingProfit!.id}/profit`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) }),
+    onSuccess: () => { setRecordingProfit(null); profitForm.reset(); fetchInvestments(); },
   });
 
   function openEdit(inv: Investment) {
@@ -82,15 +103,52 @@ export default function InvestmentsPage() {
       currentValue: parseFloat(inv.currentValue.toString()) || null,
       accountId: inv.accountId || '',
       investmentDate: inv.investmentDate ? inv.investmentDate.split('T')[0] : '',
+      isHistorical: inv.isHistorical,
       notes: inv.notes || '',
       isActive: inv.isActive,
     });
+  }
+
+  function openProfitRecord(inv: Investment) {
+    setRecordingProfit(inv);
+    profitForm.reset();
+  }
+
+  function openHistory(inv: Investment) {
+    setViewingHistory(inv);
+    setHistoryLoading(true);
+    fetch(`/api/investments/${inv.id}/profit`)
+      .then((r) => r.json())
+      .then((res) => setProfitHistory(res.data || []))
+      .catch(console.error)
+      .finally(() => setHistoryLoading(false));
   }
 
   async function handleDelete(inv: Investment) {
     if (!confirm(`Delete "${inv.name}"? This cannot be undone.`)) return;
     const res = await fetch(`/api/investments/${inv.id}`, { method: 'DELETE' });
     if (res.ok) fetchInvestments();
+  }
+
+  function handleGrossChange(val: string) {
+    const gross = val === '' ? '' : Number(val);
+    profitForm.setField('grossAmount', gross);
+    if (typeof gross === 'number' && gross > 0) {
+      const tax = typeof profitForm.form.taxAmount === 'number' ? profitForm.form.taxAmount : 0;
+      profitForm.setField('netAmount', Math.round((gross - tax) * 100) / 100);
+    }
+  }
+
+  function handleTaxAmountChange(val: string) {
+    const tax = val === '' ? 0 : Number(val);
+    profitForm.setField('taxAmount', tax);
+    const gross = typeof profitForm.form.grossAmount === 'number' ? profitForm.form.grossAmount : 0;
+    if (gross > 0) {
+      profitForm.setField('netAmount', Math.round((gross - tax) * 100) / 100);
+      if (gross > 0 && tax > 0) {
+        profitForm.setField('taxPercent', Math.round((tax / gross) * 10000) / 100);
+      }
+    }
   }
 
   if (loading) return <PageLoading />;
@@ -135,7 +193,12 @@ export default function InvestmentsPage() {
                   const pl = parseFloat(inv.profitLoss);
                   return (
                     <TableRow key={inv.id}>
-                      <TableCell className="font-medium">{inv.name}</TableCell>
+                      <TableCell>
+                        <div>
+                          <span className="font-medium">{inv.name}</span>
+                          {inv.isHistorical && <Badge variant="outline" className="ml-2 text-[10px]">Historical</Badge>}
+                        </div>
+                      </TableCell>
                       <TableCell>{inv.investmentType}</TableCell>
                       <TableCell className="text-right tabular-nums">{formatCurrency(inv.amountInvested.toString())}</TableCell>
                       <TableCell className="text-right tabular-nums">{formatCurrency(inv.currentValue.toString())}</TableCell>
@@ -148,8 +211,10 @@ export default function InvestmentsPage() {
                       <TableCell><Badge variant={inv.isActive ? 'success' : 'secondary'} className="text-xs">{inv.isActive ? 'Active' : 'Inactive'}</Badge></TableCell>
                       <TableCell className="text-right">
                         <div className="flex justify-end gap-1">
-                          <Button variant="ghost" size="icon" onClick={() => openEdit(inv)}><Pencil className="h-4 w-4" /></Button>
-                          <Button variant="ghost" size="icon" onClick={() => handleDelete(inv)}><Trash2 className="h-4 w-4" /></Button>
+                          <Button variant="ghost" size="icon" onClick={() => openProfitRecord(inv)} title="Record Profit"><DollarSign className="h-4 w-4" /></Button>
+                          <Button variant="ghost" size="icon" onClick={() => openHistory(inv)} title="Profit History"><History className="h-4 w-4" /></Button>
+                          <Button variant="ghost" size="icon" onClick={() => openEdit(inv)} title="Edit"><Pencil className="h-4 w-4" /></Button>
+                          <Button variant="ghost" size="icon" onClick={() => handleDelete(inv)} title="Delete"><Trash2 className="h-4 w-4" /></Button>
                         </div>
                       </TableCell>
                     </TableRow>
@@ -167,7 +232,7 @@ export default function InvestmentsPage() {
           <DialogHeader><DialogTitle>Add Investment</DialogTitle></DialogHeader>
           <form onSubmit={createForm.handleSubmit} className="space-y-4">
             <FormField label="Name" required error={createForm.errors.name}>
-              <Input value={createForm.form.name as string} onChange={(e) => createForm.setField('name', e.target.value)} placeholder="e.g., AAPL Shares" />
+              <Input value={createForm.form.name as string} onChange={(e) => createForm.setField('name', e.target.value)} placeholder="e.g., Raqami Flexi-Week" />
             </FormField>
             <FormField label="Investment Type" required error={createForm.errors.investmentType}>
               <Select options={investmentTypeOptions} value={createForm.form.investmentType as string} onChange={(e) => createForm.setField('investmentType', e.target.value)} placeholder="Select type" />
@@ -189,6 +254,10 @@ export default function InvestmentsPage() {
             <FormField label="Notes" error={createForm.errors.notes}>
               <Textarea value={createForm.form.notes as string} onChange={(e) => createForm.setField('notes', e.target.value)} placeholder="Optional" />
             </FormField>
+            <label className="flex items-center gap-2 text-sm">
+              <input type="checkbox" checked={createForm.form.isHistorical as boolean} onChange={(e) => createForm.setField('isHistorical', e.target.checked)} />
+              Pre-existing investment — tracking only, won&apos;t affect account balance
+            </label>
             {createForm.serverError && <p className="text-sm text-destructive bg-destructive/10 rounded-md px-3 py-2">{createForm.serverError}</p>}
             <DialogFooter>
               <Button type="button" variant="outline" onClick={() => setShowCreate(false)}>Cancel</Button>
@@ -226,16 +295,137 @@ export default function InvestmentsPage() {
             <FormField label="Notes" error={editFormHook.errors.notes}>
               <Textarea value={editFormHook.form.notes as string} onChange={(e) => editFormHook.setField('notes', e.target.value)} placeholder="Optional" />
             </FormField>
-            <label className="flex items-center gap-2 text-sm font-medium">
-              <input type="checkbox" checked={editFormHook.form.isActive as boolean} onChange={(e) => editFormHook.setField('isActive', e.target.checked)} />
-              Active
-            </label>
+            <div className="flex flex-col gap-2">
+              <label className="flex items-center gap-2 text-sm font-medium">
+                <input type="checkbox" checked={editFormHook.form.isActive as boolean} onChange={(e) => editFormHook.setField('isActive', e.target.checked)} />
+                Active
+              </label>
+              <label className="flex items-center gap-2 text-sm">
+                <input type="checkbox" checked={editFormHook.form.isHistorical as boolean} onChange={(e) => editFormHook.setField('isHistorical', e.target.checked)} />
+                Pre-existing investment — tracking only
+              </label>
+            </div>
             {editFormHook.serverError && <p className="text-sm text-destructive bg-destructive/10 rounded-md px-3 py-2">{editFormHook.serverError}</p>}
             <DialogFooter>
               <Button type="button" variant="outline" onClick={() => setEditing(null)}>Cancel</Button>
               <Button type="submit" disabled={editFormHook.saving}>{editFormHook.saving ? 'Saving...' : 'Save Changes'}</Button>
             </DialogFooter>
           </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Record Profit Modal */}
+      <Dialog open={!!recordingProfit} onOpenChange={(open) => { if (!open) { setRecordingProfit(null); profitForm.reset(); } }}>
+        <DialogContent>
+          <DialogHeader><DialogTitle>Record Profit — {recordingProfit?.name}</DialogTitle></DialogHeader>
+          <form onSubmit={profitForm.handleSubmit} className="space-y-4">
+            <div className="grid gap-4 sm:grid-cols-2">
+              <FormField label="Gross Profit" required error={profitForm.errors.grossAmount}>
+                <Input
+                  type="number"
+                  step="0.01"
+                  min="0.01"
+                  value={profitForm.form.grossAmount as string | number}
+                  onChange={(e) => handleGrossChange(e.target.value)}
+                  placeholder="Before tax"
+                />
+              </FormField>
+              <FormField label="Tax Deducted" error={profitForm.errors.taxAmount}>
+                <Input
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  value={profitForm.form.taxAmount as number}
+                  onChange={(e) => handleTaxAmountChange(e.target.value)}
+                  placeholder="0.00"
+                />
+              </FormField>
+            </div>
+            <div className="grid gap-4 sm:grid-cols-2">
+              <FormField label="Tax %" error={profitForm.errors.taxPercent}>
+                <Input
+                  type="number"
+                  step="0.01"
+                  value={(profitForm.form.taxPercent as number | null | string) ?? ''}
+                  onChange={(e) => profitForm.setField('taxPercent', e.target.value === '' ? null : Number(e.target.value))}
+                  placeholder="Auto-calculated"
+                />
+              </FormField>
+              <FormField label="Net Received" required error={profitForm.errors.netAmount}>
+                <Input
+                  type="number"
+                  step="0.01"
+                  min="0.01"
+                  value={profitForm.form.netAmount as string | number}
+                  onChange={(e) => profitForm.setField('netAmount', e.target.value === '' ? '' : Number(e.target.value))}
+                  placeholder="After tax — credited to account"
+                />
+              </FormField>
+            </div>
+            <FormField label="Date" required error={profitForm.errors.transactionDate}>
+              <Input type="date" value={profitForm.form.transactionDate as string} onChange={(e) => profitForm.setField('transactionDate', e.target.value)} />
+            </FormField>
+            <FormField label="Notes" error={profitForm.errors.notes}>
+              <Textarea value={profitForm.form.notes as string} onChange={(e) => profitForm.setField('notes', e.target.value)} placeholder="Optional" />
+            </FormField>
+            <p className="text-xs text-muted-foreground">
+              The net amount will be credited to the investment&apos;s linked account and the investment&apos;s current value will be updated.
+            </p>
+            {profitForm.serverError && <p className="text-sm text-destructive bg-destructive/10 rounded-md px-3 py-2">{profitForm.serverError}</p>}
+            <DialogFooter>
+              <Button type="button" variant="outline" onClick={() => setRecordingProfit(null)}>Cancel</Button>
+              <Button type="submit" disabled={profitForm.saving}>{profitForm.saving ? 'Recording...' : 'Record Profit'}</Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Profit History Modal */}
+      <Dialog open={!!viewingHistory} onOpenChange={(open) => !open && setViewingHistory(null)}>
+        <DialogContent>
+          <DialogHeader><DialogTitle>Profit History — {viewingHistory?.name}</DialogTitle></DialogHeader>
+          {historyLoading ? (
+            <p className="text-sm text-muted-foreground py-4">Loading...</p>
+          ) : profitHistory.length === 0 ? (
+            <p className="text-sm text-muted-foreground py-4">No profit entries recorded yet.</p>
+          ) : (
+            <div className="max-h-80 overflow-y-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Date</TableHead>
+                    <TableHead className="text-right">Gross</TableHead>
+                    <TableHead className="text-right">Tax</TableHead>
+                    <TableHead className="text-right">Net</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {profitHistory.map((entry) => (
+                    <TableRow key={entry.id}>
+                      <TableCell className="text-sm">{new Date(entry.transactionDate).toLocaleDateString()}</TableCell>
+                      <TableCell className="text-right tabular-nums text-sm">{entry.expectedAmount ? formatCurrency(entry.expectedAmount.toString()) : '—'}</TableCell>
+                      <TableCell className="text-right tabular-nums text-sm text-destructive">{entry.taxAmount ? `-${formatCurrency(entry.taxAmount.toString())}` : '—'}</TableCell>
+                      <TableCell className="text-right tabular-nums text-sm font-medium text-green-600">{formatCurrency(entry.amount.toString())}</TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+              <div className="border-t pt-2 mt-2 px-4 pb-2">
+                <div className="flex justify-between text-sm font-medium">
+                  <span>Total Net Profit</span>
+                  <span className="text-green-600 tabular-nums">
+                    {formatCurrency(profitHistory.reduce((s, e) => s + parseFloat(e.amount.toString()), 0).toString())}
+                  </span>
+                </div>
+              </div>
+            </div>
+          )}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setViewingHistory(null)}>Close</Button>
+            {viewingHistory && (
+              <Button onClick={() => { setViewingHistory(null); openProfitRecord(viewingHistory); }}>Record New Profit</Button>
+            )}
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>

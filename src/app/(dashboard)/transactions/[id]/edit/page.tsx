@@ -84,6 +84,10 @@ export default function EditTransactionPage() {
       if (!payload.taxPercent) delete payload.taxPercent;
       if (!payload.expectedAmount) delete payload.expectedAmount;
 
+      if ((data.type as string) === 'INCOME') {
+        payload.destAccountId = data.sourceAccountId;
+        delete payload.sourceAccountId;
+      }
       if ((data.type as string) === 'COMMITTEE_CONTRIBUTION' && profitDeduction) {
         payload.profitDeduction = parseFloat(profitDeduction);
       }
@@ -273,7 +277,7 @@ export default function EditTransactionPage() {
 
             <div className="grid gap-4 sm:grid-cols-2">
               <FormField
-                label={isTransfer ? 'From Account' : txType === 'COMMITTEE_RECEIVING' ? 'Into Account' : 'Account'}
+                label={isTransfer ? 'From Account' : (txType === 'INCOME' || txType === 'COMMITTEE_RECEIVING') ? 'Into Account' : 'Account'}
                 required
                 error={errors.sourceAccountId}
               >

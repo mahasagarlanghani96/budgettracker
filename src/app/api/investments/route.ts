@@ -52,6 +52,7 @@ export async function POST(request: NextRequest) {
         currentValue: validated.currentValue || validated.amountInvested,
         investmentDate: validated.investmentDate ? new Date(validated.investmentDate) : new Date(),
         accountId: validated.accountId,
+        isHistorical: validated.isHistorical ?? false,
         notes: validated.notes,
       },
     });

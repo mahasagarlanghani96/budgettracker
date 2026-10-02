@@ -86,6 +86,11 @@ export default function NewTransactionPage() {
       if (!payload.taxPercent) delete payload.taxPercent;
       if (!payload.expectedAmount) delete payload.expectedAmount;
 
+      if (data.type === 'INCOME') {
+        payload.destAccountId = data.sourceAccountId;
+        delete payload.sourceAccountId;
+      }
+
       if (COMMITTEE_TYPES.includes(data.type as string)) {
         payload.committeeId = committeeId;
         payload.entryId = entryId;
@@ -292,7 +297,7 @@ export default function NewTransactionPage() {
 
             <div className="grid gap-4 sm:grid-cols-2">
               <FormField
-                label={isTransfer ? 'From Account' : (form.type as string) === 'COMMITTEE_RECEIVING' ? 'Into Account' : 'Account'}
+                label={isTransfer ? 'From Account' : ((form.type as string) === 'INCOME' || (form.type as string) === 'COMMITTEE_RECEIVING') ? 'Into Account' : 'Account'}
                 required
                 error={errors.sourceAccountId}
               >

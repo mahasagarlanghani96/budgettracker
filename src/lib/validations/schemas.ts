@@ -165,6 +165,16 @@ export const investmentSchema = z.object({
   currentValue: z.number().optional().nullable(),
   accountId: z.string().min(1, 'Account is required'),
   investmentDate: z.string().min(1, 'Date is required'),
+  isHistorical: z.boolean().default(false),
+  notes: z.string().optional(),
+});
+
+export const investmentProfitSchema = z.object({
+  grossAmount: z.number().positive('Gross profit must be positive'),
+  taxAmount: z.number().min(0).default(0),
+  taxPercent: z.number().min(0).optional().nullable(),
+  netAmount: z.number().positive('Net amount must be positive'),
+  transactionDate: z.string().min(1, 'Date is required'),
   notes: z.string().optional(),
 });
 
@@ -235,7 +245,7 @@ export const personUpdateSchema = personSchema.extend({ isActive: z.boolean().op
 export const categoryUpdateSchema = categorySchema.extend({ isActive: z.boolean().optional() });
 export const accountUpdateSchema = accountSchema.extend({ isActive: z.boolean().optional() });
 
-export const investmentUpdateSchema = investmentSchema.extend({ isActive: z.boolean().optional() });
+export const investmentUpdateSchema = investmentSchema.extend({ isActive: z.boolean().optional(), isHistorical: z.boolean().optional() });
 
 export const loanUpdateSchema = z.object({
   status: z.enum(['ACTIVE', 'SETTLED', 'WRITTEN_OFF', 'CANCELLED']).optional(),
