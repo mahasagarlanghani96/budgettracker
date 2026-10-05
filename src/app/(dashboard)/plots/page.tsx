@@ -79,7 +79,7 @@ export default function PlotsPage() {
   // Make payment form
   const payForm = useResourceForm({
     schema: plotPaymentInputSchema,
-    initial: { accountId: '', amount: '', transactionDate: today, dueDate: null, notes: '' },
+    initial: { accountId: '', amount: '', transactionDate: today, dueDate: null, notes: '', isHistorical: false },
     onSubmit: (data) => fetch(`/api/plots/${showPayment!}/payments`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) }),
     onSuccess: () => { setShowPayment(null); payForm.reset(); fetchPlots(); },
   });
@@ -87,7 +87,7 @@ export default function PlotsPage() {
   // Edit payment form
   const payEditFormHook = useResourceForm({
     schema: plotPaymentInputSchema,
-    initial: { accountId: '', amount: '', transactionDate: '', dueDate: null, notes: '' },
+    initial: { accountId: '', amount: '', transactionDate: '', dueDate: null, notes: '', isHistorical: false },
     onSubmit: (data) => fetch(`/api/plots/${historyPlot!.id}/payments/${editingPayment!.id}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) }),
     onSuccess: () => { setEditingPayment(null); fetchHistory(historyPlot!.id); fetchPlots(); },
   });
@@ -252,6 +252,16 @@ export default function PlotsPage() {
             <FormField label="Notes" error={payForm.errors.notes}>
               <Textarea value={payForm.form.notes as string} onChange={(e) => payForm.setField('notes', e.target.value)} placeholder="Optional" />
             </FormField>
+            <FormField label="Historical Entry" error={payForm.errors.isHistorical}>
+              <label className="flex items-center gap-2 text-sm">
+                <input
+                  type="checkbox"
+                  checked={(payForm.form.isHistorical as boolean) ?? false}
+                  onChange={(e) => payForm.setField('isHistorical', e.target.checked)}
+                />
+                Historical entry only (don&apos;t affect account balance)
+              </label>
+            </FormField>
             {payForm.serverError && <p className="text-sm text-destructive bg-destructive/10 rounded-md px-3 py-2">{payForm.serverError}</p>}
             <DialogFooter>
               <Button type="button" variant="outline" onClick={() => setShowPayment(null)}>Cancel</Button>
@@ -281,6 +291,16 @@ export default function PlotsPage() {
               </FormField>
               <FormField label="Notes" error={payEditFormHook.errors.notes}>
                 <Textarea value={payEditFormHook.form.notes as string} onChange={(e) => payEditFormHook.setField('notes', e.target.value)} placeholder="Optional" />
+              </FormField>
+              <FormField label="Historical Entry" error={payEditFormHook.errors.isHistorical}>
+                <label className="flex items-center gap-2 text-sm">
+                  <input
+                    type="checkbox"
+                    checked={(payEditFormHook.form.isHistorical as boolean) ?? false}
+                    onChange={(e) => payEditFormHook.setField('isHistorical', e.target.checked)}
+                  />
+                  Historical entry only (don&apos;t affect account balance)
+                </label>
               </FormField>
               {payEditFormHook.serverError && <p className="text-sm text-destructive bg-destructive/10 rounded-md px-3 py-2">{payEditFormHook.serverError}</p>}
               <DialogFooter>

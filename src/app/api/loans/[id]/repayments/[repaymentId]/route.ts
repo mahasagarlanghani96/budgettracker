@@ -65,6 +65,7 @@ export async function PUT(request: NextRequest, { params }: Params) {
           transactionDate: repDate,
           personId: loan.personId,
           loanRepaymentId: repaymentId,
+          isHistorical: validated.isHistorical ?? false,
         },
       });
 

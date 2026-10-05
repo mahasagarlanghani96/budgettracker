@@ -42,6 +42,7 @@ function getInitialForm() {
   interestRate: null as number | null,
   notes: '',
   isPrivate: true,
+  isHistorical: true,
   };
 }
 
@@ -263,6 +264,17 @@ export default function LoansPage() {
                 onChange={(e) => setField('notes', e.target.value)}
                 placeholder="Optional"
               />
+            </FormField>
+
+            <FormField label="Historical Entry">
+              <label className="flex items-center gap-2 text-sm">
+                <input
+                  type="checkbox"
+                  checked={form.isHistorical as boolean}
+                  onChange={(e) => setField('isHistorical', e.target.checked)}
+                />
+                Historical entry only (don&apos;t affect account balance)
+              </label>
             </FormField>
 
             <AdvancedSection>

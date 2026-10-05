@@ -56,6 +56,7 @@ export async function PUT(request: NextRequest, { params }: Params) {
           description: `Plot payment: ${plot.name}`,
           transactionDate: payDate,
           plotPaymentId: paymentId,
+          isHistorical: validated.isHistorical ?? false,
         },
       });
     });

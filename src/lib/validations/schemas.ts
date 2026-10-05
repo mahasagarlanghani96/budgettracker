@@ -78,6 +78,7 @@ export const loanSchema = z.object({
   interestRate: z.number().min(0, 'Interest rate cannot be negative').max(100, 'Interest rate cannot exceed 100%').optional().nullable(),
   notes: z.string().max(500, 'Notes must be at most 500 characters').optional(),
   isPrivate: z.boolean().default(true),
+  isHistorical: z.boolean().default(true),
 });
 
 export const loanRepaymentSchema = z.object({
@@ -87,6 +88,7 @@ export const loanRepaymentSchema = z.object({
   accountId: z.string().min(1, 'Account is required'),
   transactionDate: z.string().min(1, 'Date is required'),
   notes: z.string().max(500, 'Notes must be at most 500 characters').optional(),
+  isHistorical: z.boolean().default(false),
 });
 
 // ─── People ──────────────────────────────────────────────────────
@@ -208,6 +210,7 @@ export const plotPaymentSchema = z.object({
   transactionDate: z.string().min(1),
   dueDate: z.string().optional().nullable(),
   notes: z.string().max(500, 'Notes must be at most 500 characters').optional(),
+  isHistorical: z.boolean().default(false),
 });
 
 // ─── Financial Targets ───────────────────────────────────────────
@@ -263,10 +266,16 @@ export const investmentUpdateSchema = investmentSchema.extend({ isActive: z.bool
 
 export const loanUpdateSchema = z.object({
   status: z.enum(['ACTIVE', 'SETTLED', 'WRITTEN_OFF', 'CANCELLED']).optional(),
+  amount: z.number().positive('Amount must be positive').optional(),
+  personId: z.string().min(1).optional(),
+  direction: z.enum(['GIVEN', 'TAKEN']).optional(),
+  accountId: z.string().min(1).optional(),
+  transactionDate: z.string().optional(),
   dueDate: z.string().optional().nullable(),
   interestRate: z.number().min(0).max(100).optional().nullable(),
   notes: z.string().max(500, 'Notes must be at most 500 characters').optional(),
   isPrivate: z.boolean().optional(),
+  isHistorical: z.boolean().optional(),
 });
 
 export const committeeUpdateSchema = z.object({

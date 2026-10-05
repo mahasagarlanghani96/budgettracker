@@ -60,7 +60,6 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
         },
       });
 
-      // Create corresponding transaction (balance-affecting)
       const txType = loan.direction === 'GIVEN' ? 'LOAN_REPAYMENT_RECEIVED' : 'LOAN_REPAYMENT_MADE';
       const isInflow = loan.direction === 'GIVEN';
       await tx.transaction.create({
@@ -75,6 +74,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
           transactionDate: repaymentDate,
           personId: loan.personId,
           loanRepaymentId: repayment.id,
+          isHistorical: validated.isHistorical ?? false,
         },
       });
 

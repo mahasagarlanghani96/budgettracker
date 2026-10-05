@@ -35,6 +35,7 @@ export default function LoanDetailPage() {
   const [showRepayment, setShowRepayment] = useState(false);
   const [showEdit, setShowEdit] = useState(false);
   const [accounts, setAccounts] = useState<Array<{ id: string; name: string }>>([]);
+  const [persons, setPersons] = useState<Array<{ id: string; name: string }>>([]);
   const [editingRepayment, setEditingRepayment] = useState<string | null>(null);
   const [settleError, setSettleError] = useState<string | null>(null);
   const [deleteError, setDeleteError] = useState<string | null>(null);
@@ -52,12 +53,13 @@ export default function LoanDetailPage() {
   useEffect(() => {
     fetchLoan();
     fetch('/api/accounts').then((r) => r.json()).then((res) => setAccounts(res.data || []));
+    fetch('/api/persons').then((r) => r.json()).then((res) => setPersons(res.data || []));
   }, [id, fetchLoan]);
 
   // Edit loan form
   const editForm = useResourceForm({
     schema: loanUpdateSchema,
-    initial: { status: 'ACTIVE', dueDate: '', interestRate: null as number | null, notes: '', isPrivate: true },
+    initial: { status: 'ACTIVE', amount: 0, personId: '', direction: 'GIVEN', accountId: '', transactionDate: '', dueDate: '', interestRate: null as number | null, notes: '', isPrivate: true, isHistorical: true },
     onSubmit: (data) =>
       fetch(`/api/loans/${id}`, {
         method: 'PUT',
@@ -70,7 +72,7 @@ export default function LoanDetailPage() {
   // Add repayment form
   const repayForm = useResourceForm({
     schema: loanRepaymentInputSchema,
-    initial: { amount: 0, accountId: '', transactionDate: today, notes: '' },
+    initial: { amount: 0, accountId: '', transactionDate: today, notes: '', isHistorical: false },
     onSubmit: (data) =>
       fetch(`/api/loans/${id}/repayments`, {
         method: 'POST',
@@ -87,7 +89,7 @@ export default function LoanDetailPage() {
   // Edit repayment form
   const repayEditForm = useResourceForm({
     schema: loanRepaymentInputSchema,
-    initial: { amount: 0, accountId: '', transactionDate: '', notes: '' },
+    initial: { amount: 0, accountId: '', transactionDate: '', notes: '', isHistorical: false },
     onSubmit: (data) =>
       fetch(`/api/loans/${id}/repayments/${editingRepayment}`, {
         method: 'PUT',
@@ -101,10 +103,16 @@ export default function LoanDetailPage() {
     if (!loan) return;
     editForm.setForm({
       status: loan.status as string,
+      amount: parseFloat((loan.amount as { toString(): string }).toString()),
+      personId: (loan.person as { id: string }).id,
+      direction: loan.direction as string,
+      accountId: (loan.account as { id: string })?.id || '',
+      transactionDate: loan.transactionDate ? (loan.transactionDate as string).split('T')[0] : '',
       dueDate: loan.dueDate ? (loan.dueDate as string).split('T')[0] : '',
       interestRate: loan.interestRate != null ? parseFloat((loan.interestRate as { toString(): string }).toString()) : null,
       notes: (loan.notes as string) || '',
       isPrivate: (loan.isPrivate as boolean) ?? true,
+      isHistorical: true,
     });
     setSettleError(null);
     setDeleteError(null);
@@ -161,6 +169,7 @@ export default function LoanDetailPage() {
   const person = loan.person as { name: string };
   const repayments = (loan.repayments || []) as Array<Record<string, unknown>>;
   const accountOptions = accounts.map((a) => ({ value: a.id, label: a.name }));
+  const personOptions = persons.map((p) => ({ value: p.id, label: p.name }));
 
   return (
     <div className="space-y-6">
@@ -284,6 +293,17 @@ export default function LoanDetailPage() {
               />
             </FormField>
 
+            <FormField label="Historical Entry" error={repayForm.errors.isHistorical}>
+              <label className="flex items-center gap-2 text-sm">
+                <input
+                  type="checkbox"
+                  checked={(repayForm.form.isHistorical as boolean) ?? false}
+                  onChange={(e) => repayForm.setField('isHistorical', e.target.checked)}
+                />
+                Historical entry only (don&apos;t affect account balance)
+              </label>
+            </FormField>
+
             {repayForm.serverError && (
               <p className="text-sm text-destructive bg-destructive/10 rounded-md px-3 py-2">{repayForm.serverError}</p>
             )}
@@ -334,6 +354,17 @@ export default function LoanDetailPage() {
               />
             </FormField>
 
+            <FormField label="Historical Entry" error={repayEditForm.errors.isHistorical}>
+              <label className="flex items-center gap-2 text-sm">
+                <input
+                  type="checkbox"
+                  checked={(repayEditForm.form.isHistorical as boolean) ?? false}
+                  onChange={(e) => repayEditForm.setField('isHistorical', e.target.checked)}
+                />
+                Historical entry only (don&apos;t affect account balance)
+              </label>
+            </FormField>
+
             {repayEditForm.serverError && (
               <p className="text-sm text-destructive bg-destructive/10 rounded-md px-3 py-2">{repayEditForm.serverError}</p>
             )}
@@ -350,19 +381,64 @@ export default function LoanDetailPage() {
         <DialogContent>
           <DialogHeader><DialogTitle>Edit Loan</DialogTitle></DialogHeader>
           <form onSubmit={editForm.handleSubmit} className="space-y-4">
+            <FormField label="Person" error={editForm.errors.personId}>
+              <Select
+                options={personOptions}
+                value={editForm.form.personId as string}
+                onChange={(e) => editForm.setField('personId', e.target.value)}
+                placeholder="Select person"
+              />
+            </FormField>
+
+            <div className="grid gap-4 sm:grid-cols-2">
+              <FormField label="Direction" error={editForm.errors.direction}>
+                <Select
+                  options={[{ value: 'GIVEN', label: 'Given (You lent)' }, { value: 'TAKEN', label: 'Taken (You borrowed)' }]}
+                  value={editForm.form.direction as string}
+                  onChange={(e) => editForm.setField('direction', e.target.value)}
+                />
+              </FormField>
+              <FormField label="Amount" error={editForm.errors.amount}>
+                <Input
+                  type="number"
+                  step="0.01"
+                  value={editForm.form.amount as number || ''}
+                  onChange={(e) => editForm.setField('amount', parseFloat(e.target.value) || 0)}
+                />
+              </FormField>
+            </div>
+
+            <FormField label="Account" error={editForm.errors.accountId}>
+              <Select
+                options={accountOptions}
+                value={editForm.form.accountId as string}
+                onChange={(e) => editForm.setField('accountId', e.target.value)}
+                placeholder="Select account"
+              />
+            </FormField>
+
+            <div className="grid gap-4 sm:grid-cols-2">
+              <FormField label="Date" error={editForm.errors.transactionDate}>
+                <Input
+                  type="date"
+                  value={editForm.form.transactionDate as string}
+                  onChange={(e) => editForm.setField('transactionDate', e.target.value)}
+                />
+              </FormField>
+              <FormField label="Due Date" error={editForm.errors.dueDate}>
+                <Input
+                  type="date"
+                  value={(editForm.form.dueDate as string) || ''}
+                  onChange={(e) => editForm.setField('dueDate', e.target.value || null)}
+                />
+              </FormField>
+            </div>
+
             <FormField label="Status" error={editForm.errors.status}>
               <Select
                 options={loanStatusOptions}
                 value={editForm.form.status as string}
                 onChange={(e) => editForm.setField('status', e.target.value)}
-              />
-            </FormField>
-
-            <FormField label="Due Date" error={editForm.errors.dueDate}>
-              <Input
-                type="date"
-                value={(editForm.form.dueDate as string) || ''}
-                onChange={(e) => editForm.setField('dueDate', e.target.value || null)}
               />
             </FormField>
 
@@ -382,6 +458,17 @@ export default function LoanDetailPage() {
                 onChange={(e) => editForm.setField('notes', e.target.value)}
                 placeholder="Optional"
               />
+            </FormField>
+
+            <FormField label="Historical Entry" error={editForm.errors.isHistorical}>
+              <label className="flex items-center gap-2 text-sm">
+                <input
+                  type="checkbox"
+                  checked={(editForm.form.isHistorical as boolean) ?? true}
+                  onChange={(e) => editForm.setField('isHistorical', e.target.checked)}
+                />
+                Historical entry only (don&apos;t affect account balance)
+              </label>
             </FormField>
 
             <FormField label="Private" error={editForm.errors.isPrivate}>

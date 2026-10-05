@@ -61,7 +61,6 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
         },
       });
 
-      // Create corresponding financial transaction
       await tx.transaction.create({
         data: {
           userId,
@@ -71,6 +70,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
           description: `Plot payment: ${plot.name}`,
           transactionDate: paymentDate,
           plotPaymentId: payment.id,
+          isHistorical: validated.isHistorical ?? false,
         },
       });
 

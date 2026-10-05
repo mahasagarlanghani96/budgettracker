@@ -95,7 +95,6 @@ export async function POST(request: NextRequest) {
         },
       });
 
-      // Create corresponding transaction (historical — tracking only, does not affect balance)
       const txType = validated.direction === 'GIVEN' ? 'LOAN_GIVEN' : 'LOAN_TAKEN';
       const isInflow = validated.direction === 'TAKEN';
       await tx.transaction.create({
@@ -110,7 +109,7 @@ export async function POST(request: NextRequest) {
           transactionDate: loanDate,
           personId: validated.personId,
           loanId: loan.id,
-          isHistorical: true,
+          isHistorical: validated.isHistorical ?? true,
         },
       });
 
