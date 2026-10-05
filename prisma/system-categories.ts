@@ -1,0 +1,29 @@
+export const SYSTEM_INCOME_CATEGORIES = [
+  { name: 'Salary', icon: '💼' },
+  { name: 'Freelance', icon: '💻' },
+  { name: 'Business', icon: '🏢' },
+  { name: 'Rental Income', icon: '🏠' },
+  { name: 'Interest', icon: '🏦' },
+  { name: 'Gifts', icon: '🎁' },
+  { name: 'Refunds', icon: '🔄' },
+  { name: 'Other Income', icon: '💰' },
+];
+
+export const SYSTEM_EXPENSE_CATEGORIES = [
+  { name: 'Food & Dining', icon: '🍽️' },
+  { name: 'Groceries', icon: '🛒' },
+  { name: 'Transport', icon: '🚗' },
+  { name: 'Fuel', icon: '⛽' },
+  { name: 'Utilities', icon: '💡' },
+  { name: 'Rent', icon: '🏘️' },
+  { name: 'Healthcare', icon: '🏥' },
+  { name: 'Education', icon: '📚' },
+  { name: 'Shopping', icon: '🛍️' },
+  { name: 'Entertainment', icon: '🎬' },
+  { name: 'Personal Care', icon: '💇' },
+  { name: 'Mobile & Internet', icon: '📱' },
+  { name: 'Household', icon: '🧹' },
+  { name: 'Clothing', icon: '👔' },
+  { name: 'Charity', icon: '🤲' },
+  { name: 'Other Expense', icon: '💸' },
+];

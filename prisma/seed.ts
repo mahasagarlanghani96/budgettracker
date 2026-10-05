@@ -1,5 +1,6 @@
 import { PrismaClient } from '@prisma/client';
 import bcrypt from 'bcryptjs';
+import { SYSTEM_INCOME_CATEGORIES, SYSTEM_EXPENSE_CATEGORIES } from './system-categories';
 
 const prisma = new PrismaClient();
 
@@ -20,51 +21,32 @@ async function main() {
   });
   console.log(`✅ User created: ${user.email}`);
 
-  // Create default categories with distinct icons
-  const incomeCategories = [
-    { name: 'Salary', icon: '💼' },
-    { name: 'Freelance', icon: '💻' },
-    { name: 'Business Income', icon: '🏢' },
-    { name: 'Rental Income', icon: '🏠' },
-    { name: 'Interest', icon: '🏦' },
-    { name: 'Gift', icon: '🎁' },
-    { name: 'Refund', icon: '🔄' },
-    { name: 'Other Income', icon: '💰' },
-  ];
-  const expenseCategories = [
-    { name: 'Food & Dining', icon: '🍽️' },
-    { name: 'Groceries', icon: '🛒' },
-    { name: 'Transport', icon: '🚗' },
-    { name: 'Fuel', icon: '⛽' },
-    { name: 'Utilities', icon: '💡' },
-    { name: 'Rent', icon: '🏘️' },
-    { name: 'Healthcare', icon: '🏥' },
-    { name: 'Education', icon: '📚' },
-    { name: 'Shopping', icon: '🛍️' },
-    { name: 'Entertainment', icon: '🎬' },
-    { name: 'Personal Care', icon: '💇' },
-    { name: 'Mobile & Internet', icon: '📱' },
-    { name: 'Household', icon: '🧹' },
-    { name: 'Clothing', icon: '👔' },
-    { name: 'Charity', icon: '🤲' },
-    { name: 'Other Expense', icon: '💸' },
-  ];
-
-  for (const cat of incomeCategories) {
-    await prisma.category.upsert({
-      where: { userId_name_group: { userId: user.id, name: cat.name, group: 'INCOME' } },
-      update: { icon: cat.icon },
-      create: { userId: user.id, name: cat.name, group: 'INCOME', icon: cat.icon, isSystem: false },
+  // Seed system-level categories (shared by all users)
+  for (const cat of SYSTEM_INCOME_CATEGORIES) {
+    const existing = await prisma.category.findFirst({
+      where: { isSystem: true, name: cat.name, group: 'INCOME' },
     });
+    if (!existing) {
+      await prisma.category.create({
+        data: { name: cat.name, group: 'INCOME', icon: cat.icon, isSystem: true },
+      });
+    } else {
+      await prisma.category.update({ where: { id: existing.id }, data: { icon: cat.icon } });
+    }
   }
-  for (const cat of expenseCategories) {
-    await prisma.category.upsert({
-      where: { userId_name_group: { userId: user.id, name: cat.name, group: 'EXPENSE' } },
-      update: { icon: cat.icon },
-      create: { userId: user.id, name: cat.name, group: 'EXPENSE', icon: cat.icon, isSystem: false },
+  for (const cat of SYSTEM_EXPENSE_CATEGORIES) {
+    const existing = await prisma.category.findFirst({
+      where: { isSystem: true, name: cat.name, group: 'EXPENSE' },
     });
+    if (!existing) {
+      await prisma.category.create({
+        data: { name: cat.name, group: 'EXPENSE', icon: cat.icon, isSystem: true },
+      });
+    } else {
+      await prisma.category.update({ where: { id: existing.id }, data: { icon: cat.icon } });
+    }
   }
-  console.log('✅ Categories created');
+  console.log('✅ System categories created');
 
   // Create accounts (openingDate now has a default, but let's be explicit)
   const now = new Date();
@@ -79,13 +61,13 @@ async function main() {
   });
   console.log('✅ Accounts created');
 
-  // Fetch categories for transactions
-  const salaryCategory = await prisma.category.findFirst({ where: { userId: user.id, name: 'Salary' } });
-  const groceriesCategory = await prisma.category.findFirst({ where: { userId: user.id, name: 'Groceries' } });
-  const transportCategory = await prisma.category.findFirst({ where: { userId: user.id, name: 'Transport' } });
-  const utilitiesCategory = await prisma.category.findFirst({ where: { userId: user.id, name: 'Utilities' } });
-  const foodCategory = await prisma.category.findFirst({ where: { userId: user.id, name: 'Food & Dining' } });
-  const freelanceCategory = await prisma.category.findFirst({ where: { userId: user.id, name: 'Freelance' } });
+  // Fetch system categories for transactions
+  const salaryCategory = await prisma.category.findFirst({ where: { isSystem: true, name: 'Salary' } });
+  const groceriesCategory = await prisma.category.findFirst({ where: { isSystem: true, name: 'Groceries' } });
+  const transportCategory = await prisma.category.findFirst({ where: { isSystem: true, name: 'Transport' } });
+  const utilitiesCategory = await prisma.category.findFirst({ where: { isSystem: true, name: 'Utilities' } });
+  const foodCategory = await prisma.category.findFirst({ where: { isSystem: true, name: 'Food & Dining' } });
+  const freelanceCategory = await prisma.category.findFirst({ where: { isSystem: true, name: 'Freelance' } });
 
   // Create sample transactions (uses sourceAccountId, not accountId)
   const transactions = [

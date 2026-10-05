@@ -4,35 +4,6 @@ import prisma from '@/lib/prisma';
 import { registerSchema } from '@/lib/validations/schemas';
 import { rateLimit } from '@/lib/rate-limit';
 
-const DEFAULT_INCOME_CATEGORIES = [
-  { name: 'Salary', icon: '💼' },
-  { name: 'Freelance', icon: '💻' },
-  { name: 'Business Income', icon: '🏢' },
-  { name: 'Rental Income', icon: '🏠' },
-  { name: 'Interest', icon: '🏦' },
-  { name: 'Gift', icon: '🎁' },
-  { name: 'Refund', icon: '🔄' },
-  { name: 'Other Income', icon: '💰' },
-];
-const DEFAULT_EXPENSE_CATEGORIES = [
-  { name: 'Food & Dining', icon: '🍽️' },
-  { name: 'Groceries', icon: '🛒' },
-  { name: 'Transport', icon: '🚗' },
-  { name: 'Fuel', icon: '⛽' },
-  { name: 'Utilities', icon: '💡' },
-  { name: 'Rent', icon: '🏘️' },
-  { name: 'Healthcare', icon: '🏥' },
-  { name: 'Education', icon: '📚' },
-  { name: 'Shopping', icon: '🛍️' },
-  { name: 'Entertainment', icon: '🎬' },
-  { name: 'Personal Care', icon: '💇' },
-  { name: 'Mobile & Internet', icon: '📱' },
-  { name: 'Household', icon: '🧹' },
-  { name: 'Clothing', icon: '👔' },
-  { name: 'Charity', icon: '🤲' },
-  { name: 'Other Expense', icon: '💸' },
-];
-
 export async function POST(request: NextRequest) {
   try {
     const ip = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || 'unknown';
@@ -70,38 +41,12 @@ export async function POST(request: NextRequest) {
 
     const passwordHash = await bcrypt.hash(password, 12);
 
-    const user = await prisma.$transaction(async (tx: any) => {
-      const newUser = await tx.user.create({
-        data: {
-          name: name.trim(),
-          email: normalizedEmail,
-          passwordHash,
-        },
-      });
-
-      // Create default income categories
-      await tx.category.createMany({
-        data: DEFAULT_INCOME_CATEGORIES.map((cat) => ({
-          userId: newUser.id,
-          name: cat.name,
-          group: 'INCOME' as const,
-          icon: cat.icon,
-          isSystem: false,
-        })),
-      });
-
-      // Create default expense categories
-      await tx.category.createMany({
-        data: DEFAULT_EXPENSE_CATEGORIES.map((cat) => ({
-          userId: newUser.id,
-          name: cat.name,
-          group: 'EXPENSE' as const,
-          icon: cat.icon,
-          isSystem: false,
-        })),
-      });
-
-      return newUser;
+    const user = await prisma.user.create({
+      data: {
+        name: name.trim(),
+        email: normalizedEmail,
+        passwordHash,
+      },
     });
 
     return NextResponse.json({

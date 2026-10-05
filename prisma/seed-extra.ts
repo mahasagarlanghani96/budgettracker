@@ -33,8 +33,10 @@ async function main() {
   const cashAccount = await prisma.account.findFirst({ where: { userId: user.id, name: 'Cash Wallet' } });
   if (!bankAccount || !cashAccount) { console.error('Missing base accounts. Run main seed first.'); process.exit(1); }
 
-  // Fetch categories
-  const cats = await prisma.category.findMany({ where: { userId: user.id } });
+  // Fetch categories (system + user)
+  const cats = await prisma.category.findMany({
+    where: { OR: [{ userId: user.id }, { isSystem: true }] },
+  });
   const cat = (name: string) => cats.find(c => c.name === name)!;
 
   // ─── HISTORICAL TRANSACTIONS (last 6 months) ──────────────────
