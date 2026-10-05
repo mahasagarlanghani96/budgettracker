@@ -9,6 +9,7 @@ export async function GET(request: NextRequest) {
     const session = await requireAuth();
     const { searchParams } = new URL(request.url);
     const type = searchParams.get('type'); // INCOME or EXPENSE
+    const userOnly = searchParams.get('userOnly') === 'true';
 
     const userId = (session.user as { id: string }).id;
     const groupFilter: Record<string, unknown> = {};
@@ -16,13 +17,14 @@ export async function GET(request: NextRequest) {
       groupFilter.group = type;
     }
 
+    const ownerFilter = userOnly
+      ? { userId }
+      : { OR: [{ userId }, { isSystem: true }] };
+
     const categories = await prisma.category.findMany({
       where: {
         ...groupFilter,
-        OR: [
-          { userId },
-          { isSystem: true },
-        ],
+        ...ownerFilter,
       },
       orderBy: [{ group: 'asc' }, { name: 'asc' }],
     });
