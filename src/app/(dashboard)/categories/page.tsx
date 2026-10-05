@@ -41,7 +41,7 @@ export default function CategoriesPage() {
   const { confirm, ConfirmDialog } = useConfirm();
 
   const fetchCategories = useCallback(() => {
-    fetch('/api/categories?userOnly=true')
+    fetch('/api/categories')
       .then((r) => r.json())
       .then((res) => setCategories(res.data || []))
       .catch(console.error)
@@ -157,10 +157,14 @@ export default function CategoriesPage() {
                               </div>
                             </TableCell>
                             <TableCell className="text-right">
-                              <div className="flex justify-end gap-1">
-                                <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => openEdit(cat)}><Pencil className="h-3.5 w-3.5" /></Button>
-                                <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => handleDelete(cat)}><Trash2 className="h-3.5 w-3.5" /></Button>
-                              </div>
+                              {!cat.isSystem ? (
+                                <div className="flex justify-end gap-1">
+                                  <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => openEdit(cat)}><Pencil className="h-3.5 w-3.5" /></Button>
+                                  <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => handleDelete(cat)}><Trash2 className="h-3.5 w-3.5" /></Button>
+                                </div>
+                              ) : (
+                                <Badge variant="secondary" className="text-xs">System</Badge>
+                              )}
                             </TableCell>
                           </TableRow>
                         ))}

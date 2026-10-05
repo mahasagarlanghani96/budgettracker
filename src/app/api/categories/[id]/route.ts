@@ -19,9 +19,14 @@ export async function PUT(request: NextRequest, { params }: Params) {
     });
     if (!existing) return NextResponse.json({ error: 'Category not found' }, { status: 404 });
     if (existing.isSystem) return NextResponse.json({ error: 'System categories cannot be edited' }, { status: 403 });
-    // Check duplicate name within the same group
+    // Check duplicate name against both user's own and system categories
     const dup = await prisma.category.findFirst({
-      where: { userId, name: validated.name, group: validated.group, id: { not: id } },
+      where: {
+        name: { equals: validated.name, mode: 'insensitive' },
+        group: validated.group,
+        id: { not: id },
+        OR: [{ userId }, { isSystem: true }],
+      },
     });
     if (dup) return NextResponse.json({ error: 'A category with this name already exists in this group' }, { status: 409 });
 

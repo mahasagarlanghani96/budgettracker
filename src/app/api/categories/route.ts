@@ -9,7 +9,6 @@ export async function GET(request: NextRequest) {
     const session = await requireAuth();
     const { searchParams } = new URL(request.url);
     const type = searchParams.get('type'); // INCOME or EXPENSE
-    const userOnly = searchParams.get('userOnly') === 'true';
 
     const userId = (session.user as { id: string }).id;
     const groupFilter: Record<string, unknown> = {};
@@ -17,19 +16,30 @@ export async function GET(request: NextRequest) {
       groupFilter.group = type;
     }
 
-    const ownerFilter = userOnly
-      ? { userId }
-      : { OR: [{ userId }, { isSystem: true }] };
-
     const categories = await prisma.category.findMany({
       where: {
         ...groupFilter,
-        ...ownerFilter,
+        OR: [{ userId }, { isSystem: true }],
       },
       orderBy: [{ group: 'asc' }, { name: 'asc' }],
     });
 
-    return NextResponse.json({ data: categories });
+    // Deduplicate: if a user category has the same name+group as a system one,
+    // keep only the system version (it has the icon and is the canonical default).
+    const seen = new Map<string, typeof categories[number]>();
+    for (const cat of categories) {
+      const key = `${cat.name.toLowerCase()}::${cat.group}`;
+      const existing = seen.get(key);
+      if (!existing || (!existing.isSystem && cat.isSystem)) {
+        seen.set(key, cat);
+      }
+    }
+    const deduped = Array.from(seen.values()).sort((a, b) => {
+      if (a.group !== b.group) return a.group < b.group ? -1 : 1;
+      return a.name.localeCompare(b.name);
+    });
+
+    return NextResponse.json({ data: deduped });
   } catch (error: unknown) {
     if (error instanceof Error && error.message === 'Unauthorized') {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -47,12 +57,12 @@ export async function POST(request: NextRequest) {
 
     const userId = (session.user as { id: string }).id;
 
-    // DEF-090: Check for duplicate category names for the same user and group
+    // Check for duplicate against both user's own and system categories
     const existing = await prisma.category.findFirst({
       where: {
-        userId,
         name: { equals: validated.name, mode: 'insensitive' },
         group: validated.group,
+        OR: [{ userId }, { isSystem: true }],
       },
     });
     if (existing) {
