@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { PageLoading } from '@/components/ui/loading';
 import { User, Lock, Download, CheckCircle2 } from 'lucide-react';
+import { PasswordInput } from '@/components/ui/password-input';
 import { usePwaInstall } from '@/hooks/use-pwa-install';
 import { PhotoUpload } from '@/components/shared/photo-upload';
 
@@ -189,15 +190,15 @@ export default function SettingsPage() {
           <form onSubmit={handleChangePassword} className="space-y-4">
             <div className="space-y-2">
               <label className="text-sm font-medium">Current Password</label>
-              <Input type="password" value={pwForm.currentPassword} onChange={(e) => setPwForm({ ...pwForm, currentPassword: e.target.value })} required />
+              <PasswordInput value={pwForm.currentPassword} onChange={(e) => setPwForm({ ...pwForm, currentPassword: e.target.value })} required autoComplete="current-password" />
             </div>
             <div className="space-y-2">
               <label className="text-sm font-medium">New Password</label>
-              <Input type="password" value={pwForm.newPassword} onChange={(e) => setPwForm({ ...pwForm, newPassword: e.target.value })} required />
+              <PasswordInput value={pwForm.newPassword} onChange={(e) => setPwForm({ ...pwForm, newPassword: e.target.value })} required autoComplete="new-password" />
             </div>
             <div className="space-y-2">
               <label className="text-sm font-medium">Confirm New Password</label>
-              <Input type="password" value={pwForm.confirmPassword} onChange={(e) => setPwForm({ ...pwForm, confirmPassword: e.target.value })} required />
+              <PasswordInput value={pwForm.confirmPassword} onChange={(e) => setPwForm({ ...pwForm, confirmPassword: e.target.value })} required autoComplete="new-password" />
             </div>
             <Button type="submit" disabled={saving}>{saving ? 'Changing...' : 'Change Password'}</Button>
           </form>
