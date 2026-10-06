@@ -3,7 +3,7 @@ import bcrypt from 'bcryptjs';
 import prisma from '@/lib/prisma';
 import { registerSchema } from '@/lib/validations/schemas';
 import { rateLimit } from '@/lib/rate-limit';
-import { validatePhotoDataUrl } from '@/app/api/profile-photo/route';
+import { validatePhotoDataUrl } from '@/lib/photo-validation';
 
 export async function POST(request: NextRequest) {
   try {
