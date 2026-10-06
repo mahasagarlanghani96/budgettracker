@@ -123,10 +123,10 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Verify category if provided
+    // Verify category if provided (user-owned or system)
     if (validated.categoryId) {
       const category = await prisma.category.findFirst({
-        where: { id: validated.categoryId, userId },
+        where: { id: validated.categoryId, OR: [{ userId }, { isSystem: true }] },
       });
       if (!category) {
         return NextResponse.json({ error: 'Category not found' }, { status: 404 });
