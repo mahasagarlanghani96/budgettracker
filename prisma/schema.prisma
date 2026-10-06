@@ -14,6 +14,7 @@ model User {
   name          String
   email         String    @unique
   passwordHash  String
+  profilePhoto  String?   @db.Text
   currency      String    @default("PKR")
   timezone      String    @default("Asia/Karachi")
   isActive      Boolean   @default(true)

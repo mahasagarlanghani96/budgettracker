@@ -23,8 +23,9 @@ import {
   Contact,
   Tags,
 } from 'lucide-react';
-import { signOut } from 'next-auth/react';
+import { signOut, useSession } from 'next-auth/react';
 import { useState } from 'react';
+import { Avatar } from '@/components/ui/avatar';
 
 const navItems = [
   { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
@@ -44,6 +45,7 @@ const navItems = [
 
 export function Sidebar() {
   const pathname = usePathname();
+  const { data: session } = useSession();
   const [mobileOpen, setMobileOpen] = useState(false);
 
   const navContent = (
@@ -87,7 +89,20 @@ export function Sidebar() {
         })}
       </nav>
 
-      <div className="border-t px-2 py-2">
+      <div className="border-t px-2 py-2 space-y-1">
+        {session?.user && (
+          <div className="flex items-center gap-3 px-3 py-2">
+            <Avatar
+              name={session.user.name || 'User'}
+              hasProfilePhoto={session.user.hasProfilePhoto}
+              size="sm"
+            />
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-medium truncate">{session.user.name}</p>
+              <p className="text-xs text-muted-foreground truncate">{session.user.email}</p>
+            </div>
+          </div>
+        )}
         <button
           onClick={() => signOut({ callbackUrl: '/login' })}
           className="flex w-full items-center gap-3 rounded-md px-3 py-2 text-sm font-medium text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition-colors"

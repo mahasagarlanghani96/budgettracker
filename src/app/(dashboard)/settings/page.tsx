@@ -1,17 +1,21 @@
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
-import { signOut } from 'next-auth/react';
+import { signOut, useSession } from 'next-auth/react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { PageLoading } from '@/components/ui/loading';
 import { User, Lock, Download, CheckCircle2 } from 'lucide-react';
 import { usePwaInstall } from '@/hooks/use-pwa-install';
+import { PhotoUpload } from '@/components/shared/photo-upload';
 
 export default function SettingsPage() {
   const { canInstall, isInstalled, isIOS, promptInstall } = usePwaInstall();
+  const { data: session, update: updateSession } = useSession();
   const [profile, setProfile] = useState<{ name: string; email: string } | null>(null);
+  const [photoPreview, setPhotoPreview] = useState<string | null>(null);
+  const [photoSaving, setPhotoSaving] = useState(false);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState('');
@@ -29,6 +33,45 @@ export default function SettingsPage() {
       .catch(console.error)
       .finally(() => setLoading(false));
   }, []);
+
+  async function handlePhotoChange(dataUrl: string | null) {
+    setPhotoSaving(true);
+    setMessage('');
+    setIsSuccess(false);
+    try {
+      if (dataUrl) {
+        const res = await fetch('/api/profile-photo', {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ photo: dataUrl }),
+        });
+        if (!res.ok) {
+          const d = await res.json();
+          setIsSuccess(false);
+          setMessage(d.error || 'Failed to upload photo');
+          return;
+        }
+        setPhotoPreview(dataUrl);
+      } else {
+        const res = await fetch('/api/profile-photo', { method: 'DELETE' });
+        if (!res.ok) {
+          const d = await res.json();
+          setIsSuccess(false);
+          setMessage(d.error || 'Failed to remove photo');
+          return;
+        }
+        setPhotoPreview(null);
+      }
+      await updateSession();
+      setIsSuccess(true);
+      setMessage(dataUrl ? 'Profile photo updated' : 'Profile photo removed');
+    } catch {
+      setIsSuccess(false);
+      setMessage('Failed to update photo');
+    } finally {
+      setPhotoSaving(false);
+    }
+  }
 
   async function handleUpdateProfile(e: React.FormEvent) {
     e.preventDefault();
@@ -115,6 +158,15 @@ export default function SettingsPage() {
           <CardTitle className="text-base flex items-center gap-2"><User className="h-4 w-4" /> Profile</CardTitle>
         </CardHeader>
         <CardContent>
+          <div className="mb-6">
+            <PhotoUpload
+              name={profile?.name || 'User'}
+              currentHasPhoto={session?.user?.hasProfilePhoto}
+              previewUrl={photoPreview}
+              onPhotoChange={handlePhotoChange}
+              disabled={photoSaving}
+            />
+          </div>
           <form onSubmit={handleUpdateProfile} className="space-y-4">
             <div className="space-y-2">
               <label className="text-sm font-medium">Email</label>

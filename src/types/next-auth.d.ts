@@ -6,6 +6,7 @@ declare module 'next-auth' {
       id: string;
       name: string;
       email: string;
+      hasProfilePhoto: boolean;
     };
   }
 
@@ -13,11 +14,13 @@ declare module 'next-auth' {
     id: string;
     name: string;
     email: string;
+    hasProfilePhoto?: boolean;
   }
 }
 
 declare module 'next-auth/jwt' {
   interface JWT {
     id: string;
+    hasProfilePhoto: boolean;
   }
 }

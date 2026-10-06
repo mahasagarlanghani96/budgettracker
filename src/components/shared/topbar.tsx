@@ -1,7 +1,7 @@
 'use client';
 
 import { useSession } from 'next-auth/react';
-import { User } from 'lucide-react';
+import { Avatar } from '@/components/ui/avatar';
 
 export function Topbar() {
   const { data: session } = useSession();
@@ -18,9 +18,11 @@ export function Topbar() {
           <p className="text-sm font-medium leading-none">{session?.user?.name || 'User'}</p>
           <p className="text-xs text-muted-foreground mt-0.5">{session?.user?.email}</p>
         </div>
-        <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary text-primary-foreground">
-          <User className="h-4 w-4" />
-        </div>
+        <Avatar
+          name={session?.user?.name || 'User'}
+          hasProfilePhoto={session?.user?.hasProfilePhoto}
+          size="sm"
+        />
       </div>
     </header>
   );

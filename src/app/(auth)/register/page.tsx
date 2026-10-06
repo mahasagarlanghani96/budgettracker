@@ -8,6 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import Image from 'next/image';
 import { Eye, EyeOff } from 'lucide-react';
+import { PhotoUpload } from '@/components/shared/photo-upload';
 
 export default function RegisterPage() {
   const router = useRouter();
@@ -19,6 +20,7 @@ export default function RegisterPage() {
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
+  const [profilePhoto, setProfilePhoto] = useState<string | null>(null);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -53,7 +55,7 @@ export default function RegisterPage() {
       const res = await fetch('/api/auth/register', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name, email, password }),
+        body: JSON.stringify({ name, email, password, ...(profilePhoto ? { profilePhoto } : {}) }),
       });
 
       const data = await res.json();
@@ -87,6 +89,12 @@ export default function RegisterPage() {
               {error}
             </div>
           )}
+          <PhotoUpload
+            name={name || 'User'}
+            previewUrl={profilePhoto}
+            onPhotoChange={setProfilePhoto}
+            disabled={loading}
+          />
           <div className="space-y-2">
             <label htmlFor="name" className="text-sm font-medium">Full Name</label>
             <Input

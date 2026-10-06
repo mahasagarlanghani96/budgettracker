@@ -3,6 +3,7 @@ import bcrypt from 'bcryptjs';
 import prisma from '@/lib/prisma';
 import { registerSchema } from '@/lib/validations/schemas';
 import { rateLimit } from '@/lib/rate-limit';
+import { validatePhotoDataUrl } from '@/app/api/profile-photo/route';
 
 export async function POST(request: NextRequest) {
   try {
@@ -41,11 +42,22 @@ export async function POST(request: NextRequest) {
 
     const passwordHash = await bcrypt.hash(password, 12);
 
+    // Validate optional profile photo
+    let profilePhoto: string | undefined;
+    if (body.profilePhoto) {
+      const photoValidation = validatePhotoDataUrl(body.profilePhoto);
+      if (photoValidation.error) {
+        return NextResponse.json({ error: photoValidation.error }, { status: 400 });
+      }
+      profilePhoto = body.profilePhoto;
+    }
+
     const user = await prisma.user.create({
       data: {
         name: name.trim(),
         email: normalizedEmail,
         passwordHash,
+        ...(profilePhoto ? { profilePhoto } : {}),
       },
     });
 
