@@ -24,6 +24,7 @@ export const SYSTEM_EXPENSE_CATEGORIES = [
   { name: 'Mobile & Internet', icon: '📱' },
   { name: 'Household', icon: '🧹' },
   { name: 'Clothing', icon: '👔' },
+  { name: 'Sports', icon: '⚽' },
   { name: 'Charity', icon: '🤲' },
   { name: 'Other Expense', icon: '💸' },
 ];
