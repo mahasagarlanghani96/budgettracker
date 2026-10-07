@@ -196,8 +196,9 @@ export default function InvestmentsPage() {
 
   if (loading) return <PageLoading />;
 
-  const totalInvested = investments.reduce((s, i) => s + parseFloat(i.amountInvested.toString()), 0);
-  const totalCurrent = investments.reduce((s, i) => s + parseFloat(i.currentValue.toString()), 0);
+  const activeInvestments = investments.filter((i) => i.isActive);
+  const totalInvested = activeInvestments.reduce((s, i) => s + parseFloat(i.amountInvested.toString()), 0);
+  const totalCurrent = activeInvestments.reduce((s, i) => s + parseFloat(i.currentValue.toString()), 0);
   const totalPL = totalCurrent - totalInvested;
   const accountOptions = accounts.map((a) => ({ value: a.id, label: a.name }));
 

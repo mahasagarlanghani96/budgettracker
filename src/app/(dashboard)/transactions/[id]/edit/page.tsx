@@ -165,6 +165,39 @@ export default function EditTransactionPage() {
   const isCommittee = COMMITTEE_TYPES.includes(txType);
   const isPlot = txType === 'PLOT_PAYMENT';
   const isTransfer = (form.type as string) === 'TRANSFER';
+  const isIncome = (form.type as string) === 'INCOME';
+
+  function handleGrossSalaryChange(val: string) {
+    const gross = val === '' ? '' : Number(val);
+    setField('expectedAmount', gross);
+    if (typeof gross === 'number' && gross > 0) {
+      const tax = typeof form.taxAmount === 'number' ? form.taxAmount : 0;
+      setField('amount', Math.round((gross - tax) * 100) / 100);
+    }
+  }
+
+  function handleIncomeTaxAmountChange(val: string) {
+    const tax = val === '' ? 0 : Number(val);
+    setField('taxAmount', tax);
+    const gross = typeof form.expectedAmount === 'number' ? form.expectedAmount : 0;
+    if (gross > 0) {
+      setField('amount', Math.round((gross - tax) * 100) / 100);
+      if (tax > 0) {
+        setField('taxPercent', Math.round((tax / gross) * 10000) / 100);
+      }
+    }
+  }
+
+  function handleIncomeTaxPercentChange(val: string) {
+    const pct = val === '' ? '' : Number(val);
+    setField('taxPercent', pct);
+    const gross = typeof form.expectedAmount === 'number' ? form.expectedAmount : 0;
+    if (typeof pct === 'number' && gross > 0) {
+      const tax = Math.round((gross * pct / 100) * 100) / 100;
+      setField('taxAmount', tax);
+      setField('amount', Math.round((gross - tax) * 100) / 100);
+    }
+  }
 
   const filteredCategories = categories.filter(
     (c) => isTransfer || c.group === ((form.type as string) === 'INCOME' ? 'INCOME' : 'EXPENSE')
@@ -238,17 +271,71 @@ export default function EditTransactionPage() {
                 )}
               </FormField>
 
-              <FormField label="Amount" required error={errors.amount}>
-                <Input
-                  type="number"
-                  step="0.01"
-                  min="0.01"
-                  value={form.amount as string | number}
-                  onChange={(e) => setField('amount', e.target.value ? parseFloat(e.target.value) : '')}
-                  placeholder="0.00"
-                />
-              </FormField>
+              {!isIncome && (
+                <FormField label="Amount" required error={errors.amount}>
+                  <Input
+                    type="number"
+                    step="0.01"
+                    min="0.01"
+                    value={form.amount as string | number}
+                    onChange={(e) => setField('amount', e.target.value ? parseFloat(e.target.value) : '')}
+                    placeholder="0.00"
+                  />
+                </FormField>
+              )}
+              {isIncome && (
+                <FormField label="Gross Amount" required error={errors.expectedAmount}>
+                  <Input
+                    type="number"
+                    step="0.01"
+                    min="0.01"
+                    value={form.expectedAmount as string | number}
+                    onChange={(e) => handleGrossSalaryChange(e.target.value)}
+                    placeholder="Total before tax"
+                  />
+                </FormField>
+              )}
             </div>
+
+            {isIncome && (
+              <>
+                <div className="grid gap-4 sm:grid-cols-3">
+                  <FormField label="Tax Deducted" error={errors.taxAmount}>
+                    <Input
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      value={form.taxAmount as string | number}
+                      onChange={(e) => handleIncomeTaxAmountChange(e.target.value)}
+                      placeholder="0.00"
+                    />
+                  </FormField>
+                  <FormField label="Tax %" error={errors.taxPercent}>
+                    <Input
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      value={form.taxPercent as string | number}
+                      onChange={(e) => handleIncomeTaxPercentChange(e.target.value)}
+                      placeholder="Auto-calculated"
+                    />
+                  </FormField>
+                  <FormField label="Net Received" required error={errors.amount}>
+                    <Input
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      value={form.amount as string | number}
+                      onChange={(e) => setField('amount', e.target.value ? parseFloat(e.target.value) : '')}
+                      placeholder="Credited to account"
+                    />
+                  </FormField>
+                </div>
+                <p className="text-xs text-muted-foreground -mt-2">
+                  The net received amount will be credited to your account.
+                </p>
+              </>
+            )}
 
             {/* Committee-specific: profit deduction */}
             {txType === 'COMMITTEE_CONTRIBUTION' && (
