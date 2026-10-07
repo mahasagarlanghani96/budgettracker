@@ -12,10 +12,10 @@ import { PageLoading, EmptyState } from '@/components/ui/loading';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/modal';
 import { FormField } from '@/components/forms/FormField';
 import { useResourceForm } from '@/hooks/useResourceForm';
-import { investmentSchema, investmentUpdateSchema, investmentProfitSchema } from '@/lib/validations/schemas';
+import { investmentSchema, investmentUpdateSchema, investmentProfitSchema, investmentCloseSchema } from '@/lib/validations/schemas';
 import { formatCurrency, formatDate } from '@/lib/utils';
 import { useConfirm } from '@/hooks/use-confirm';
-import { TrendingUp, Plus, ArrowUp, ArrowDown, Pencil, Trash2, DollarSign, History } from 'lucide-react';
+import { TrendingUp, Plus, ArrowUp, ArrowDown, Pencil, Trash2, DollarSign, History, XCircle } from 'lucide-react';
 
 interface Investment {
   id: string;
@@ -63,6 +63,7 @@ export default function InvestmentsPage() {
   const [viewingHistory, setViewingHistory] = useState<Investment | null>(null);
   const [profitHistory, setProfitHistory] = useState<ProfitEntry[]>([]);
   const [historyLoading, setHistoryLoading] = useState(false);
+  const [closing, setClosing] = useState<Investment | null>(null);
   const { confirm, ConfirmDialog } = useConfirm();
 
   const fetchInvestments = useCallback(() => {
@@ -94,6 +95,47 @@ export default function InvestmentsPage() {
     onSubmit: (data) => fetch(`/api/investments/${recordingProfit!.id}/profit`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) }),
     onSuccess: () => { setRecordingProfit(null); profitForm.reset(); fetchInvestments(); },
   });
+
+  const closeForm = useResourceForm({
+    schema: investmentCloseSchema,
+    initial: { returnAmount: '', taxAmount: 0, taxPercent: '', netAmount: '', transactionDate: today, notes: '' },
+    onSubmit: (data) => fetch(`/api/investments/${closing!.id}/close`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) }),
+    onSuccess: () => { setClosing(null); closeForm.reset(); fetchInvestments(); },
+  });
+
+  function openClose(inv: Investment) {
+    setClosing(inv);
+    const amt = parseFloat(inv.amountInvested.toString());
+    closeForm.setForm({
+      returnAmount: amt,
+      taxAmount: 0,
+      taxPercent: '',
+      netAmount: amt,
+      transactionDate: today,
+      notes: '',
+    });
+  }
+
+  function handleCloseReturnChange(val: string) {
+    const ret = val === '' ? '' : Number(val);
+    closeForm.setField('returnAmount', ret);
+    if (typeof ret === 'number' && ret >= 0) {
+      const tax = typeof closeForm.form.taxAmount === 'number' ? closeForm.form.taxAmount : 0;
+      closeForm.setField('netAmount', Math.round((ret - tax) * 100) / 100);
+    }
+  }
+
+  function handleCloseTaxChange(val: string) {
+    const tax = val === '' ? 0 : Number(val);
+    closeForm.setField('taxAmount', tax);
+    const ret = typeof closeForm.form.returnAmount === 'number' ? closeForm.form.returnAmount : 0;
+    if (ret > 0) {
+      closeForm.setField('netAmount', Math.round((ret - tax) * 100) / 100);
+      if (ret > 0 && tax > 0) {
+        closeForm.setField('taxPercent', Math.round((tax / ret) * 10000) / 100);
+      }
+    }
+  }
 
   function openEdit(inv: Investment) {
     setEditing(inv);
@@ -213,8 +255,9 @@ export default function InvestmentsPage() {
                       <TableCell><Badge variant={inv.isActive ? 'success' : 'secondary'} className="text-xs">{inv.isActive ? 'Active' : 'Inactive'}</Badge></TableCell>
                       <TableCell className="text-right">
                         <div className="flex justify-end gap-1">
-                          <Button variant="ghost" size="icon" onClick={() => openProfitRecord(inv)} title="Record Profit" aria-label="Record profit"><DollarSign className="h-4 w-4" /></Button>
+                          {inv.isActive && <Button variant="ghost" size="icon" onClick={() => openProfitRecord(inv)} title="Record Profit" aria-label="Record profit"><DollarSign className="h-4 w-4" /></Button>}
                           <Button variant="ghost" size="icon" onClick={() => openHistory(inv)} title="Profit History" aria-label="Profit history"><History className="h-4 w-4" /></Button>
+                          {inv.isActive && <Button variant="ghost" size="icon" onClick={() => openClose(inv)} title="Close Investment" aria-label={`Close ${inv.name}`}><XCircle className="h-4 w-4" /></Button>}
                           <Button variant="ghost" size="icon" onClick={() => openEdit(inv)} title="Edit" aria-label={`Edit ${inv.name}`}><Pencil className="h-4 w-4" /></Button>
                           <Button variant="ghost" size="icon" onClick={() => handleDelete(inv)} title="Delete" aria-label={`Delete ${inv.name}`}><Trash2 className="h-4 w-4" /></Button>
                         </div>
@@ -377,6 +420,79 @@ export default function InvestmentsPage() {
             <DialogFooter>
               <Button type="button" variant="outline" onClick={() => setRecordingProfit(null)}>Cancel</Button>
               <Button type="submit" disabled={profitForm.saving}>{profitForm.saving ? 'Recording...' : 'Record Profit'}</Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Close Investment Modal */}
+      <Dialog open={!!closing} onOpenChange={(open) => { if (!open) { setClosing(null); closeForm.reset(); } }}>
+        <DialogContent>
+          <DialogHeader><DialogTitle>Close Investment — {closing?.name}</DialogTitle></DialogHeader>
+          {closing && (
+            <div className="rounded-md bg-muted px-3 py-2 text-sm space-y-1">
+              <div className="flex justify-between"><span className="text-muted-foreground">Amount Invested</span><span className="font-medium tabular-nums">{formatCurrency(closing.amountInvested.toString())}</span></div>
+              <div className="flex justify-between"><span className="text-muted-foreground">Current Value</span><span className="font-medium tabular-nums">{formatCurrency(closing.currentValue.toString())}</span></div>
+              <div className="flex justify-between"><span className="text-muted-foreground">Total P/L</span><span className={`font-medium tabular-nums ${parseFloat(closing.profitLoss) >= 0 ? 'text-green-600' : 'text-red-600'}`}>{parseFloat(closing.profitLoss) >= 0 ? '+' : ''}{formatCurrency(closing.profitLoss)}</span></div>
+            </div>
+          )}
+          <form onSubmit={closeForm.handleSubmit} className="space-y-4">
+            <div className="grid gap-4 sm:grid-cols-2">
+              <FormField label="Return Amount" required error={closeForm.errors.returnAmount}>
+                <Input
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  value={closeForm.form.returnAmount as string | number}
+                  onChange={(e) => handleCloseReturnChange(e.target.value)}
+                  placeholder="Amount returned to you"
+                />
+              </FormField>
+              <FormField label="Tax Deducted" error={closeForm.errors.taxAmount}>
+                <Input
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  value={closeForm.form.taxAmount as number}
+                  onChange={(e) => handleCloseTaxChange(e.target.value)}
+                  placeholder="0.00"
+                />
+              </FormField>
+            </div>
+            <div className="grid gap-4 sm:grid-cols-2">
+              <FormField label="Tax %" error={closeForm.errors.taxPercent}>
+                <Input
+                  type="number"
+                  step="0.01"
+                  value={(closeForm.form.taxPercent as number | null | string) ?? ''}
+                  onChange={(e) => closeForm.setField('taxPercent', e.target.value === '' ? null : Number(e.target.value))}
+                  placeholder="Auto-calculated"
+                />
+              </FormField>
+              <FormField label="Net Received" required error={closeForm.errors.netAmount}>
+                <Input
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  value={closeForm.form.netAmount as string | number}
+                  onChange={(e) => closeForm.setField('netAmount', e.target.value === '' ? '' : Number(e.target.value))}
+                  placeholder="Credited to account"
+                />
+              </FormField>
+            </div>
+            <FormField label="Close Date" required error={closeForm.errors.transactionDate}>
+              <Input type="date" value={closeForm.form.transactionDate as string} onChange={(e) => closeForm.setField('transactionDate', e.target.value)} />
+            </FormField>
+            <FormField label="Notes" error={closeForm.errors.notes}>
+              <Textarea value={closeForm.form.notes as string} onChange={(e) => closeForm.setField('notes', e.target.value)} placeholder="Optional" />
+            </FormField>
+            <p className="text-xs text-muted-foreground">
+              The net amount will be credited to the linked account. The investment will be marked as closed.
+            </p>
+            {closeForm.serverError && <p className="text-sm text-destructive bg-destructive/10 rounded-md px-3 py-2">{closeForm.serverError}</p>}
+            <DialogFooter>
+              <Button type="button" variant="outline" onClick={() => setClosing(null)}>Cancel</Button>
+              <Button type="submit" disabled={closeForm.saving} variant="destructive">{closeForm.saving ? 'Closing...' : 'Close Investment'}</Button>
             </DialogFooter>
           </form>
         </DialogContent>

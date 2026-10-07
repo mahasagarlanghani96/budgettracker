@@ -194,6 +194,15 @@ export const investmentProfitSchema = z.object({
   notes: z.string().max(500, 'Notes must be at most 500 characters').optional(),
 });
 
+export const investmentCloseSchema = z.object({
+  returnAmount: z.number().min(0, 'Return amount cannot be negative'),
+  taxAmount: z.number().min(0).default(0),
+  taxPercent: z.number().min(0).optional().nullable(),
+  netAmount: z.number().min(0, 'Net amount cannot be negative'),
+  transactionDate: z.string().min(1, 'Date is required'),
+  notes: z.string().max(500, 'Notes must be at most 500 characters').optional(),
+});
+
 // ─── Plots ───────────────────────────────────────────────────────
 
 export const plotSchema = z.object({
