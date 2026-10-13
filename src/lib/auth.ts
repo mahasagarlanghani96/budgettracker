@@ -1,8 +1,10 @@
 import { NextAuthOptions } from 'next-auth';
 import CredentialsProvider from 'next-auth/providers/credentials';
 import bcrypt from 'bcryptjs';
+import crypto from 'crypto';
 import prisma from './prisma';
 import { rateLimit, checkLockout, recordFailedLogin, clearLockout } from './rate-limit';
+import { parseUserAgent } from './user-agent';
 
 if (!process.env.NEXTAUTH_SECRET) {
   throw new Error('NEXTAUTH_SECRET environment variable is required');
@@ -58,12 +60,28 @@ export const authOptions: NextAuthOptions = {
 
         clearLockout(email);
 
+        const sessionToken = crypto.randomBytes(32).toString('hex');
+        const ua = (req?.headers?.['user-agent'] as string) || '';
+        const parsed = parseUserAgent(ua);
+
+        await prisma.userSession.create({
+          data: {
+            userId: user.id,
+            token: sessionToken,
+            deviceType: parsed.deviceType,
+            browser: parsed.browser,
+            os: parsed.os,
+            ipAddress: ip,
+          },
+        });
+
         return {
           id: user.id,
           name: user.name,
           email: user.email,
           hasProfilePhoto: !!user.profilePhoto,
-        };
+          sessionToken,
+        } as any;
       },
     }),
   ],
@@ -72,6 +90,7 @@ export const authOptions: NextAuthOptions = {
       if (user) {
         token.id = user.id;
         token.hasProfilePhoto = !!user.hasProfilePhoto;
+        token.sessionToken = (user as any).sessionToken;
       }
       if (trigger === 'update') {
         const dbUser = await prisma.user.findUnique({
@@ -80,6 +99,14 @@ export const authOptions: NextAuthOptions = {
         });
         token.hasProfilePhoto = !!dbUser?.profilePhoto;
       }
+
+      if (token.sessionToken) {
+        await prisma.userSession.updateMany({
+          where: { token: token.sessionToken as string, isRevoked: false },
+          data: { lastActiveAt: new Date() },
+        }).catch(() => {});
+      }
+
       return token;
     },
     async session({ session, token }) {
@@ -87,26 +114,29 @@ export const authOptions: NextAuthOptions = {
         (session.user as any).id = token.id as string;
         session.user.hasProfilePhoto = token.hasProfilePhoto ?? false;
       }
+      session.sessionToken = token.sessionToken;
+
+      if (token.sessionToken) {
+        const dbSession = await prisma.userSession.findUnique({
+          where: { token: token.sessionToken as string },
+          select: { isRevoked: true },
+        });
+        if (dbSession?.isRevoked) {
+          return null as any;
+        }
+      }
+
       return session;
     },
   },
 };
 
-/**
- * Get the authenticated user ID from the session.
- * Use this in API routes and server components.
- */
 export async function getAuthUserId(): Promise<string | null> {
-  // Dynamic import to avoid issues with server components
   const { getServerSession } = await import('next-auth');
   const session = await getServerSession(authOptions);
   return (session?.user as any)?.id || null;
 }
 
-/**
- * Require authentication — throws if not authenticated.
- * Returns a session-like object with the user's id.
- */
 export async function requireAuth(): Promise<{ user: { id: string } }> {
   const { getServerSession } = await import('next-auth');
   const session = await getServerSession(authOptions);

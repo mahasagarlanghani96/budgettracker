@@ -10,6 +10,7 @@ import { User, Lock, Download, CheckCircle2 } from 'lucide-react';
 import { PasswordInput } from '@/components/ui/password-input';
 import { usePwaInstall } from '@/hooks/use-pwa-install';
 import { PhotoUpload } from '@/components/shared/photo-upload';
+import { ActiveSessions } from '@/components/shared/active-sessions';
 
 export default function SettingsPage() {
   const { canInstall, isInstalled, isIOS, promptInstall } = usePwaInstall();
@@ -204,6 +205,8 @@ export default function SettingsPage() {
           </form>
         </CardContent>
       </Card>
+
+      <ActiveSessions />
 
       <Card>
         <CardHeader>

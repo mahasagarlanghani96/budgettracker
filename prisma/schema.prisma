@@ -34,8 +34,30 @@ model User {
   financialTargets  FinancialTarget[]
   sharedByMe        SharedAccess[]    @relation("SharedBy")
   sharedWithMe      SharedAccess[]    @relation("SharedWith")
+  sessions          UserSession[]
 
   @@map("users")
+}
+
+// ─── USER SESSIONS ──────────────────────────────────────────────
+
+model UserSession {
+  id          String    @id @default(cuid())
+  userId      String
+  token       String    @unique
+  deviceType  String?   // desktop, mobile, tablet
+  browser     String?
+  os          String?
+  ipAddress   String?
+  lastActiveAt DateTime @default(now())
+  createdAt   DateTime  @default(now())
+  isRevoked   Boolean   @default(false)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([token])
+  @@map("user_sessions")
 }
 
 // ─── SHARED ACCESS / PERMISSIONS ─────────────────────────────────

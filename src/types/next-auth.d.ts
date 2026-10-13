@@ -8,6 +8,7 @@ declare module 'next-auth' {
       email: string;
       hasProfilePhoto: boolean;
     };
+    sessionToken?: string;
   }
 
   interface User {
@@ -22,5 +23,6 @@ declare module 'next-auth/jwt' {
   interface JWT {
     id: string;
     hasProfilePhoto: boolean;
+    sessionToken?: string;
   }
 }
