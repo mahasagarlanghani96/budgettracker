@@ -49,15 +49,19 @@ export async function PUT(request: NextRequest, { params }: Params) {
         },
       });
 
+      const accountField = validated.type === 'DEPOSIT'
+        ? { sourceAccountId: validated.accountId }
+        : { destAccountId: validated.accountId };
       await tx.transaction.create({
         data: {
           userId,
-          sourceAccountId: validated.accountId,
+          ...accountField,
           type: newLedgerType,
           amount: validated.amount,
           description: `Savings ${validated.type.toLowerCase()}: ${goal.name}`,
           transactionDate: txDate,
           savingsTransId: txId,
+          isHistorical: validated.isHistorical ?? false,
         },
       });
     });

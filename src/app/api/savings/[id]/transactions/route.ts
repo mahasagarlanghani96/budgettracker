@@ -71,6 +71,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
           description: `Savings ${validated.type.toLowerCase()}: ${goal.name}`,
           transactionDate: txDate,
           savingsTransId: savingsTx.id,
+          isHistorical: validated.isHistorical ?? false,
         },
       });
 

@@ -169,6 +169,7 @@ export const savingsTransactionSchema = z.object({
   type: z.enum(['DEPOSIT', 'WITHDRAWAL']),
   transactionDate: z.string().min(1),
   notes: z.string().max(500, 'Notes must be at most 500 characters').optional(),
+  isHistorical: z.boolean().default(false),
 });
 
 // ─── Investments ─────────────────────────────────────────────────

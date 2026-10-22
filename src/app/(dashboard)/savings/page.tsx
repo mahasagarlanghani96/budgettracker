@@ -23,6 +23,7 @@ interface SavingsTx {
   accountId: string | null;
   transactionDate: string;
   notes?: string | null;
+  isHistorical?: boolean;
 }
 
 const txTypeOptions = [{ value: 'DEPOSIT', label: 'Deposit' }, { value: 'WITHDRAWAL', label: 'Withdrawal' }];
@@ -80,7 +81,7 @@ export default function SavingsPage() {
   // Deposit/Withdraw form
   const txForm = useResourceForm({
     schema: savingsTransactionInputSchema,
-    initial: { type: 'DEPOSIT', amount: '', accountId: '', transactionDate: today, notes: '' },
+    initial: { type: 'DEPOSIT', amount: '', accountId: '', transactionDate: today, notes: '', isHistorical: false },
     onSubmit: (data) => fetch(`/api/savings/${showDeposit!}/transactions`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) }),
     onSuccess: () => { setShowDeposit(null); txForm.reset(); fetchGoals(); },
   });
@@ -88,7 +89,7 @@ export default function SavingsPage() {
   // Edit transaction form
   const txEditFormHook = useResourceForm({
     schema: savingsTransactionInputSchema,
-    initial: { type: 'DEPOSIT', amount: '', accountId: '', transactionDate: '', notes: '' },
+    initial: { type: 'DEPOSIT', amount: '', accountId: '', transactionDate: '', notes: '', isHistorical: false },
     onSubmit: (data) => fetch(`/api/savings/${historyGoal!.id}/transactions/${editingTx!.id}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) }),
     onSuccess: () => { setEditingTx(null); fetchHistory(historyGoal!.id); fetchGoals(); },
   });
@@ -117,6 +118,7 @@ export default function SavingsPage() {
       accountId: tx.accountId || '',
       transactionDate: tx.transactionDate ? tx.transactionDate.split('T')[0] : '',
       notes: tx.notes || '',
+      isHistorical: tx.isHistorical ?? false,
     });
   }
 
@@ -252,6 +254,16 @@ export default function SavingsPage() {
             <FormField label="Notes" error={txForm.errors.notes}>
               <Textarea value={txForm.form.notes as string} onChange={(e) => txForm.setField('notes', e.target.value)} placeholder="Optional" />
             </FormField>
+            <FormField label="Historical Entry" error={txForm.errors.isHistorical}>
+              <label className="flex items-center gap-2 text-sm">
+                <input
+                  type="checkbox"
+                  checked={(txForm.form.isHistorical as boolean) ?? false}
+                  onChange={(e) => txForm.setField('isHistorical', e.target.checked)}
+                />
+                Historical entry only (don&apos;t affect account balance)
+              </label>
+            </FormField>
             {txForm.serverError && <p className="text-sm text-destructive bg-destructive/10 rounded-md px-3 py-2">{txForm.serverError}</p>}
             <DialogFooter>
               <Button type="button" variant="outline" onClick={() => setShowDeposit(null)}>Cancel</Button>
@@ -282,6 +294,16 @@ export default function SavingsPage() {
               <FormField label="Notes" error={txEditFormHook.errors.notes}>
                 <Textarea value={txEditFormHook.form.notes as string} onChange={(e) => txEditFormHook.setField('notes', e.target.value)} placeholder="Optional" />
               </FormField>
+              <FormField label="Historical Entry" error={txEditFormHook.errors.isHistorical}>
+                <label className="flex items-center gap-2 text-sm">
+                  <input
+                    type="checkbox"
+                    checked={(txEditFormHook.form.isHistorical as boolean) ?? false}
+                    onChange={(e) => txEditFormHook.setField('isHistorical', e.target.checked)}
+                  />
+                  Historical entry only (don&apos;t affect account balance)
+                </label>
+              </FormField>
               {txEditFormHook.serverError && <p className="text-sm text-destructive bg-destructive/10 rounded-md px-3 py-2">{txEditFormHook.serverError}</p>}
               <DialogFooter>
                 <Button type="button" variant="outline" onClick={() => setEditingTx(null)}>Back</Button>
@@ -299,6 +321,7 @@ export default function SavingsPage() {
                   <div className="min-w-0">
                     <div className="flex items-center gap-2">
                       <Badge variant={tx.type === 'DEPOSIT' ? 'success' : 'warning'} className="text-xs">{tx.type === 'DEPOSIT' ? 'Deposit' : 'Withdrawal'}</Badge>
+                      {tx.isHistorical && <Badge variant="outline" className="text-[10px]">Historical</Badge>}
                       <span className="text-sm font-medium tabular-nums">{formatCurrency(tx.amount.toString())}</span>
                     </div>
                     <p className="text-xs text-muted-foreground mt-0.5">{formatDate(tx.transactionDate)}</p>

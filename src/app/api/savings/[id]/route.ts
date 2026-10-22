@@ -12,7 +12,12 @@ export async function GET(_request: NextRequest, { params }: { params: Promise<{
 
     const goal = await prisma.savingsGoal.findFirst({
       where: { id, userId: (session.user as { id: string }).id },
-      include: { transactions: { orderBy: { transactionDate: 'desc' } } },
+      include: {
+        transactions: {
+          orderBy: { transactionDate: 'desc' },
+          include: { transactions: { where: { isDeleted: false }, select: { isHistorical: true }, take: 1 } },
+        },
+      },
     });
 
     if (!goal) {
@@ -29,8 +34,13 @@ export async function GET(_request: NextRequest, { params }: { params: Promise<{
     const target = new Decimal(goal.targetAmount.toString());
     const progress = target.gt(0) ? current.div(target).times(100).toNumber() : 0;
 
+    const txsWithFlag = goal.transactions.map((t: any) => {
+      const { transactions: linkedTxs, ...rest } = t;
+      return { ...rest, isHistorical: linkedTxs?.[0]?.isHistorical ?? false };
+    });
+
     return NextResponse.json({
-      data: { ...goal, currentAmount: current.toString(), progress: Math.min(Math.round(progress * 100) / 100, 100) },
+      data: { ...goal, transactions: txsWithFlag, currentAmount: current.toString(), progress: Math.min(Math.round(progress * 100) / 100, 100) },
     });
   } catch (error: unknown) {
     if (error instanceof Error && error.message === 'Unauthorized') {
