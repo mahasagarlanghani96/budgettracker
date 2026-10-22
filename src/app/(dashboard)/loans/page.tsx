@@ -14,7 +14,7 @@ import { AdvancedSection } from '@/components/forms/AdvancedSection';
 import { useResourceForm } from '@/hooks/useResourceForm';
 import { loanSchema } from '@/lib/validations/schemas';
 import { formatCurrency, formatDate } from '@/lib/utils';
-import { HandCoins, Plus, ArrowUpRight, ArrowDownRight } from 'lucide-react';
+import { HandCoins, Plus, ArrowUpRight, ArrowDownRight, X } from 'lucide-react';
 import Link from 'next/link';
 
 interface Loan {
@@ -127,7 +127,7 @@ export default function LoansPage() {
         </Card>
       </div>
 
-      <div className="flex gap-3">
+      <div className="flex gap-3 items-center">
         <Select
           options={[{ value: '', label: 'All' }, { value: 'GIVEN', label: 'Given' }, { value: 'TAKEN', label: 'Taken' }]}
           value={filter.direction}
@@ -140,6 +140,11 @@ export default function LoansPage() {
           onChange={(e) => setFilter({ ...filter, status: e.target.value })}
           className="w-40"
         />
+        {(filter.direction || filter.status) && (
+          <Button variant="outline" size="sm" onClick={() => setFilter({ direction: '', status: '' })}>
+            <X className="h-3.5 w-3.5 mr-1" /> Clear
+          </Button>
+        )}
       </div>
 
       {loans.length === 0 ? (

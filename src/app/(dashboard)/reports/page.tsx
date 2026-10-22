@@ -8,7 +8,7 @@ import { Select } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { PageLoading } from '@/components/ui/loading';
 import { formatCurrency } from '@/lib/utils';
-import { BarChart3 } from 'lucide-react';
+import { BarChart3, X } from 'lucide-react';
 
 interface ReportData {
   type?: string;
@@ -74,6 +74,11 @@ export default function ReportsPage() {
               <Input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} />
             </div>
             <Button variant="outline" onClick={fetchReport}>Refresh</Button>
+            {(reportType !== 'summary' || startDate !== firstDay || endDate !== today) && (
+              <Button variant="outline" size="sm" onClick={() => { setReportType('summary'); setStartDate(firstDay); setEndDate(today); }}>
+                <X className="h-3.5 w-3.5 mr-1" /> Reset
+              </Button>
+            )}
           </div>
         </CardContent>
       </Card>

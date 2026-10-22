@@ -9,7 +9,7 @@ import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { PageLoading, EmptyState } from '@/components/ui/loading';
 import { formatCurrency, formatDate } from '@/lib/utils';
-import { Plus, Search, ArrowLeftRight, Pencil, Trash2, Lock, AlertCircle } from 'lucide-react';
+import { Plus, Search, ArrowLeftRight, Pencil, Trash2, Lock, AlertCircle, X } from 'lucide-react';
 import Link from 'next/link';
 import { useConfirm } from '@/hooks/use-confirm';
 
@@ -30,6 +30,10 @@ const typeOptions = [
   { value: 'LOAN_TAKEN', label: 'Loan Taken' },
   { value: 'LOAN_REPAYMENT_RECEIVED', label: 'Repayment Received' },
   { value: 'LOAN_REPAYMENT_MADE', label: 'Repayment Made' },
+  { value: 'SAVINGS_DEPOSIT', label: 'Savings Deposit' },
+  { value: 'SAVINGS_WITHDRAWAL', label: 'Savings Withdrawal' },
+  { value: 'INVESTMENT', label: 'Investment' },
+  { value: 'INVESTMENT_RETURN', label: 'Investment Return' },
   { value: 'COMMITTEE_CONTRIBUTION', label: 'Committee Contribution' },
   { value: 'COMMITTEE_RECEIVING', label: 'Committee Receiving' },
   { value: 'PLOT_PAYMENT', label: 'Plot Payment' },
@@ -43,6 +47,10 @@ const typeBadgeVariant: Record<string, 'default' | 'success' | 'destructive' | '
   LOAN_TAKEN: 'warning',
   LOAN_REPAYMENT_RECEIVED: 'success',
   LOAN_REPAYMENT_MADE: 'destructive',
+  SAVINGS_DEPOSIT: 'warning',
+  SAVINGS_WITHDRAWAL: 'secondary',
+  INVESTMENT: 'warning',
+  INVESTMENT_RETURN: 'success',
   COMMITTEE_CONTRIBUTION: 'destructive',
   COMMITTEE_RECEIVING: 'success',
   PLOT_PAYMENT: 'destructive',
@@ -138,6 +146,11 @@ export default function TransactionsPage() {
                 value={searchInput}
                 onChange={(e) => setSearchInput(e.target.value)}
               />
+              {searchInput && (
+                <button type="button" className="absolute right-2 top-1/2 -translate-y-1/2 p-1 rounded-full bg-muted hover:bg-muted-foreground/20" onClick={() => setSearchInput('')}>
+                  <X className="h-3.5 w-3.5" />
+                </button>
+              )}
             </div>
             <Select
               options={typeOptions}
@@ -157,6 +170,13 @@ export default function TransactionsPage() {
               placeholder="To date"
             />
           </div>
+          {(filters.type || filters.search || filters.from || filters.to) && (
+            <div className="mt-3 flex justify-end">
+              <Button variant="outline" size="sm" onClick={() => { setFilters({ type: '', search: '', from: '', to: '' }); setSearchInput(''); setPage(1); }}>
+                <X className="h-3.5 w-3.5 mr-1" /> Clear Filters
+              </Button>
+            </div>
+          )}
         </CardContent>
       </Card>
 

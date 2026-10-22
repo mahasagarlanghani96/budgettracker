@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { formatCurrency, formatDate } from '@/lib/utils';
-import { Search as SearchIcon } from 'lucide-react';
+import { Search as SearchIcon, X } from 'lucide-react';
 import Link from 'next/link';
 
 interface SearchResults {
@@ -64,6 +64,11 @@ export default function SearchPage() {
           onChange={(e) => setQuery(e.target.value)}
           autoFocus
         />
+        {query && (
+          <button type="button" className="absolute right-3 top-1/2 -translate-y-1/2 p-1 rounded-full bg-muted hover:bg-muted-foreground/20" onClick={() => setQuery('')}>
+            <X className="h-4 w-4" />
+          </button>
+        )}
       </div>
 
       {loading && <p className="text-sm text-muted-foreground text-center py-4">Searching...</p>}
