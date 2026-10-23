@@ -41,10 +41,9 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
 
     const paymentDate = validated.transactionDate ? new Date(validated.transactionDate) : new Date();
 
-    // DEF-086: Validate payment date is not before the plot creation date
-    if (paymentDate < new Date(plot.createdAt)) {
+    if (!validated.isHistorical && paymentDate < new Date(plot.createdAt)) {
       return NextResponse.json(
-        { error: 'Payment date cannot be before the plot was created' },
+        { error: 'Payment date cannot be before the plot was created. Use "Historical Entry" for past payments.' },
         { status: 400 }
       );
     }
