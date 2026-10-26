@@ -28,10 +28,19 @@ export async function GET() {
         (sum: Decimal, f: any) => sum.plus(f.amount.toString()),
         new Decimal(0)
       );
+      const collectedFees = match.fees
+        .filter((f: any) => f.isPaid)
+        .reduce((sum: Decimal, f: any) => sum.plus(f.amount.toString()), new Decimal(0));
+      const totalFeeCount = match.fees.length;
+      const paidFeeCount = match.fees.filter((f: any) => f.isPaid).length;
       return {
         ...match,
         totalExpenses: totalExpenses.toString(),
         totalFees: totalFees.toString(),
+        collectedFees: collectedFees.toString(),
+        pendingFees: totalFees.minus(collectedFees).toString(),
+        totalFeeCount,
+        paidFeeCount,
       };
     });
 
@@ -51,10 +60,17 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const validated = sportsMatchSchema.parse(body);
     const userId = (session.user as { id: string }).id;
+    const playerIds: string[] = Array.isArray(body.playerIds) ? body.playerIds : [];
 
-    // Verify team ownership
+    // Verify team ownership and fetch selected players
     const team = await prisma.sportsTeam.findFirst({
       where: { id: validated.teamId, userId },
+      include: {
+        players: {
+          where: { isActive: true, ...(playerIds.length > 0 ? { id: { in: playerIds } } : {}) },
+          select: { id: true, matchFee: true },
+        },
+      },
     });
 
     if (!team) {
@@ -71,6 +87,17 @@ export async function POST(request: NextRequest) {
         notes: validated.notes,
       },
     });
+
+    // Auto-generate fees for selected players
+    if (playerIds.length > 0 && team.players.length > 0) {
+      await prisma.sportsMatchFee.createMany({
+        data: team.players.map((p) => ({
+          matchId: match.id,
+          playerId: p.id,
+          amount: p.matchFee,
+        })),
+      });
+    }
 
     return NextResponse.json({ data: match }, { status: 201 });
   } catch (error: unknown) {

@@ -197,6 +197,8 @@ enum TransactionType {
   INVESTMENT
   INVESTMENT_RETURN
   PLOT_PAYMENT
+  SPORTS_FEE_RECEIVED
+  SPORTS_EXPENSE
   OTHER
 }
 
@@ -250,6 +252,10 @@ model Transaction {
   investment         Investment?       @relation(fields: [investmentId], references: [id])
   plotPaymentId      String?
   plotPayment        PlotPayment?      @relation(fields: [plotPaymentId], references: [id])
+  sportsMatchFeeId   String?
+  sportsMatchFee     SportsMatchFee?   @relation(fields: [sportsMatchFeeId], references: [id])
+  sportsExpenseId    String?
+  sportsExpense      SportsExpense?    @relation(fields: [sportsExpenseId], references: [id])
 
   @@index([userId, transactionDate])
   @@index([userId, type])
@@ -689,8 +695,9 @@ model SportsExpense {
   notes       String?
   createdAt   DateTime @default(now())
 
-  match   SportsMatch @relation(fields: [matchId], references: [id], onDelete: Cascade)
-  account Account?    @relation(fields: [accountId], references: [id])
+  match        SportsMatch   @relation(fields: [matchId], references: [id], onDelete: Cascade)
+  account      Account?      @relation(fields: [accountId], references: [id])
+  transactions Transaction[]
 
   @@index([matchId])
   @@map("sports_expenses")
@@ -707,9 +714,10 @@ model SportsMatchFee {
   notes     String?
   createdAt DateTime @default(now())
 
-  match   SportsMatch  @relation(fields: [matchId], references: [id], onDelete: Cascade)
-  player  SportsPlayer @relation(fields: [playerId], references: [id], onDelete: Cascade)
-  account Account?     @relation(fields: [accountId], references: [id])
+  match        SportsMatch   @relation(fields: [matchId], references: [id], onDelete: Cascade)
+  player       SportsPlayer  @relation(fields: [playerId], references: [id], onDelete: Cascade)
+  account      Account?      @relation(fields: [accountId], references: [id])
+  transactions Transaction[]
 
   @@unique([matchId, playerId])
   @@index([matchId])

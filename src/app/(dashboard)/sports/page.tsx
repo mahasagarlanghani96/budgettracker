@@ -15,7 +15,7 @@ import { useResourceForm } from '@/hooks/useResourceForm';
 import { sportsTeamSchema, sportsTeamUpdateSchema, sportsMatchSchema } from '@/lib/validations/schemas';
 import { formatCurrency, formatDate } from '@/lib/utils';
 import { useConfirm } from '@/hooks/use-confirm';
-import { Trophy, Plus, Pencil, Trash2, Eye, Users, Swords } from 'lucide-react';
+import { Trophy, Plus, Pencil, Trash2, Eye, Users, Swords, CheckCircle } from 'lucide-react';
 import Link from 'next/link';
 
 interface SportsTeam {
@@ -35,7 +35,19 @@ interface SportsMatch {
   notes?: string | null;
   totalExpenses: string;
   totalFees: string;
+  collectedFees?: string;
+  pendingFees?: string;
+  totalFeeCount?: number;
+  paidFeeCount?: number;
   team: { id: string; name: string };
+}
+
+interface TeamPlayer {
+  id: string;
+  name: string;
+  role?: string | null;
+  matchFee: number | string;
+  isActive: boolean;
 }
 
 export default function SportsPage() {
@@ -48,6 +60,9 @@ export default function SportsPage() {
   const [editingTeam, setEditingTeam] = useState<SportsTeam | null>(null);
   const [showCreateMatch, setShowCreateMatch] = useState(false);
   const [editingMatch, setEditingMatch] = useState<SportsMatch | null>(null);
+  const [teamPlayers, setTeamPlayers] = useState<TeamPlayer[]>([]);
+  const [selectedPlayerIds, setSelectedPlayerIds] = useState<Set<string>>(new Set());
+  const [loadingPlayers, setLoadingPlayers] = useState(false);
   const { confirm, ConfirmDialog } = useConfirm();
 
   const fetchTeams = useCallback(() => {
@@ -76,6 +91,43 @@ export default function SportsPage() {
       .catch(console.error)
       .finally(() => setLoading(false));
   }, []);
+
+  // Fetch players when team is selected in create match modal
+  function handleTeamSelect(teamId: string) {
+    createMatchForm.setField('teamId', teamId);
+    if (!teamId) {
+      setTeamPlayers([]);
+      setSelectedPlayerIds(new Set());
+      return;
+    }
+    setLoadingPlayers(true);
+    fetch(`/api/sports/teams/${teamId}`)
+      .then((r) => r.json())
+      .then((res) => {
+        const players: TeamPlayer[] = (res.data?.players || []).filter((p: TeamPlayer) => p.isActive);
+        setTeamPlayers(players);
+        setSelectedPlayerIds(new Set(players.map((p) => p.id)));
+      })
+      .catch(console.error)
+      .finally(() => setLoadingPlayers(false));
+  }
+
+  function togglePlayer(playerId: string) {
+    setSelectedPlayerIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(playerId)) next.delete(playerId);
+      else next.add(playerId);
+      return next;
+    });
+  }
+
+  function toggleAllPlayers() {
+    if (selectedPlayerIds.size === teamPlayers.length) {
+      setSelectedPlayerIds(new Set());
+    } else {
+      setSelectedPlayerIds(new Set(teamPlayers.map((p) => p.id)));
+    }
+  }
 
   // Create Team form
   const createTeamForm = useResourceForm({
@@ -110,7 +162,7 @@ export default function SportsPage() {
     },
   });
 
-  // Create Match form
+  // Create Match form — sends playerIds alongside the form data
   const createMatchForm = useResourceForm({
     schema: sportsMatchSchema,
     initial: { teamId: '', opponent: '', venue: '', matchDate: today, notes: '' },
@@ -118,11 +170,13 @@ export default function SportsPage() {
       fetch('/api/sports/matches', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(data),
+        body: JSON.stringify({ ...data, playerIds: Array.from(selectedPlayerIds) }),
       }),
     onSuccess: () => {
       setShowCreateMatch(false);
       createMatchForm.reset();
+      setTeamPlayers([]);
+      setSelectedPlayerIds(new Set());
       fetchMatches();
     },
   });
@@ -211,7 +265,7 @@ export default function SportsPage() {
             </Button>
           )}
           {activeTab === 'matches' && (
-            <Button onClick={() => { createMatchForm.reset({ teamId: '', opponent: '', venue: '', matchDate: today, notes: '' }); setShowCreateMatch(true); }}>
+            <Button onClick={() => { createMatchForm.reset({ teamId: '', opponent: '', venue: '', matchDate: today, notes: '' }); setTeamPlayers([]); setSelectedPlayerIds(new Set()); setShowCreateMatch(true); }}>
               <Plus className="h-4 w-4 mr-2" /> New Match
             </Button>
           )}
@@ -297,7 +351,7 @@ export default function SportsPage() {
               description="Schedule a match to start tracking expenses and fees"
               action={
                 teams.length > 0 ? (
-                  <Button onClick={() => { createMatchForm.reset({ teamId: '', opponent: '', venue: '', matchDate: today, notes: '' }); setShowCreateMatch(true); }}>Create Match</Button>
+                  <Button onClick={() => { createMatchForm.reset({ teamId: '', opponent: '', venue: '', matchDate: today, notes: '' }); setTeamPlayers([]); setSelectedPlayerIds(new Set()); setShowCreateMatch(true); }}>Create Match</Button>
                 ) : (
                   <Button onClick={() => { setActiveTab('teams'); createTeamForm.reset(); setShowCreateTeam(true); }}>Create a Team First</Button>
                 )
@@ -314,33 +368,53 @@ export default function SportsPage() {
                     <TableHead>Venue</TableHead>
                     <TableHead className="text-right">Expenses</TableHead>
                     <TableHead className="text-right">Fees</TableHead>
+                    <TableHead className="text-center">Payment Status</TableHead>
                     <TableHead className="text-right">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {matches.map((match) => (
-                    <TableRow key={match.id}>
-                      <TableCell>{formatDate(match.matchDate)}</TableCell>
-                      <TableCell className="font-medium">{match.team.name}</TableCell>
-                      <TableCell>{match.opponent || '—'}</TableCell>
-                      <TableCell>{match.venue || '—'}</TableCell>
-                      <TableCell className="text-right tabular-nums">{formatCurrency(match.totalExpenses)}</TableCell>
-                      <TableCell className="text-right tabular-nums">{formatCurrency(match.totalFees)}</TableCell>
-                      <TableCell className="text-right">
-                        <div className="flex justify-end gap-1">
-                          <Button variant="ghost" size="icon" className="h-7 w-7" aria-label="View match" asChild>
-                            <Link href={`/sports/matches/${match.id}`}><Eye className="h-3.5 w-3.5" /></Link>
-                          </Button>
-                          <Button variant="ghost" size="icon" className="h-7 w-7" aria-label="Edit match" onClick={() => openEditMatch(match)}>
-                            <Pencil className="h-3.5 w-3.5" />
-                          </Button>
-                          <Button variant="ghost" size="icon" className="h-7 w-7" aria-label="Delete match" onClick={() => handleDeleteMatch(match)}>
-                            <Trash2 className="h-3.5 w-3.5" />
-                          </Button>
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  ))}
+                  {matches.map((match) => {
+                    const total = match.totalFeeCount ?? 0;
+                    const paid = match.paidFeeCount ?? 0;
+                    const allPaid = total > 0 && paid === total;
+                    return (
+                      <TableRow key={match.id}>
+                        <TableCell>{formatDate(match.matchDate)}</TableCell>
+                        <TableCell className="font-medium">{match.team.name}</TableCell>
+                        <TableCell>{match.opponent || '—'}</TableCell>
+                        <TableCell>{match.venue || '—'}</TableCell>
+                        <TableCell className="text-right tabular-nums">{formatCurrency(match.totalExpenses)}</TableCell>
+                        <TableCell className="text-right tabular-nums">{formatCurrency(match.totalFees)}</TableCell>
+                        <TableCell className="text-center">
+                          {total === 0 ? (
+                            <span className="text-xs text-muted-foreground">No fees</span>
+                          ) : allPaid ? (
+                            <Badge variant="success" className="text-xs">
+                              <CheckCircle className="h-3 w-3 mr-1" />
+                              All Paid
+                            </Badge>
+                          ) : (
+                            <Badge variant="warning" className="text-xs">
+                              {paid}/{total} Paid
+                            </Badge>
+                          )}
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <div className="flex justify-end gap-1">
+                            <Button variant="ghost" size="icon" className="h-7 w-7" aria-label="View match" asChild>
+                              <Link href={`/sports/matches/${match.id}`}><Eye className="h-3.5 w-3.5" /></Link>
+                            </Button>
+                            <Button variant="ghost" size="icon" className="h-7 w-7" aria-label="Edit match" onClick={() => openEditMatch(match)}>
+                              <Pencil className="h-3.5 w-3.5" />
+                            </Button>
+                            <Button variant="ghost" size="icon" className="h-7 w-7" aria-label="Delete match" onClick={() => handleDeleteMatch(match)}>
+                              <Trash2 className="h-3.5 w-3.5" />
+                            </Button>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
                 </TableBody>
               </Table>
             </div>
@@ -399,18 +473,63 @@ export default function SportsPage() {
       </Dialog>
 
       {/* Create Match Modal */}
-      <Dialog open={showCreateMatch} onOpenChange={(open) => { setShowCreateMatch(open); if (!open) createMatchForm.reset(); }}>
-        <DialogContent>
+      <Dialog open={showCreateMatch} onOpenChange={(open) => { setShowCreateMatch(open); if (!open) { createMatchForm.reset(); setTeamPlayers([]); setSelectedPlayerIds(new Set()); } }}>
+        <DialogContent className="max-w-lg">
           <DialogHeader><DialogTitle>New Match</DialogTitle></DialogHeader>
           <form onSubmit={createMatchForm.handleSubmit} className="space-y-4">
             <FormField label="Team" required error={createMatchForm.errors.teamId}>
               <Select
                 options={teamOptions}
                 value={createMatchForm.form.teamId as string}
-                onChange={(e) => createMatchForm.setField('teamId', e.target.value)}
+                onChange={(e) => handleTeamSelect(e.target.value)}
                 placeholder="Select team"
               />
             </FormField>
+
+            {/* Player Selection */}
+            {(createMatchForm.form.teamId as string) && (
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <label className="text-sm font-medium">Players ({selectedPlayerIds.size}/{teamPlayers.length})</label>
+                  {teamPlayers.length > 0 && (
+                    <button type="button" className="text-xs text-primary hover:underline" onClick={toggleAllPlayers}>
+                      {selectedPlayerIds.size === teamPlayers.length ? 'Deselect All' : 'Select All'}
+                    </button>
+                  )}
+                </div>
+                {loadingPlayers ? (
+                  <p className="text-xs text-muted-foreground py-2">Loading players...</p>
+                ) : teamPlayers.length === 0 ? (
+                  <p className="text-xs text-muted-foreground py-2">No active players in this team. <Link href={`/sports/teams/${createMatchForm.form.teamId}`} className="text-primary hover:underline">Add players</Link></p>
+                ) : (
+                  <div className="border rounded-md max-h-48 overflow-y-auto divide-y">
+                    {teamPlayers.map((player) => (
+                      <label key={player.id} className="flex items-center gap-3 px-3 py-2 hover:bg-muted/50 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={selectedPlayerIds.has(player.id)}
+                          onChange={() => togglePlayer(player.id)}
+                          className="rounded"
+                        />
+                        <div className="flex-1 min-w-0">
+                          <span className="text-sm font-medium">{player.name}</span>
+                          {player.role && <span className="text-xs text-muted-foreground ml-2">{player.role}</span>}
+                        </div>
+                        <span className="text-xs tabular-nums text-muted-foreground">
+                          {formatCurrency(player.matchFee.toString())}
+                        </span>
+                      </label>
+                    ))}
+                  </div>
+                )}
+                {selectedPlayerIds.size > 0 && (
+                  <p className="text-xs text-muted-foreground">
+                    Fees will be auto-generated for {selectedPlayerIds.size} selected player{selectedPlayerIds.size !== 1 ? 's' : ''} based on their default match fee.
+                  </p>
+                )}
+              </div>
+            )}
+
             <FormField label="Opponent" error={createMatchForm.errors.opponent}>
               <Input value={createMatchForm.form.opponent as string} onChange={(e) => createMatchForm.setField('opponent', e.target.value)} placeholder="e.g., City XI" />
             </FormField>
@@ -426,7 +545,7 @@ export default function SportsPage() {
             {createMatchForm.serverError && <p className="text-sm text-destructive bg-destructive/10 rounded-md px-3 py-2">{createMatchForm.serverError}</p>}
             <DialogFooter>
               <Button type="button" variant="outline" onClick={() => setShowCreateMatch(false)}>Cancel</Button>
-              <Button type="submit" disabled={createMatchForm.saving}>{createMatchForm.saving ? 'Creating...' : 'Create'}</Button>
+              <Button type="submit" disabled={createMatchForm.saving}>{createMatchForm.saving ? 'Creating...' : 'Create Match'}</Button>
             </DialogFooter>
           </form>
         </DialogContent>

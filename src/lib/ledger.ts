@@ -17,6 +17,8 @@ const LINK_FIELDS = [
   'savingsTransId',
   'investmentId',
   'plotPaymentId',
+  'sportsMatchFeeId',
+  'sportsExpenseId',
 ] as const;
 
 type LinkField = (typeof LINK_FIELDS)[number];

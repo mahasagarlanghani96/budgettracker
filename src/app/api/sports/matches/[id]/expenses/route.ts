@@ -11,16 +11,16 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     const userId = (session.user as { id: string }).id;
     const body = await request.json();
     const validated = sportsExpenseSchema.parse(body);
+    const isHistorical = body.isHistorical === true;
 
     const match = await prisma.sportsMatch.findFirst({
       where: { id: matchId, userId },
+      include: { team: { select: { name: true } } },
     });
-
     if (!match) {
       return NextResponse.json({ error: 'Match not found' }, { status: 404 });
     }
 
-    // Verify account ownership if accountId provided
     if (validated.accountId) {
       const account = await prisma.account.findFirst({
         where: { id: validated.accountId, userId },
@@ -30,17 +30,36 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
       }
     }
 
-    const expense = await prisma.sportsExpense.create({
-      data: {
-        matchId,
-        description: validated.description.trim(),
-        amount: validated.amount,
-        accountId: validated.accountId || null,
-        notes: validated.notes,
-      },
+    const result = await prisma.$transaction(async (tx: any) => {
+      const expense = await tx.sportsExpense.create({
+        data: {
+          matchId,
+          description: validated.description.trim(),
+          amount: validated.amount,
+          accountId: validated.accountId || null,
+          notes: validated.notes,
+        },
+      });
+
+      if (validated.accountId) {
+        await tx.transaction.create({
+          data: {
+            userId,
+            sourceAccountId: validated.accountId,
+            type: 'SPORTS_EXPENSE',
+            amount: validated.amount,
+            description: `Sports expense: ${validated.description} — ${match.team.name}${match.opponent ? ` vs ${match.opponent}` : ''}`,
+            transactionDate: match.matchDate,
+            sportsExpenseId: expense.id,
+            isHistorical,
+          },
+        });
+      }
+
+      return expense;
     });
 
-    return NextResponse.json({ data: expense }, { status: 201 });
+    return NextResponse.json({ data: result }, { status: 201 });
   } catch (error: unknown) {
     if (error instanceof Error && error.message === 'Unauthorized') {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });

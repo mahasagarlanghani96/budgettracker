@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { requireAuth } from '@/lib/auth';
 import { sportsMatchFeeSchema } from '@/lib/validations/schemas';
+import { softDeleteLedgerEntry } from '@/lib/ledger';
 
 type Params = { params: Promise<{ id: string; feeId: string }> };
 
@@ -13,14 +14,17 @@ export async function PUT(request: NextRequest, { params }: Params) {
     const userId = (session.user as { id: string }).id;
     const body = await request.json();
     const validated = sportsMatchFeeSchema.parse(body);
+    const isHistorical = body.isHistorical === true;
 
-    const match = await prisma.sportsMatch.findFirst({ where: { id: matchId, userId } });
+    const match = await prisma.sportsMatch.findFirst({
+      where: { id: matchId, userId },
+      include: { team: { select: { name: true } } },
+    });
     if (!match) return NextResponse.json({ error: 'Match not found' }, { status: 404 });
 
     const fee = await prisma.sportsMatchFee.findFirst({ where: { id: feeId, matchId } });
     if (!fee) return NextResponse.json({ error: 'Fee not found' }, { status: 404 });
 
-    // Verify player belongs to the match's team
     const player = await prisma.sportsPlayer.findFirst({
       where: { id: validated.playerId, teamId: match.teamId },
     });
@@ -31,19 +35,87 @@ export async function PUT(request: NextRequest, { params }: Params) {
       if (!account) return NextResponse.json({ error: 'Account not found' }, { status: 404 });
     }
 
-    const updated = await prisma.sportsMatchFee.update({
-      where: { id: feeId },
-      data: {
-        playerId: validated.playerId,
-        amount: validated.amount,
-        accountId: validated.accountId || null,
-        isPaid: validated.isPaid,
-        paidDate: validated.paidDate ? new Date(validated.paidDate) : null,
-        notes: validated.notes,
-      },
+    const wasPaid = fee.isPaid;
+    const nowPaid = validated.isPaid;
+    const txDate = validated.paidDate ? new Date(validated.paidDate) : new Date();
+
+    const result = await prisma.$transaction(async (tx: any) => {
+      const updated = await tx.sportsMatchFee.update({
+        where: { id: feeId },
+        data: {
+          playerId: validated.playerId,
+          amount: validated.amount,
+          accountId: validated.accountId || null,
+          isPaid: validated.isPaid,
+          paidDate: validated.paidDate ? new Date(validated.paidDate) : null,
+          notes: validated.notes,
+        },
+      });
+
+      // Was paid → now unpaid: soft-delete the ledger entry
+      if (wasPaid && !nowPaid) {
+        await softDeleteLedgerEntry(tx, {
+          link: { sportsMatchFeeId: feeId },
+          userId,
+          type: 'SPORTS_FEE_RECEIVED',
+          amount: fee.amount,
+          accountId: fee.accountId || undefined,
+          accountField: 'destAccountId',
+          transactionDate: fee.paidDate || new Date(),
+        });
+      }
+
+      // Was not paid → now paid: create ledger entry
+      if (!wasPaid && nowPaid && validated.accountId) {
+        await tx.transaction.create({
+          data: {
+            userId,
+            destAccountId: validated.accountId,
+            type: 'SPORTS_FEE_RECEIVED',
+            amount: validated.amount,
+            description: `Match fee: ${player.name} — ${match.team.name}${match.opponent ? ` vs ${match.opponent}` : ''}`,
+            transactionDate: txDate,
+            sportsMatchFeeId: feeId,
+            isHistorical,
+          },
+        });
+      }
+
+      // Was paid → still paid but amount/account changed: update ledger
+      if (wasPaid && nowPaid) {
+        const existing = await tx.transaction.findFirst({
+          where: { sportsMatchFeeId: feeId, isDeleted: false },
+        });
+        if (existing) {
+          await tx.transaction.update({
+            where: { id: existing.id },
+            data: {
+              destAccountId: validated.accountId || null,
+              amount: validated.amount,
+              transactionDate: txDate,
+              isHistorical,
+            },
+          });
+        } else if (validated.accountId) {
+          await tx.transaction.create({
+            data: {
+              userId,
+              destAccountId: validated.accountId,
+              type: 'SPORTS_FEE_RECEIVED',
+              amount: validated.amount,
+              description: `Match fee: ${player.name} — ${match.team.name}${match.opponent ? ` vs ${match.opponent}` : ''}`,
+              transactionDate: txDate,
+              sportsMatchFeeId: feeId,
+              isHistorical,
+            },
+          });
+        }
+      }
+
+      return updated;
     });
 
-    return NextResponse.json({ data: updated });
+    return NextResponse.json({ data: result });
   } catch (error: unknown) {
     if (error instanceof Error && error.message === 'Unauthorized') {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -72,7 +144,21 @@ export async function DELETE(_request: NextRequest, { params }: Params) {
     const fee = await prisma.sportsMatchFee.findFirst({ where: { id: feeId, matchId } });
     if (!fee) return NextResponse.json({ error: 'Fee not found' }, { status: 404 });
 
-    await prisma.sportsMatchFee.delete({ where: { id: feeId } });
+    await prisma.$transaction(async (tx: any) => {
+      // Soft-delete any linked transaction
+      if (fee.isPaid) {
+        await softDeleteLedgerEntry(tx, {
+          link: { sportsMatchFeeId: feeId },
+          userId,
+          type: 'SPORTS_FEE_RECEIVED',
+          amount: fee.amount,
+          accountId: fee.accountId || undefined,
+          accountField: 'destAccountId',
+          transactionDate: fee.paidDate || new Date(),
+        });
+      }
+      await tx.sportsMatchFee.delete({ where: { id: feeId } });
+    });
 
     return NextResponse.json({ data: { success: true } });
   } catch (error: unknown) {

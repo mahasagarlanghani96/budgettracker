@@ -65,6 +65,14 @@ export default function MatchDetailPage() {
   const [showAddFee, setShowAddFee] = useState(false);
   const [editingFee, setEditingFee] = useState<MatchFee | null>(null);
   const [generating, setGenerating] = useState(false);
+  const [markingPaidFee, setMarkingPaidFee] = useState<MatchFee | null>(null);
+  const [markPaidAccountId, setMarkPaidAccountId] = useState('');
+  const [markPaidIsHistorical, setMarkPaidIsHistorical] = useState(false);
+  const [markPaidSaving, setMarkPaidSaving] = useState(false);
+  const [expenseIsHistorical, setExpenseIsHistorical] = useState(false);
+  const [editExpenseIsHistorical, setEditExpenseIsHistorical] = useState(false);
+  const [addFeeIsHistorical, setAddFeeIsHistorical] = useState(false);
+  const [editFeeIsHistorical, setEditFeeIsHistorical] = useState(false);
   const { confirm, ConfirmDialog } = useConfirm();
 
   const fetchMatch = useCallback(() => {
@@ -88,11 +96,12 @@ export default function MatchDetailPage() {
       fetch(`/api/sports/matches/${id}/expenses`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ...data, accountId: data.accountId || null }),
+        body: JSON.stringify({ ...data, accountId: data.accountId || null, isHistorical: expenseIsHistorical }),
       }),
     onSuccess: () => {
       setShowAddExpense(false);
       addExpenseForm.reset();
+      setExpenseIsHistorical(false);
       fetchMatch();
     },
   });
@@ -105,10 +114,11 @@ export default function MatchDetailPage() {
       fetch(`/api/sports/matches/${id}/expenses/${editingExpense!.id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ...data, accountId: data.accountId || null }),
+        body: JSON.stringify({ ...data, accountId: data.accountId || null, isHistorical: editExpenseIsHistorical }),
       }),
     onSuccess: () => {
       setEditingExpense(null);
+      setEditExpenseIsHistorical(false);
       fetchMatch();
     },
   });
@@ -121,11 +131,12 @@ export default function MatchDetailPage() {
       fetch(`/api/sports/matches/${id}/fees`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ...data, accountId: data.accountId || null, paidDate: data.paidDate || null }),
+        body: JSON.stringify({ ...data, accountId: data.accountId || null, paidDate: data.paidDate || null, isHistorical: addFeeIsHistorical }),
       }),
     onSuccess: () => {
       setShowAddFee(false);
       addFeeForm.reset();
+      setAddFeeIsHistorical(false);
       fetchMatch();
     },
   });
@@ -138,16 +149,18 @@ export default function MatchDetailPage() {
       fetch(`/api/sports/matches/${id}/fees/${editingFee!.id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ...data, accountId: data.accountId || null, paidDate: data.paidDate || null }),
+        body: JSON.stringify({ ...data, accountId: data.accountId || null, paidDate: data.paidDate || null, isHistorical: editFeeIsHistorical }),
       }),
     onSuccess: () => {
       setEditingFee(null);
+      setEditFeeIsHistorical(false);
       fetchMatch();
     },
   });
 
   function openEditExpense(expense: MatchExpense) {
     setEditingExpense(expense);
+    setEditExpenseIsHistorical(false);
     editExpenseForm.setForm({
       description: expense.description,
       amount: parseFloat(expense.amount.toString()),
@@ -158,6 +171,7 @@ export default function MatchDetailPage() {
 
   function openEditFee(fee: MatchFee) {
     setEditingFee(fee);
+    setEditFeeIsHistorical(false);
     editFeeForm.setForm({
       playerId: fee.player.id,
       amount: parseFloat(fee.amount.toString()),
@@ -180,14 +194,40 @@ export default function MatchDetailPage() {
     if (res.ok) fetchMatch();
   }
 
-  async function handleMarkPaid(fee: MatchFee) {
-    const today = new Date().toISOString().split('T')[0];
-    const res = await fetch(`/api/sports/matches/${id}/fees/${fee.id}`, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ playerId: fee.player.id, amount: parseFloat(fee.amount.toString()), isPaid: true, paidDate: today, accountId: fee.accountId || null }),
-    });
-    if (res.ok) fetchMatch();
+  function openMarkPaid(fee: MatchFee) {
+    setMarkingPaidFee(fee);
+    setMarkPaidAccountId('');
+    setMarkPaidIsHistorical(false);
+    setMarkPaidSaving(false);
+  }
+
+  async function handleMarkPaidSubmit() {
+    if (!markingPaidFee) return;
+    setMarkPaidSaving(true);
+    try {
+      const today = new Date().toISOString().split('T')[0];
+      const res = await fetch(`/api/sports/matches/${id}/fees/${markingPaidFee.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          playerId: markingPaidFee.player.id,
+          amount: parseFloat(markingPaidFee.amount.toString()),
+          isPaid: true,
+          paidDate: today,
+          accountId: markPaidAccountId || null,
+          isHistorical: markPaidIsHistorical,
+        }),
+      });
+      if (res.ok) {
+        setMarkingPaidFee(null);
+        fetchMatch();
+      } else {
+        try { const d = await res.json(); alert(d.error || 'Failed to mark as paid'); }
+        catch { alert('Failed to mark as paid'); }
+      }
+    } finally {
+      setMarkPaidSaving(false);
+    }
   }
 
   async function handleGenerateFees() {
@@ -265,7 +305,7 @@ export default function MatchDetailPage() {
         <CardHeader>
           <div className="flex items-center justify-between">
             <CardTitle className="text-base">Expenses ({match.expenses.length})</CardTitle>
-            <Button size="sm" onClick={() => { addExpenseForm.reset(); setShowAddExpense(true); }}>
+            <Button size="sm" onClick={() => { addExpenseForm.reset(); setExpenseIsHistorical(false); setShowAddExpense(true); }}>
               <Plus className="h-4 w-4 mr-1" /> Add Expense
             </Button>
           </div>
@@ -318,7 +358,7 @@ export default function MatchDetailPage() {
               <Button size="sm" variant="outline" onClick={handleGenerateFees} disabled={generating}>
                 <Zap className="h-4 w-4 mr-1" /> {generating ? 'Generating...' : 'Generate Fees'}
               </Button>
-              <Button size="sm" onClick={() => { addFeeForm.reset(); setShowAddFee(true); }}>
+              <Button size="sm" onClick={() => { addFeeForm.reset(); setAddFeeIsHistorical(false); setShowAddFee(true); }}>
                 <Plus className="h-4 w-4 mr-1" /> Add Fee
               </Button>
             </div>
@@ -335,6 +375,7 @@ export default function MatchDetailPage() {
                     <TableHead>Player</TableHead>
                     <TableHead className="text-right">Amount</TableHead>
                     <TableHead>Status</TableHead>
+                    <TableHead>Account</TableHead>
                     <TableHead>Paid Date</TableHead>
                     <TableHead className="text-right">Actions</TableHead>
                   </TableRow>
@@ -349,11 +390,12 @@ export default function MatchDetailPage() {
                           {fee.isPaid ? 'Paid' : 'Pending'}
                         </Badge>
                       </TableCell>
+                      <TableCell>{fee.account?.name || '—'}</TableCell>
                       <TableCell>{fee.paidDate ? formatDate(fee.paidDate) : '—'}</TableCell>
                       <TableCell className="text-right">
                         <div className="flex justify-end gap-1">
                           {!fee.isPaid && (
-                            <Button variant="ghost" size="icon" className="h-7 w-7" aria-label="Mark as paid" onClick={() => handleMarkPaid(fee)}>
+                            <Button variant="ghost" size="icon" className="h-7 w-7" aria-label="Mark as paid" onClick={() => openMarkPaid(fee)}>
                               <CheckCircle className="h-3.5 w-3.5 text-green-600" />
                             </Button>
                           )}
@@ -374,8 +416,41 @@ export default function MatchDetailPage() {
         </CardContent>
       </Card>
 
+      {/* Mark as Paid Dialog */}
+      <Dialog open={!!markingPaidFee} onOpenChange={(open) => !open && setMarkingPaidFee(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Mark as Paid — {markingPaidFee?.player.name}</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="flex justify-between text-sm">
+              <span className="text-muted-foreground">Amount</span>
+              <span className="font-bold tabular-nums">{markingPaidFee ? formatCurrency(markingPaidFee.amount.toString()) : ''}</span>
+            </div>
+            <FormField label="Paid To Account" required>
+              <Select
+                options={accountOptions}
+                value={markPaidAccountId}
+                onChange={(e) => setMarkPaidAccountId(e.target.value)}
+                placeholder="Select account"
+              />
+            </FormField>
+            <label className="flex items-center gap-2 text-sm">
+              <input type="checkbox" checked={markPaidIsHistorical} onChange={(e) => setMarkPaidIsHistorical(e.target.checked)} />
+              Historical transaction (won&apos;t affect account balance)
+            </label>
+            <DialogFooter>
+              <Button type="button" variant="outline" onClick={() => setMarkingPaidFee(null)}>Cancel</Button>
+              <Button onClick={handleMarkPaidSubmit} disabled={markPaidSaving || !markPaidAccountId}>
+                {markPaidSaving ? 'Saving...' : 'Mark as Paid'}
+              </Button>
+            </DialogFooter>
+          </div>
+        </DialogContent>
+      </Dialog>
+
       {/* Add Expense Modal */}
-      <Dialog open={showAddExpense} onOpenChange={(open) => { setShowAddExpense(open); if (!open) addExpenseForm.reset(); }}>
+      <Dialog open={showAddExpense} onOpenChange={(open) => { setShowAddExpense(open); if (!open) { addExpenseForm.reset(); setExpenseIsHistorical(false); } }}>
         <DialogContent>
           <DialogHeader><DialogTitle>Add Expense</DialogTitle></DialogHeader>
           <form onSubmit={addExpenseForm.handleSubmit} className="space-y-4">
@@ -385,9 +460,15 @@ export default function MatchDetailPage() {
             <FormField label="Amount" required error={addExpenseForm.errors.amount}>
               <Input type="number" step="0.01" value={addExpenseForm.form.amount as string | number} onChange={(e) => addExpenseForm.setField('amount', e.target.value === '' ? '' : Number(e.target.value))} />
             </FormField>
-            <FormField label="Account" error={addExpenseForm.errors.accountId}>
+            <FormField label="Paid From Account" error={addExpenseForm.errors.accountId}>
               <Select options={accountOptions} value={addExpenseForm.form.accountId as string} onChange={(e) => addExpenseForm.setField('accountId', e.target.value)} placeholder="Select account (optional)" />
             </FormField>
+            {(addExpenseForm.form.accountId as string) && (
+              <label className="flex items-center gap-2 text-sm">
+                <input type="checkbox" checked={expenseIsHistorical} onChange={(e) => setExpenseIsHistorical(e.target.checked)} />
+                Historical transaction (won&apos;t affect account balance)
+              </label>
+            )}
             <FormField label="Notes" error={addExpenseForm.errors.notes}>
               <Textarea value={addExpenseForm.form.notes as string} onChange={(e) => addExpenseForm.setField('notes', e.target.value)} placeholder="Optional" />
             </FormField>
@@ -401,7 +482,7 @@ export default function MatchDetailPage() {
       </Dialog>
 
       {/* Edit Expense Modal */}
-      <Dialog open={!!editingExpense} onOpenChange={(open) => !open && setEditingExpense(null)}>
+      <Dialog open={!!editingExpense} onOpenChange={(open) => { if (!open) { setEditingExpense(null); setEditExpenseIsHistorical(false); } }}>
         <DialogContent>
           <DialogHeader><DialogTitle>Edit Expense</DialogTitle></DialogHeader>
           <form onSubmit={editExpenseForm.handleSubmit} className="space-y-4">
@@ -411,9 +492,15 @@ export default function MatchDetailPage() {
             <FormField label="Amount" required error={editExpenseForm.errors.amount}>
               <Input type="number" step="0.01" value={editExpenseForm.form.amount as string | number} onChange={(e) => editExpenseForm.setField('amount', e.target.value === '' ? '' : Number(e.target.value))} />
             </FormField>
-            <FormField label="Account" error={editExpenseForm.errors.accountId}>
+            <FormField label="Paid From Account" error={editExpenseForm.errors.accountId}>
               <Select options={accountOptions} value={editExpenseForm.form.accountId as string} onChange={(e) => editExpenseForm.setField('accountId', e.target.value)} placeholder="Select account (optional)" />
             </FormField>
+            {(editExpenseForm.form.accountId as string) && (
+              <label className="flex items-center gap-2 text-sm">
+                <input type="checkbox" checked={editExpenseIsHistorical} onChange={(e) => setEditExpenseIsHistorical(e.target.checked)} />
+                Historical transaction (won&apos;t affect account balance)
+              </label>
+            )}
             <FormField label="Notes" error={editExpenseForm.errors.notes}>
               <Textarea value={editExpenseForm.form.notes as string} onChange={(e) => editExpenseForm.setField('notes', e.target.value)} placeholder="Optional" />
             </FormField>
@@ -427,7 +514,7 @@ export default function MatchDetailPage() {
       </Dialog>
 
       {/* Add Fee Modal */}
-      <Dialog open={showAddFee} onOpenChange={(open) => { setShowAddFee(open); if (!open) addFeeForm.reset(); }}>
+      <Dialog open={showAddFee} onOpenChange={(open) => { setShowAddFee(open); if (!open) { addFeeForm.reset(); setAddFeeIsHistorical(false); } }}>
         <DialogContent>
           <DialogHeader><DialogTitle>Add Match Fee</DialogTitle></DialogHeader>
           <form onSubmit={addFeeForm.handleSubmit} className="space-y-4">
@@ -447,9 +534,17 @@ export default function MatchDetailPage() {
               </label>
             </FormField>
             {Boolean(addFeeForm.form.isPaid) && (
-              <FormField label="Paid Date" error={addFeeForm.errors.paidDate}>
-                <Input type="date" value={addFeeForm.form.paidDate as string} onChange={(e) => addFeeForm.setField('paidDate', e.target.value)} />
-              </FormField>
+              <>
+                <FormField label="Paid Date" error={addFeeForm.errors.paidDate}>
+                  <Input type="date" value={addFeeForm.form.paidDate as string} onChange={(e) => addFeeForm.setField('paidDate', e.target.value)} />
+                </FormField>
+                {(addFeeForm.form.accountId as string) && (
+                  <label className="flex items-center gap-2 text-sm">
+                    <input type="checkbox" checked={addFeeIsHistorical} onChange={(e) => setAddFeeIsHistorical(e.target.checked)} />
+                    Historical transaction (won&apos;t affect account balance)
+                  </label>
+                )}
+              </>
             )}
             <FormField label="Notes" error={addFeeForm.errors.notes}>
               <Textarea value={addFeeForm.form.notes as string} onChange={(e) => addFeeForm.setField('notes', e.target.value)} placeholder="Optional" />
@@ -464,7 +559,7 @@ export default function MatchDetailPage() {
       </Dialog>
 
       {/* Edit Fee Modal */}
-      <Dialog open={!!editingFee} onOpenChange={(open) => !open && setEditingFee(null)}>
+      <Dialog open={!!editingFee} onOpenChange={(open) => { if (!open) { setEditingFee(null); setEditFeeIsHistorical(false); } }}>
         <DialogContent>
           <DialogHeader><DialogTitle>Edit Match Fee</DialogTitle></DialogHeader>
           <form onSubmit={editFeeForm.handleSubmit} className="space-y-4">
@@ -484,9 +579,17 @@ export default function MatchDetailPage() {
               </label>
             </FormField>
             {Boolean(editFeeForm.form.isPaid) && (
-              <FormField label="Paid Date" error={editFeeForm.errors.paidDate}>
-                <Input type="date" value={editFeeForm.form.paidDate as string} onChange={(e) => editFeeForm.setField('paidDate', e.target.value)} />
-              </FormField>
+              <>
+                <FormField label="Paid Date" error={editFeeForm.errors.paidDate}>
+                  <Input type="date" value={editFeeForm.form.paidDate as string} onChange={(e) => editFeeForm.setField('paidDate', e.target.value)} />
+                </FormField>
+                {(editFeeForm.form.accountId as string) && (
+                  <label className="flex items-center gap-2 text-sm">
+                    <input type="checkbox" checked={editFeeIsHistorical} onChange={(e) => setEditFeeIsHistorical(e.target.checked)} />
+                    Historical transaction (won&apos;t affect account balance)
+                  </label>
+                )}
+              </>
             )}
             <FormField label="Notes" error={editFeeForm.errors.notes}>
               <Textarea value={editFeeForm.form.notes as string} onChange={(e) => editFeeForm.setField('notes', e.target.value)} placeholder="Optional" />
