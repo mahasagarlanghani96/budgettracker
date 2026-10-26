@@ -8,7 +8,7 @@ export function Topbar() {
   const { data: session } = useSession();
 
   return (
-    <header className="sticky top-0 z-30 flex h-14 items-center gap-4 border-b bg-background/95 backdrop-blur px-4 lg:px-6">
+    <header className="sticky top-0 z-30 flex h-14 items-center gap-4 border-b border-[var(--glass-border)] bg-[var(--bg-deep)]/80 backdrop-blur-xl px-4 lg:px-6">
       {/* Spacer for mobile menu button */}
       <div className="w-10 lg:hidden" />
 
@@ -17,8 +17,8 @@ export function Topbar() {
       <div className="flex items-center gap-3">
         <ThemeToggle />
         <div className="text-right hidden sm:block">
-          <p className="text-sm font-medium leading-none">{session?.user?.name || 'User'}</p>
-          <p className="text-xs text-muted-foreground mt-0.5">{session?.user?.email}</p>
+          <p className="text-sm font-medium text-[var(--text-primary)] leading-none">{session?.user?.name || 'User'}</p>
+          <p className="text-[11px] text-[var(--text-tertiary)] mt-0.5">{session?.user?.email}</p>
         </div>
         <Avatar
           name={session?.user?.name || 'User'}

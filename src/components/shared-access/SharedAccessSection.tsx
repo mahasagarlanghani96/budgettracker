@@ -121,7 +121,7 @@ export function SharedAccessSection({ resourceType, resourceId }: SharedAccessSe
           <Users className="h-4 w-4" />
           Shared Access
           {shares.length > 0 && (
-            <span className="text-xs text-muted-foreground">({shares.length})</span>
+            <span className="text-xs text-[var(--text-secondary)]">({shares.length})</span>
           )}
         </CardTitle>
       </CardHeader>
@@ -151,14 +151,14 @@ export function SharedAccessSection({ resourceType, resourceId }: SharedAccessSe
         </form>
 
         {shares.length === 0 ? (
-          <p className="text-sm text-muted-foreground py-1">Not shared with anyone yet.</p>
+          <p className="text-sm text-[var(--text-secondary)] py-1">Not shared with anyone yet.</p>
         ) : (
           <ul className="divide-y">
             {shares.map((share) => (
               <li key={share.id} className="flex items-center gap-3 py-2.5 group">
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-medium truncate">{share.sharedWith.name}</p>
-                  <p className="text-xs text-muted-foreground truncate">{share.sharedWith.email}</p>
+                  <p className="text-xs text-[var(--text-secondary)] truncate">{share.sharedWith.email}</p>
                 </div>
                 <Select
                   options={accessOptions}

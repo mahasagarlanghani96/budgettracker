@@ -128,7 +128,7 @@ export default function AccountDetailPage() {
   const hasMore = transactions.length < totalTransactions;
 
   if (loading) return <PageLoading />;
-  if (!account) return <div className="text-center py-12 text-muted-foreground">Account not found</div>;
+  if (!account) return <div className="text-center py-12 text-[var(--text-secondary)]">Account not found</div>;
 
   return (
     <div className="space-y-6">
@@ -138,8 +138,8 @@ export default function AccountDetailPage() {
           <Button variant="ghost" size="icon"><ArrowLeft className="h-4 w-4" /></Button>
         </Link>
         <div className="flex-1">
-          <h1 className="text-2xl font-bold">{account.name as string}</h1>
-          <p className="text-muted-foreground">{(account.accountType as string).replace('_', ' ')}</p>
+          <h1 className="text-2xl font-display font-bold text-[var(--text-primary)]">{account.name as string}</h1>
+          <p className="text-[var(--text-secondary)]">{(account.accountType as string).replace('_', ' ')}</p>
         </div>
         <Button variant="outline" size="sm" onClick={openEdit}>
           <Pencil className="h-4 w-4 mr-1" /> Edit
@@ -156,13 +156,13 @@ export default function AccountDetailPage() {
       <div className="grid gap-4 sm:grid-cols-2">
         <Card>
           <CardContent className="pt-6">
-            <p className="text-sm text-muted-foreground">Current Balance</p>
+            <p className="text-sm text-[var(--text-secondary)]">Current Balance</p>
             <p className="text-3xl font-bold tabular-nums">{formatCurrency(account.currentBalance as string)}</p>
           </CardContent>
         </Card>
         <Card>
           <CardContent className="pt-6">
-            <p className="text-sm text-muted-foreground">Opening Balance</p>
+            <p className="text-sm text-[var(--text-secondary)]">Opening Balance</p>
             <p className="text-3xl font-bold tabular-nums">{formatCurrency((account.openingBalance as { toString(): string }).toString())}</p>
           </CardContent>
         </Card>
@@ -177,7 +177,7 @@ export default function AccountDetailPage() {
           <CardTitle className="text-base">
             Transactions
             {totalTransactions > 0 && (
-              <span className="text-sm font-normal text-muted-foreground ml-2">
+              <span className="text-sm font-normal text-[var(--text-secondary)] ml-2">
                 ({transactions.length} of {totalTransactions})
               </span>
             )}
@@ -185,7 +185,7 @@ export default function AccountDetailPage() {
         </CardHeader>
         <CardContent>
           {transactions.length === 0 ? (
-            <p className="text-sm text-muted-foreground text-center py-4">No transactions for this account</p>
+            <p className="text-sm text-[var(--text-secondary)] text-center py-4">No transactions for this account</p>
           ) : (
             <>
               <Table>

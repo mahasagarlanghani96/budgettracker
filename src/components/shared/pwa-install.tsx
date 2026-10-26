@@ -38,7 +38,7 @@ export function PWAInstallPrompt() {
         </div>
         <div className="flex-1">
           <p className="font-medium text-sm">Install FinKeep</p>
-          <p className="text-xs text-muted-foreground mt-0.5">
+          <p className="text-xs text-[var(--text-secondary)] mt-0.5">
             Add to your home screen for quick access
           </p>
           <div className="mt-2 flex gap-2">
@@ -50,7 +50,7 @@ export function PWAInstallPrompt() {
             </Button>
           </div>
         </div>
-        <button onClick={handleDismiss} className="text-muted-foreground hover:text-foreground">
+        <button onClick={handleDismiss} className="text-[var(--text-secondary)] hover:text-foreground">
           <X className="h-4 w-4" />
         </button>
       </div>

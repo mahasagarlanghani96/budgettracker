@@ -144,7 +144,7 @@ export default function RegisterPage() {
           <Button type="submit" className="w-full" disabled={loading}>
             {loading ? 'Creating account...' : 'Create Account'}
           </Button>
-          <p className="text-sm text-muted-foreground">
+          <p className="text-sm text-[var(--text-secondary)]">
             Already have an account?{' '}
             <Link href="/login" className="text-primary hover:underline font-medium">
               Sign in

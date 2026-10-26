@@ -21,7 +21,7 @@ export function AdvancedSection({ label = 'Advanced Options', defaultOpen = fals
     <div className="border rounded-md">
       <button
         type="button"
-        className="flex w-full items-center justify-between px-3 py-2 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
+        className="flex w-full items-center justify-between px-3 py-2 text-sm font-medium text-[var(--text-secondary)] hover:text-foreground transition-colors"
         onClick={() => setOpen(!open)}
         aria-expanded={open}
       >

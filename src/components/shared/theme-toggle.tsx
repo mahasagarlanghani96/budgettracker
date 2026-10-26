@@ -1,8 +1,8 @@
 'use client';
 
 import { useTheme } from 'next-themes';
+import { Moon, Sun } from 'lucide-react';
 import { useEffect, useState } from 'react';
-import { Sun, Moon, Monitor } from 'lucide-react';
 
 export function ThemeToggle() {
   const { theme, setTheme } = useTheme();
@@ -11,21 +11,26 @@ export function ThemeToggle() {
   useEffect(() => setMounted(true), []);
 
   if (!mounted) {
-    return <div className="h-9 w-9" />;
+    return (
+      <button className="flex items-center justify-center h-9 w-9 rounded-[var(--radius-sm)] border border-[var(--glass-border)] bg-[var(--glass-bg)]">
+        <Sun className="h-4 w-4 text-[var(--text-tertiary)]" />
+      </button>
+    );
   }
 
-  const next = theme === 'light' ? 'dark' : theme === 'dark' ? 'system' : 'light';
-  const Icon = theme === 'dark' ? Moon : theme === 'light' ? Sun : Monitor;
-  const label = theme === 'dark' ? 'Dark' : theme === 'light' ? 'Light' : 'System';
+  const isDark = theme === 'dark';
 
   return (
     <button
-      onClick={() => setTheme(next)}
-      className="inline-flex items-center justify-center rounded-md h-9 w-9 text-muted-foreground hover:bg-accent hover:text-accent-foreground transition-colors"
-      title={`Theme: ${label}. Click for ${next}.`}
+      onClick={() => setTheme(isDark ? 'light' : 'dark')}
+      className="flex items-center justify-center h-9 w-9 rounded-[var(--radius-sm)] border border-[var(--glass-border)] bg-[var(--glass-bg)] hover:bg-[var(--glass-bg-hover)] hover:border-[var(--glass-border-hover)] transition-colors"
+      aria-label={isDark ? 'Switch to light mode' : 'Switch to dark mode'}
     >
-      <Icon className="h-4 w-4" />
-      <span className="sr-only">Toggle theme</span>
+      {isDark ? (
+        <Sun className="h-4 w-4 text-[var(--amber)]" />
+      ) : (
+        <Moon className="h-4 w-4 text-[var(--violet)]" />
+      )}
     </button>
   );
 }

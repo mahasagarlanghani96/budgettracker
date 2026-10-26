@@ -125,7 +125,7 @@ export default function TeamDetailPage() {
   }
 
   if (loading) return <PageLoading />;
-  if (!team) return <div className="text-center py-12 text-muted-foreground">Team not found</div>;
+  if (!team) return <div className="text-center py-12 text-[var(--text-secondary)]">Team not found</div>;
 
   const personOptions = persons.map((p) => ({ value: p.id, label: p.name }));
 
@@ -140,7 +140,7 @@ export default function TeamDetailPage() {
           </Button>
         </Link>
         <div className="flex-1">
-          <h1 className="text-2xl font-bold">{team.name}</h1>
+          <h1 className="text-2xl font-display font-bold text-[var(--text-primary)]">{team.name}</h1>
           <div className="flex gap-2 mt-1">
             <Badge variant="secondary">{team.sport}</Badge>
             <Badge variant={team.isActive ? 'success' : 'outline'}>{team.isActive ? 'Active' : 'Inactive'}</Badge>
@@ -158,7 +158,7 @@ export default function TeamDetailPage() {
         </CardHeader>
         <CardContent>
           {team.players.length === 0 ? (
-            <p className="text-sm text-muted-foreground text-center py-4">No players added yet</p>
+            <p className="text-sm text-[var(--text-secondary)] text-center py-4">No players added yet</p>
           ) : (
             <div className="overflow-x-auto">
               <Table>
@@ -210,7 +210,7 @@ export default function TeamDetailPage() {
         </CardHeader>
         <CardContent>
           {team.matches.length === 0 ? (
-            <p className="text-sm text-muted-foreground text-center py-4">No matches recorded yet</p>
+            <p className="text-sm text-[var(--text-secondary)] text-center py-4">No matches recorded yet</p>
           ) : (
             <div className="overflow-x-auto">
               <Table>

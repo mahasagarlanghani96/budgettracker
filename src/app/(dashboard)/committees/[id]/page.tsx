@@ -217,7 +217,7 @@ export default function CommitteeDetailPage() {
   }
 
   if (loading) return <PageLoading />;
-  if (!committee) return <div className="text-center py-12 text-muted-foreground">Committee not found</div>;
+  if (!committee) return <div className="text-center py-12 text-[var(--text-secondary)]">Committee not found</div>;
 
   const members = (committee.members || []) as Array<Record<string, unknown>>;
   const rounds = (committee.rounds || []) as Array<Record<string, unknown>>;
@@ -272,7 +272,7 @@ export default function CommitteeDetailPage() {
       <div className="flex items-center gap-4">
         <Link href="/committees"><Button variant="ghost" size="icon" aria-label="Back to committees"><ArrowLeft className="h-4 w-4" /></Button></Link>
         <div className="flex-1">
-          <h1 className="text-2xl font-bold">{committee.name as string}</h1>
+          <h1 className="text-2xl font-display font-bold text-[var(--text-primary)]">{committee.name as string}</h1>
           <div className="flex gap-2 mt-1">
             <Badge variant={isWaiyk ? 'warning' : 'secondary'}>{committee.type as string}</Badge>
             <Badge variant={committee.status === 'ACTIVE' ? 'success' : 'outline'}>{committee.status as string}</Badge>
@@ -295,9 +295,9 @@ export default function CommitteeDetailPage() {
       )}
 
       <div className="grid gap-4 sm:grid-cols-3">
-        <Card><CardContent className="pt-6"><p className="text-xs text-muted-foreground">Monthly Amount</p><p className="text-xl font-bold tabular-nums">{formatCurrency((committee.monthlyContribution as { toString(): string }).toString())}</p></CardContent></Card>
-        <Card><CardContent className="pt-6"><p className="text-xs text-muted-foreground">Total Pool</p><p className="text-xl font-bold tabular-nums">{committee.totalAmount ? formatCurrency((committee.totalAmount as { toString(): string }).toString()) : formatCurrency(((committee.memberCount as number) * Number((committee.monthlyContribution as { toString(): string }).toString())).toString())}</p></CardContent></Card>
-        <Card><CardContent className="pt-6"><p className="text-xs text-muted-foreground">Progress</p><p className="text-xl font-bold">{rounds.length} / {committee.memberCount as number} rounds</p></CardContent></Card>
+        <Card><CardContent className="pt-6"><p className="text-xs text-[var(--text-secondary)]">Monthly Amount</p><p className="text-xl font-bold tabular-nums">{formatCurrency((committee.monthlyContribution as { toString(): string }).toString())}</p></CardContent></Card>
+        <Card><CardContent className="pt-6"><p className="text-xs text-[var(--text-secondary)]">Total Pool</p><p className="text-xl font-bold tabular-nums">{committee.totalAmount ? formatCurrency((committee.totalAmount as { toString(): string }).toString()) : formatCurrency(((committee.memberCount as number) * Number((committee.monthlyContribution as { toString(): string }).toString())).toString())}</p></CardContent></Card>
+        <Card><CardContent className="pt-6"><p className="text-xs text-[var(--text-secondary)]">Progress</p><p className="text-xl font-bold">{rounds.length} / {committee.memberCount as number} rounds</p></CardContent></Card>
       </div>
 
       {/* Your Tracking */}
@@ -307,42 +307,42 @@ export default function CommitteeDetailPage() {
           <CardContent>
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
               <div className="rounded-lg border p-4">
-                <p className="text-xs text-muted-foreground">Expected per Slot</p>
+                <p className="text-xs text-[var(--text-secondary)]">Expected per Slot</p>
                 <p className="text-lg font-bold tabular-nums">{formatCurrency(myExpectedPerSlot.toString())}</p>
-                <p className="text-xs text-muted-foreground mt-1">{formatCurrency(monthlyAmt.toString())} × {totalRounds} rounds</p>
+                <p className="text-xs text-[var(--text-secondary)] mt-1">{formatCurrency(monthlyAmt.toString())} × {totalRounds} rounds</p>
               </div>
               <div className="rounded-lg border p-4">
-                <p className="text-xs text-muted-foreground">Your Total Expected</p>
+                <p className="text-xs text-[var(--text-secondary)]">Your Total Expected</p>
                 <p className="text-lg font-bold tabular-nums">{formatCurrency(myTotalExpected.toString())}</p>
-                <p className="text-xs text-muted-foreground mt-1">{formatCurrency(myExpectedPerSlot.toString())} × {userSlots} {userSlots === 1 ? 'slot' : 'slots'}</p>
+                <p className="text-xs text-[var(--text-secondary)] mt-1">{formatCurrency(myExpectedPerSlot.toString())} × {userSlots} {userSlots === 1 ? 'slot' : 'slots'}</p>
               </div>
               <div className="rounded-lg border p-4">
-                <p className="text-xs text-muted-foreground">Your Total Paid</p>
-                <p className="text-lg font-bold tabular-nums text-green-600 dark:text-green-400">{formatCurrency(myPaid.toString())}</p>
-                {myPending > 0 && <p className="text-xs text-yellow-600 dark:text-yellow-400 mt-1">{formatCurrency(myPending.toString())} pending</p>}
+                <p className="text-xs text-[var(--text-secondary)]">Your Total Paid</p>
+                <p className="text-lg font-bold tabular-nums text-[var(--emerald)]">{formatCurrency(myPaid.toString())}</p>
+                {myPending > 0 && <p className="text-xs text-[var(--amber)] mt-1">{formatCurrency(myPending.toString())} pending</p>}
               </div>
               <div className="rounded-lg border p-4">
-                <p className="text-xs text-muted-foreground">Your Total Received</p>
-                <p className="text-lg font-bold tabular-nums text-blue-600 dark:text-blue-400">{formatCurrency(myReceived.toString())}</p>
+                <p className="text-xs text-[var(--text-secondary)]">Your Total Received</p>
+                <p className="text-lg font-bold tabular-nums text-[var(--blue)]">{formatCurrency(myReceived.toString())}</p>
               </div>
               <div className="rounded-lg border p-4">
-                <p className="text-xs text-muted-foreground">Remaining to Pay</p>
-                <p className="text-lg font-bold tabular-nums text-orange-600 dark:text-orange-400">{formatCurrency(myRemaining.toString())}</p>
-                <p className="text-xs text-muted-foreground mt-1">{totalRounds - rounds.length} rounds left</p>
+                <p className="text-xs text-[var(--text-secondary)]">Remaining to Pay</p>
+                <p className="text-lg font-bold tabular-nums text-[var(--amber)]">{formatCurrency(myRemaining.toString())}</p>
+                <p className="text-xs text-[var(--text-secondary)] mt-1">{totalRounds - rounds.length} rounds left</p>
               </div>
               {isWaiyk && (
                 <div className="rounded-lg border p-4">
-                  <p className="text-xs text-muted-foreground">Profit Earned</p>
-                  <p className="text-lg font-bold tabular-nums text-emerald-600 dark:text-emerald-400">{formatCurrency(myProfitEarned.toString())}</p>
-                  <p className="text-xs text-muted-foreground mt-1">from Waiyk profit deductions</p>
+                  <p className="text-xs text-[var(--text-secondary)]">Profit Earned</p>
+                  <p className="text-lg font-bold tabular-nums text-[var(--emerald)]">{formatCurrency(myProfitEarned.toString())}</p>
+                  <p className="text-xs text-[var(--text-secondary)] mt-1">from Waiyk profit deductions</p>
                 </div>
               )}
               <div className="rounded-lg border p-4">
-                <p className="text-xs text-muted-foreground">Net Position</p>
-                <p className={`text-lg font-bold tabular-nums ${myNetPosition >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
+                <p className="text-xs text-[var(--text-secondary)]">Net Position</p>
+                <p className={`text-lg font-bold tabular-nums ${myNetPosition >= 0 ? 'text-[var(--emerald)]' : 'text-[var(--coral)]'}`}>
                   {myNetPosition >= 0 ? '+' : ''}{formatCurrency(myNetPosition.toString())}
                 </p>
-                <p className="text-xs text-muted-foreground mt-1">received − paid</p>
+                <p className="text-xs text-[var(--text-secondary)] mt-1">received − paid</p>
               </div>
             </div>
           </CardContent>
@@ -355,18 +355,18 @@ export default function CommitteeDetailPage() {
         <CardContent>
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             <div className="rounded-lg border p-4">
-              <p className="text-xs text-muted-foreground">Lifetime Value</p>
+              <p className="text-xs text-[var(--text-secondary)]">Lifetime Value</p>
               <p className="text-lg font-bold tabular-nums">{formatCurrency(committeeLifetimeValue.toString())}</p>
-              <p className="text-xs text-muted-foreground mt-1">{formatCurrency(monthlyAmt.toString())} × {totalSlots} slots × {totalRounds} rounds</p>
+              <p className="text-xs text-[var(--text-secondary)] mt-1">{formatCurrency(monthlyAmt.toString())} × {totalSlots} slots × {totalRounds} rounds</p>
             </div>
             <div className="rounded-lg border p-4">
-              <p className="text-xs text-muted-foreground">Total Collected</p>
-              <p className="text-lg font-bold tabular-nums text-green-600 dark:text-green-400">{formatCurrency(allPaid.toString())}</p>
-              {allPending > 0 && <p className="text-xs text-yellow-600 dark:text-yellow-400 mt-1">{formatCurrency(allPending.toString())} pending</p>}
+              <p className="text-xs text-[var(--text-secondary)]">Total Collected</p>
+              <p className="text-lg font-bold tabular-nums text-[var(--emerald)]">{formatCurrency(allPaid.toString())}</p>
+              {allPending > 0 && <p className="text-xs text-[var(--amber)] mt-1">{formatCurrency(allPending.toString())} pending</p>}
             </div>
             <div className="rounded-lg border p-4">
-              <p className="text-xs text-muted-foreground">Total Disbursed</p>
-              <p className="text-lg font-bold tabular-nums text-blue-600 dark:text-blue-400">{formatCurrency(allReceived.toString())}</p>
+              <p className="text-xs text-[var(--text-secondary)]">Total Disbursed</p>
+              <p className="text-lg font-bold tabular-nums text-[var(--blue)]">{formatCurrency(allReceived.toString())}</p>
             </div>
           </div>
         </CardContent>
@@ -414,7 +414,7 @@ export default function CommitteeDetailPage() {
         <CardHeader><CardTitle className="text-base">Rounds</CardTitle></CardHeader>
         <CardContent>
           {rounds.length === 0 ? (
-            <p className="text-sm text-muted-foreground text-center py-4">No rounds recorded yet</p>
+            <p className="text-sm text-[var(--text-secondary)] text-center py-4">No rounds recorded yet</p>
           ) : (
             <div className="overflow-x-auto">
               <Table>

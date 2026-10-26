@@ -24,9 +24,9 @@ interface SessionInfo {
 
 function DeviceIcon({ type }: { type: string | null }) {
   switch (type) {
-    case 'mobile': return <Smartphone className="h-5 w-5 text-muted-foreground" />;
-    case 'tablet': return <Tablet className="h-5 w-5 text-muted-foreground" />;
-    default: return <Monitor className="h-5 w-5 text-muted-foreground" />;
+    case 'mobile': return <Smartphone className="h-5 w-5 text-[var(--text-secondary)]" />;
+    case 'tablet': return <Tablet className="h-5 w-5 text-[var(--text-secondary)]" />;
+    default: return <Monitor className="h-5 w-5 text-[var(--text-secondary)]" />;
   }
 }
 
@@ -124,9 +124,9 @@ export function ActiveSessions() {
         </CardHeader>
         <CardContent>
           {loading ? (
-            <p className="text-sm text-muted-foreground">Loading sessions...</p>
+            <p className="text-sm text-[var(--text-secondary)]">Loading sessions...</p>
           ) : sessions.length === 0 ? (
-            <p className="text-sm text-muted-foreground">No active sessions found.</p>
+            <p className="text-sm text-[var(--text-secondary)]">No active sessions found.</p>
           ) : (
             <div className="space-y-3">
               {sessions.map((s) => {
@@ -146,7 +146,7 @@ export function ActiveSessions() {
                         <span className="text-sm font-medium">
                           {s.browser || 'Unknown Browser'}
                         </span>
-                        <span className="text-sm text-muted-foreground">on</span>
+                        <span className="text-sm text-[var(--text-secondary)]">on</span>
                         <span className="text-sm font-medium">
                           {s.os || 'Unknown OS'}
                         </span>
@@ -156,7 +156,7 @@ export function ActiveSessions() {
                           </Badge>
                         )}
                       </div>
-                      <div className="flex items-center gap-3 mt-1 text-xs text-muted-foreground flex-wrap">
+                      <div className="flex items-center gap-3 mt-1 text-xs text-[var(--text-secondary)] flex-wrap">
                         <span className="flex items-center gap-1">
                           <Globe className="h-3 w-3" />
                           {s.ipAddress || 'Unknown'}

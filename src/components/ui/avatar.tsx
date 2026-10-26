@@ -31,7 +31,7 @@ export function Avatar({ name, hasProfilePhoto, src, size = 'md', className }: A
   return (
     <div
       className={cn(
-        'relative flex shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground font-medium overflow-hidden',
+        'relative flex shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-[var(--emerald)] to-[var(--teal)] text-white font-semibold overflow-hidden',
         sizes[size],
         className,
       )}

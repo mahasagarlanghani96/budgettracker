@@ -3,53 +3,133 @@
 @tailwind utilities;
 
 @layer base {
+  /* ── Dark theme (default) ── */
   :root {
-    --background: 0 0% 100%;
-    --foreground: 222.2 84% 4.9%;
-    --card: 0 0% 100%;
-    --card-foreground: 222.2 84% 4.9%;
-    --primary: 169 65% 38%;
-    --primary-foreground: 0 0% 100%;
-    --secondary: 166 20% 95%;
-    --secondary-foreground: 170 50% 12%;
-    --muted: 166 20% 95%;
-    --muted-foreground: 170 10% 46%;
-    --accent: 166 20% 95%;
-    --accent-foreground: 170 50% 12%;
-    --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 210 40% 98%;
-    --success: 142 76% 36%;
-    --success-foreground: 210 40% 98%;
-    --warning: 38 92% 50%;
-    --warning-foreground: 0 0% 100%;
-    --border: 214.3 31.8% 91.4%;
-    --input: 214.3 31.8% 91.4%;
-    --ring: 169 65% 38%;
-    --radius: 0.5rem;
+    color-scheme: dark;
+
+    /* Backgrounds */
+    --bg-deep: #070b14;
+    --bg-elevated: #0f1520;
+    --bg-sidebar: #0b1018;
+
+    /* Glass surfaces */
+    --glass-bg: rgba(255,255,255,0.04);
+    --glass-bg-hover: rgba(255,255,255,0.07);
+    --glass-border: rgba(255,255,255,0.08);
+    --glass-border-hover: rgba(255,255,255,0.12);
+
+    /* Accent colors */
+    --emerald: #00d68f;
+    --emerald-dim: rgba(0,214,143,0.15);
+    --emerald-glow: rgba(0,214,143,0.25);
+    --coral: #ff5c5c;
+    --coral-dim: rgba(255,92,92,0.12);
+    --amber: #ffaa2c;
+    --amber-dim: rgba(255,170,44,0.12);
+    --blue: #3b82f6;
+    --blue-dim: rgba(59,130,246,0.12);
+    --violet: #a78bfa;
+    --violet-dim: rgba(167,139,250,0.12);
+    --teal: #0ea5e9;
+
+    /* Text hierarchy */
+    --text-primary: #e8ecf4;
+    --text-secondary: #8b95a8;
+    --text-tertiary: #64748b;
+
+    /* Dropdown/select native element bg */
+    --select-bg: #0f1520;
+
+    /* Shadcn token mapping */
+    --background: 222 50% 4%;
+    --foreground: 220 30% 93%;
+    --card: 220 40% 6%;
+    --card-foreground: 220 30% 93%;
+    --primary: 160 100% 42%;
+    --primary-foreground: 160 60% 8%;
+    --secondary: 220 30% 12%;
+    --secondary-foreground: 220 20% 80%;
+    --muted: 220 30% 12%;
+    --muted-foreground: 220 15% 60%;
+    --accent: 220 30% 14%;
+    --accent-foreground: 220 20% 90%;
+    --destructive: 0 80% 60%;
+    --destructive-foreground: 0 0% 98%;
+    --success: 160 100% 42%;
+    --success-foreground: 0 0% 98%;
+    --warning: 36 100% 56%;
+    --warning-foreground: 0 0% 8%;
+    --border: 220 20% 14%;
+    --input: 220 20% 14%;
+    --ring: 160 100% 42%;
+
+    /* Spacing */
+    --radius: 0.75rem;
+    --radius-card: 16px;
+    --radius-inner: 12px;
+    --radius-sm: 8px;
+    --gap: 16px;
+    --pad: 24px;
+
+    /* Motion */
+    --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+    --t-fast: 150ms ease;
+    --t-normal: 300ms ease-out;
   }
 
-  .dark {
-    --background: 222.2 84% 4.9%;
-    --foreground: 210 40% 98%;
-    --card: 222.2 84% 4.9%;
-    --card-foreground: 210 40% 98%;
-    --primary: 166 55% 48%;
-    --primary-foreground: 170 60% 8%;
-    --secondary: 170 25% 16%;
-    --secondary-foreground: 166 30% 90%;
-    --muted: 170 25% 16%;
-    --muted-foreground: 168 15% 64%;
-    --accent: 170 25% 16%;
-    --accent-foreground: 166 30% 90%;
-    --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 210 40% 98%;
-    --success: 142 76% 36%;
-    --success-foreground: 210 40% 98%;
-    --warning: 38 92% 50%;
-    --warning-foreground: 0 0% 100%;
-    --border: 217.2 32.6% 17.5%;
-    --input: 217.2 32.6% 17.5%;
-    --ring: 166 50% 42%;
+  /* ── Light theme ── */
+  .light, [data-theme="light"] {
+    color-scheme: light;
+
+    --bg-deep: #f5f7fa;
+    --bg-elevated: #ffffff;
+    --bg-sidebar: #f0f2f5;
+
+    --glass-bg: rgba(255,255,255,0.7);
+    --glass-bg-hover: rgba(255,255,255,0.85);
+    --glass-border: rgba(0,0,0,0.08);
+    --glass-border-hover: rgba(0,0,0,0.14);
+
+    --emerald: #059669;
+    --emerald-dim: rgba(5,150,105,0.1);
+    --emerald-glow: rgba(5,150,105,0.2);
+    --coral: #dc2626;
+    --coral-dim: rgba(220,38,38,0.08);
+    --amber: #d97706;
+    --amber-dim: rgba(217,119,6,0.08);
+    --blue: #2563eb;
+    --blue-dim: rgba(37,99,235,0.08);
+    --violet: #7c3aed;
+    --violet-dim: rgba(124,58,237,0.08);
+    --teal: #0284c7;
+
+    --text-primary: #1a202c;
+    --text-secondary: #4a5568;
+    --text-tertiary: #94a3b8;
+
+    --select-bg: #ffffff;
+
+    --background: 220 20% 97%;
+    --foreground: 222 47% 11%;
+    --card: 0 0% 100%;
+    --card-foreground: 222 47% 11%;
+    --primary: 160 94% 30%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 220 14% 96%;
+    --secondary-foreground: 222 47% 11%;
+    --muted: 220 14% 96%;
+    --muted-foreground: 215 16% 47%;
+    --accent: 220 14% 96%;
+    --accent-foreground: 222 47% 11%;
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 98%;
+    --success: 160 94% 30%;
+    --success-foreground: 0 0% 100%;
+    --warning: 36 100% 50%;
+    --warning-foreground: 0 0% 8%;
+    --border: 220 13% 91%;
+    --input: 220 13% 91%;
+    --ring: 160 94% 30%;
   }
 }
 
@@ -58,8 +138,129 @@
     @apply border-border;
   }
   body {
-    @apply bg-background text-foreground;
+    background: var(--bg-deep);
+    color: var(--text-primary);
+    font-family: 'Inter', var(--font-inter), system-ui, -apple-system, "Segoe UI", sans-serif;
   }
+}
+
+/* Background ambient glow (dark only) */
+:root body::before,
+:root body::after {
+  content: '';
+  position: fixed;
+  pointer-events: none;
+  z-index: 0;
+  border-radius: 50%;
+}
+:root body::before {
+  top: -20%;
+  left: -10%;
+  width: 60%;
+  height: 60%;
+  background: radial-gradient(ellipse, rgba(0,214,143,0.03), transparent 70%);
+}
+:root body::after {
+  bottom: -20%;
+  right: -10%;
+  width: 55%;
+  height: 55%;
+  background: radial-gradient(ellipse, rgba(59,130,246,0.025), transparent 70%);
+}
+/* Hide glow pseudo-elements in light mode */
+.light body::before,
+.light body::after,
+[data-theme="light"] body::before,
+[data-theme="light"] body::after {
+  display: none;
+}
+
+/* Glass card base */
+@layer components {
+  .glass {
+    background: var(--glass-bg);
+    border: 1px solid var(--glass-border);
+    border-radius: var(--radius-card);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    transition: transform 0.25s var(--ease-out),
+                box-shadow 0.25s ease,
+                border-color 0.25s ease;
+  }
+  .glass:hover {
+    border-color: var(--glass-border-hover);
+  }
+  .glass-interactive:hover {
+    transform: translateY(-1px);
+    border-color: var(--glass-border-hover);
+  }
+}
+
+/* Light mode glass gets a subtle shadow instead of glow */
+.light .glass,
+[data-theme="light"] .glass {
+  box-shadow: 0 1px 3px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04);
+}
+
+/* Accent utilities */
+@layer utilities {
+  .text-emerald { color: var(--emerald); }
+  .text-coral { color: var(--coral); }
+  .text-amber-accent { color: var(--amber); }
+  .text-blue-accent { color: var(--blue); }
+  .text-violet-accent { color: var(--violet); }
+  .text-teal-accent { color: var(--teal); }
+  .text-dim { color: var(--text-secondary); }
+  .text-faint { color: var(--text-tertiary); }
+  .bg-emerald-dim { background: var(--emerald-dim); }
+  .bg-coral-dim { background: var(--coral-dim); }
+  .bg-amber-dim { background: var(--amber-dim); }
+  .bg-blue-dim { background: var(--blue-dim); }
+  .bg-violet-dim { background: var(--violet-dim); }
+  .glow-emerald { text-shadow: 0 0 20px var(--emerald-glow); }
+}
+
+/* DM Sans for headings/numbers */
+.font-display {
+  font-family: 'DM Sans', 'Inter', var(--font-inter), system-ui, sans-serif;
+}
+
+/* Native select & option dropdown styling */
+select option {
+  background-color: var(--select-bg);
+  color: var(--text-primary);
+  padding: 8px 12px;
+}
+
+/* Date input icon color fix for dark mode */
+:root input[type="date"]::-webkit-calendar-picker-indicator {
+  filter: invert(1) brightness(0.7);
+}
+.light input[type="date"]::-webkit-calendar-picker-indicator,
+[data-theme="light"] input[type="date"]::-webkit-calendar-picker-indicator {
+  filter: none;
+}
+
+/* Staggered fade-in animation */
+@keyframes fadeSlideUp {
+  from { opacity: 0; transform: translateY(16px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.animate-in-view {
+  animation: fadeSlideUp 0.5s var(--ease-out) both;
+}
+.stagger-1 { animation-delay: 0s; }
+.stagger-2 { animation-delay: 0.05s; }
+.stagger-3 { animation-delay: 0.1s; }
+.stagger-4 { animation-delay: 0.15s; }
+.stagger-5 { animation-delay: 0.2s; }
+.stagger-6 { animation-delay: 0.25s; }
+.stagger-7 { animation-delay: 0.3s; }
+.stagger-8 { animation-delay: 0.35s; }
+
+/* Savings ring draw animation */
+@keyframes ringDraw {
+  from { stroke-dashoffset: 377; }
 }
 
 /* Custom scrollbar */
@@ -71,10 +272,11 @@
   background: transparent;
 }
 ::-webkit-scrollbar-thumb {
-  @apply bg-muted-foreground/20 rounded-full;
+  background: rgba(128,128,128,0.2);
+  border-radius: 999px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  @apply bg-muted-foreground/40;
+  background: rgba(128,128,128,0.35);
 }
 
 /* Financial figures should use tabular numbers */
@@ -83,12 +285,23 @@
   font-variant-numeric: tabular-nums;
 }
 
-/* Smooth scrolling & touch-friendly */
+/* Mobile touch-friendly */
 @media (max-width: 768px) {
   html {
     -webkit-text-size-adjust: 100%;
   }
   input, select, textarea {
     font-size: 16px;
+  }
+}
+
+/* Backdrop-filter fallback for weak GPUs */
+@supports not (backdrop-filter: blur(12px)) {
+  .glass {
+    background: rgba(15,21,32,0.95);
+  }
+  .light .glass,
+  [data-theme="light"] .glass {
+    background: rgba(255,255,255,0.95);
   }
 }

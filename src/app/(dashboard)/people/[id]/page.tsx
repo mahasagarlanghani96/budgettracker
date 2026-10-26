@@ -125,7 +125,7 @@ export default function PersonDetailPage() {
   }
 
   if (loading) return <PageLoading />;
-  if (!data) return <div className="text-center py-12 text-muted-foreground">Person not found</div>;
+  if (!data) return <div className="text-center py-12 text-[var(--text-secondary)]">Person not found</div>;
 
   const hasMore = transactions.length < totalTransactions;
   const s = data.summary;
@@ -140,12 +140,12 @@ export default function PersonDetailPage() {
         </Link>
         <div className="flex-1">
           <div className="flex items-center gap-2">
-            <h1 className="text-2xl font-bold">{data.name}</h1>
+            <h1 className="text-2xl font-display font-bold text-[var(--text-primary)]">{data.name}</h1>
             <Badge variant={data.isActive ? 'success' : 'secondary'} className="text-xs">
               {data.isActive ? 'Active' : 'Inactive'}
             </Badge>
           </div>
-          <div className="flex flex-wrap gap-x-4 text-sm text-muted-foreground mt-1">
+          <div className="flex flex-wrap gap-x-4 text-sm text-[var(--text-secondary)] mt-1">
             {data.relationship && <span>{data.relationship}</span>}
             {data.phone && <span>{data.phone}</span>}
             {data.email && <span>{data.email}</span>}
@@ -154,39 +154,39 @@ export default function PersonDetailPage() {
       </div>
 
       {data.notes && (
-        <p className="text-sm text-muted-foreground bg-muted rounded-md px-3 py-2">{data.notes}</p>
+        <p className="text-sm text-[var(--text-secondary)] bg-[var(--glass-bg)] rounded-md px-3 py-2">{data.notes}</p>
       )}
 
       {/* Summary Cards */}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <Card>
           <CardContent className="pt-6">
-            <p className="text-xs text-muted-foreground">Total Transactions</p>
-            <p className="text-2xl font-bold tabular-nums">{s.totalTransactions}</p>
+            <p className="text-xs text-[var(--text-secondary)]">Total Transactions</p>
+            <p className="text-2xl font-display font-bold text-[var(--text-primary)] tabular-nums">{s.totalTransactions}</p>
           </CardContent>
         </Card>
         <Card>
           <CardContent className="pt-6 flex items-center gap-3">
-            <ArrowDownRight className="h-5 w-5 text-green-600 dark:text-green-400 shrink-0" />
+            <ArrowDownRight className="h-5 w-5 text-[var(--emerald)] shrink-0" />
             <div>
-              <p className="text-xs text-muted-foreground">Total Inflow</p>
+              <p className="text-xs text-[var(--text-secondary)]">Total Inflow</p>
               <p className="text-xl font-bold tabular-nums">{formatCurrency(s.totalInflow)}</p>
             </div>
           </CardContent>
         </Card>
         <Card>
           <CardContent className="pt-6 flex items-center gap-3">
-            <ArrowUpRight className="h-5 w-5 text-red-600 dark:text-red-400 shrink-0" />
+            <ArrowUpRight className="h-5 w-5 text-[var(--coral)] shrink-0" />
             <div>
-              <p className="text-xs text-muted-foreground">Total Outflow</p>
+              <p className="text-xs text-[var(--text-secondary)]">Total Outflow</p>
               <p className="text-xl font-bold tabular-nums">{formatCurrency(s.totalOutflow)}</p>
             </div>
           </CardContent>
         </Card>
         <Card>
           <CardContent className="pt-6">
-            <p className="text-xs text-muted-foreground">Net</p>
-            <p className={`text-xl font-bold tabular-nums ${net >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
+            <p className="text-xs text-[var(--text-secondary)]">Net</p>
+            <p className={`text-xl font-bold tabular-nums ${net >= 0 ? 'text-[var(--emerald)]' : 'text-[var(--coral)]'}`}>
               {formatCurrency(s.net)}
             </p>
           </CardContent>
@@ -200,12 +200,12 @@ export default function PersonDetailPage() {
           <CardContent>
             <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
               {s.byType.map((t) => (
-                <div key={t.type} className="flex items-center justify-between px-3 py-2 bg-muted rounded-md">
+                <div key={t.type} className="flex items-center justify-between px-3 py-2 bg-[var(--glass-bg)] rounded-md">
                   <div className="flex items-center gap-2">
                     <Badge variant={typeBadgeVariant[t.type] || 'outline'} className="text-xs">
                       {t.type.replace(/_/g, ' ')}
                     </Badge>
-                    <span className="text-xs text-muted-foreground">&times;{t.count}</span>
+                    <span className="text-xs text-[var(--text-secondary)]">&times;{t.count}</span>
                   </div>
                   <span className="text-sm font-medium tabular-nums">{formatCurrency(t.total)}</span>
                 </div>
@@ -226,18 +226,18 @@ export default function PersonDetailPage() {
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="grid gap-3 sm:grid-cols-2">
-              <div className="px-3 py-2 bg-muted rounded-md">
-                <p className="text-xs text-muted-foreground">Given to {data.name}</p>
+              <div className="px-3 py-2 bg-[var(--glass-bg)] rounded-md">
+                <p className="text-xs text-[var(--text-secondary)]">Given to {data.name}</p>
                 <p className="font-bold tabular-nums">{formatCurrency(ls.totalGiven)}</p>
                 {parseFloat(ls.outstandingGiven) > 0 && (
-                  <p className="text-xs text-orange-600">Outstanding: {formatCurrency(ls.outstandingGiven)}</p>
+                  <p className="text-xs text-[var(--amber)]">Outstanding: {formatCurrency(ls.outstandingGiven)}</p>
                 )}
               </div>
-              <div className="px-3 py-2 bg-muted rounded-md">
-                <p className="text-xs text-muted-foreground">Taken from {data.name}</p>
+              <div className="px-3 py-2 bg-[var(--glass-bg)] rounded-md">
+                <p className="text-xs text-[var(--text-secondary)]">Taken from {data.name}</p>
                 <p className="font-bold tabular-nums">{formatCurrency(ls.totalTaken)}</p>
                 {parseFloat(ls.outstandingTaken) > 0 && (
-                  <p className="text-xs text-orange-600">Outstanding: {formatCurrency(ls.outstandingTaken)}</p>
+                  <p className="text-xs text-[var(--amber)]">Outstanding: {formatCurrency(ls.outstandingTaken)}</p>
                 )}
               </div>
             </div>
@@ -333,7 +333,7 @@ export default function PersonDetailPage() {
           <CardTitle className="text-base">
             Transaction History
             {totalTransactions > 0 && (
-              <span className="text-sm font-normal text-muted-foreground ml-2">
+              <span className="text-sm font-normal text-[var(--text-secondary)] ml-2">
                 ({transactions.length} of {totalTransactions})
               </span>
             )}
@@ -341,7 +341,7 @@ export default function PersonDetailPage() {
         </CardHeader>
         <CardContent>
           {transactions.length === 0 ? (
-            <p className="text-sm text-muted-foreground text-center py-4">No transactions with this person</p>
+            <p className="text-sm text-[var(--text-secondary)] text-center py-4">No transactions with this person</p>
           ) : (
             <>
               <Table>
@@ -364,7 +364,7 @@ export default function PersonDetailPage() {
                           {tx.type.replace(/_/g, ' ')}
                         </Badge>
                       </TableCell>
-                      <TableCell className="text-sm text-muted-foreground">
+                      <TableCell className="text-sm text-[var(--text-secondary)]">
                         {tx.sourceAccount?.name || tx.destAccount?.name || '—'}
                       </TableCell>
                       <TableCell className="text-right font-medium tabular-nums">

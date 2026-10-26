@@ -127,7 +127,7 @@ export default function PeoplePage() {
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold">People</h1>
+        <h1 className="text-2xl font-display font-bold text-[var(--text-primary)]">People</h1>
         <Button onClick={openCreate}><Plus className="h-4 w-4 mr-2" /> Add Person</Button>
       </div>
 
@@ -148,8 +148,8 @@ export default function PeoplePage() {
                   <div className="flex items-start justify-between gap-2">
                     <div className="min-w-0 flex-1">
                       <p className="font-medium">{p.name}</p>
-                      <p className="text-xs text-muted-foreground">{p.relationship || 'No relationship'}{p.phone ? ` · ${p.phone}` : ''}</p>
-                      <p className="text-xs text-muted-foreground mt-0.5">{usageText(p)}</p>
+                      <p className="text-xs text-[var(--text-secondary)]">{p.relationship || 'No relationship'}{p.phone ? ` · ${p.phone}` : ''}</p>
+                      <p className="text-xs text-[var(--text-secondary)] mt-0.5">{usageText(p)}</p>
                     </div>
                     <div className="flex items-center gap-2">
                       <Badge variant={p.isActive ? 'success' : 'secondary'} className="text-xs">{p.isActive ? 'Active' : 'Inactive'}</Badge>
@@ -184,7 +184,7 @@ export default function PeoplePage() {
                     <TableCell>{p.relationship || '—'}</TableCell>
                     <TableCell className="hidden lg:table-cell">{p.phone || '—'}</TableCell>
                     <TableCell className="hidden lg:table-cell">{p.email || '—'}</TableCell>
-                    <TableCell className="text-muted-foreground text-xs">{usageText(p)}</TableCell>
+                    <TableCell className="text-[var(--text-secondary)] text-xs">{usageText(p)}</TableCell>
                     <TableCell><Badge variant={p.isActive ? 'success' : 'secondary'} className="text-xs">{p.isActive ? 'Active' : 'Inactive'}</Badge></TableCell>
                     <TableCell className="text-right">
                       <div className="flex justify-end gap-1">

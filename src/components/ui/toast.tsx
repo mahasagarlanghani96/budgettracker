@@ -19,20 +19,19 @@ export function ToastContainer({
         <div
           key={toast.id}
           className={cn(
-            'rounded-lg border px-4 py-3 shadow-lg animate-in slide-in-from-bottom-5 fade-in',
-            toast.variant === 'destructive' && 'border-destructive bg-destructive text-destructive-foreground',
-            toast.variant === 'success' && 'border-success bg-success/10 text-success-foreground dark:text-success',
-            toast.variant === 'default' && 'bg-background'
+            'glass rounded-[var(--radius-inner)] px-4 py-3 shadow-lg animate-in slide-in-from-bottom-5 fade-in',
+            toast.variant === 'destructive' && 'border-[var(--coral)]/30 bg-[var(--coral-dim)]',
+            toast.variant === 'success' && 'border-[var(--emerald)]/30 bg-[var(--emerald-dim)]',
           )}
         >
           <div className="flex items-start justify-between gap-2">
             <div>
-              <p className="text-sm font-semibold">{toast.title}</p>
+              <p className="text-sm font-semibold text-[var(--text-primary)]">{toast.title}</p>
               {toast.description && (
-                <p className="text-sm opacity-80 mt-0.5">{toast.description}</p>
+                <p className="text-sm text-[var(--text-secondary)] mt-0.5">{toast.description}</p>
               )}
             </div>
-            <button onClick={() => dismiss(toast.id)} className="opacity-70 hover:opacity-100">
+            <button onClick={() => dismiss(toast.id)} className="text-[var(--text-tertiary)] hover:text-[var(--text-primary)] transition-colors">
               <X className="h-4 w-4" />
             </button>
           </div>

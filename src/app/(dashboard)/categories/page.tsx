@@ -114,7 +114,7 @@ export default function CategoriesPage() {
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold">Categories</h1>
+        <h1 className="text-2xl font-display font-bold text-[var(--text-primary)]">Categories</h1>
         <Button onClick={openCreate}><Plus className="h-4 w-4 mr-2" /> Add Category</Button>
       </div>
 
@@ -133,7 +133,7 @@ export default function CategoriesPage() {
                 <CardHeader><CardTitle className="text-base">{title} ({items.length})</CardTitle></CardHeader>
                 <CardContent>
                   {items.length === 0 ? (
-                    <p className="text-sm text-muted-foreground text-center py-4">No {title.toLowerCase()} categories</p>
+                    <p className="text-sm text-[var(--text-secondary)] text-center py-4">No {title.toLowerCase()} categories</p>
                   ) : (
                     <Table>
                       <TableHeader>

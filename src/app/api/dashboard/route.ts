@@ -25,6 +25,9 @@ export async function GET() {
       activeLoans,
       activeCommittees,
       savingsGoals,
+      expenseByCategory,
+      allCategories,
+      last7DaysTxns,
     ] = await Promise.all([
       getTotalBalance(userId),
       getOutstandingReceivables(userId),
@@ -68,6 +71,33 @@ export async function GET() {
         },
         take: 5,
       }),
+      // Expense by category (current month) for donut chart
+      prisma.transaction.groupBy({
+        by: ['categoryId'],
+        where: {
+          userId,
+          isDeleted: false,
+          transactionDate: { gte: startOfMonth, lte: endOfMonth },
+          type: 'EXPENSE',
+          categoryId: { not: null },
+        },
+        _sum: { amount: true },
+        orderBy: { _sum: { amount: 'desc' } },
+        take: 6,
+      }),
+      // Category names lookup (include system defaults where userId is null)
+      prisma.category.findMany({ where: { OR: [{ userId }, { userId: null }] }, select: { id: true, name: true } }),
+      // Last 7 days income vs expense for trend mini-chart
+      prisma.transaction.findMany({
+        where: {
+          userId,
+          isDeleted: false,
+          transactionDate: { gte: new Date(now.getFullYear(), now.getMonth(), now.getDate() - 6) },
+          type: { in: ['INCOME', 'EXPENSE'] },
+        },
+        select: { type: true, amount: true, transactionDate: true },
+        orderBy: { transactionDate: 'asc' },
+      }),
     ]);
 
     // Calculate savings progress
@@ -96,6 +126,33 @@ export async function GET() {
       };
     });
 
+    // Build category map
+    const catMap = new Map(allCategories.map((c: { id: string; name: string }) => [c.id, c.name]));
+    const expenseByCat = expenseByCategory.map((g: { categoryId: string | null; _sum: { amount: { toString(): string } | null } }) => ({
+      name: catMap.get(g.categoryId || '') || 'Other',
+      amount: (g._sum.amount || 0).toString(),
+    }));
+
+    // Build 7-day trend
+    const dayMap = new Map<string, { income: number; expense: number }>();
+    for (let i = 6; i >= 0; i--) {
+      const d = new Date(now.getFullYear(), now.getMonth(), now.getDate() - i);
+      dayMap.set(d.toISOString().split('T')[0], { income: 0, expense: 0 });
+    }
+    for (const tx of last7DaysTxns) {
+      const day = new Date(tx.transactionDate).toISOString().split('T')[0];
+      const entry = dayMap.get(day);
+      if (entry) {
+        if (tx.type === 'INCOME') entry.income += parseFloat(tx.amount.toString());
+        else entry.expense += parseFloat(tx.amount.toString());
+      }
+    }
+    const weeklyTrend = Array.from(dayMap.entries()).map(([date, vals]) => ({
+      date,
+      income: vals.income,
+      expense: vals.expense,
+    }));
+
     return NextResponse.json({
       data: {
         totalBalance: totalBalance.toString(),
@@ -108,6 +165,8 @@ export async function GET() {
         activeCommittees,
         recentTransactions,
         savingsGoals: savingsWithProgress,
+        expenseByCategory: expenseByCat,
+        weeklyTrend,
       },
     });
   } catch (error: unknown) {

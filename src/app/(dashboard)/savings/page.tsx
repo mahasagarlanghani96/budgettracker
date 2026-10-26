@@ -158,7 +158,7 @@ export default function SavingsPage() {
     <div className="space-y-6">
       {ConfirmDialog}
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold">Savings Goals</h1>
+        <h1 className="text-2xl font-display font-bold text-[var(--text-primary)]">Savings Goals</h1>
         <Button onClick={() => setShowCreate(true)}><Plus className="h-4 w-4 mr-2" /> New Goal</Button>
       </div>
 
@@ -182,12 +182,12 @@ export default function SavingsPage() {
                 <div>
                   <div className="flex justify-between text-sm mb-1">
                     <span>{formatCurrency(goal.currentAmount)}</span>
-                    <span className="text-muted-foreground">{formatCurrency(goal.targetAmount.toString())}</span>
+                    <span className="text-[var(--text-secondary)]">{formatCurrency(goal.targetAmount.toString())}</span>
                   </div>
-                  <div className="h-2.5 bg-muted rounded-full overflow-hidden">
+                  <div className="h-2.5 bg-[var(--glass-bg)] rounded-full overflow-hidden">
                     <div className="h-full bg-primary rounded-full transition-all" style={{ width: `${goal.progress}%` }} />
                   </div>
-                  <p className="text-xs text-muted-foreground mt-1">{goal.progress.toFixed(1)}% complete</p>
+                  <p className="text-xs text-[var(--text-secondary)] mt-1">{goal.progress.toFixed(1)}% complete</p>
                 </div>
                 {goal.isActive && (
                   <div className="flex gap-2">
@@ -311,9 +311,9 @@ export default function SavingsPage() {
               </DialogFooter>
             </form>
           ) : historyLoading ? (
-            <p className="text-sm text-muted-foreground text-center py-4">Loading...</p>
+            <p className="text-sm text-[var(--text-secondary)] text-center py-4">Loading...</p>
           ) : transactions.length === 0 ? (
-            <p className="text-sm text-muted-foreground text-center py-4">No transactions recorded yet</p>
+            <p className="text-sm text-[var(--text-secondary)] text-center py-4">No transactions recorded yet</p>
           ) : (
             <div className="divide-y">
               {transactions.map((tx) => (
@@ -324,8 +324,8 @@ export default function SavingsPage() {
                       {tx.isHistorical && <Badge variant="outline" className="text-[10px]">Historical</Badge>}
                       <span className="text-sm font-medium tabular-nums">{formatCurrency(tx.amount.toString())}</span>
                     </div>
-                    <p className="text-xs text-muted-foreground mt-0.5">{formatDate(tx.transactionDate)}</p>
-                    {tx.notes && <p className="text-xs text-muted-foreground truncate">{tx.notes}</p>}
+                    <p className="text-xs text-[var(--text-secondary)] mt-0.5">{formatDate(tx.transactionDate)}</p>
+                    {tx.notes && <p className="text-xs text-[var(--text-secondary)] truncate">{tx.notes}</p>}
                   </div>
                   <div className="flex items-center gap-1 shrink-0">
                     <Button variant="ghost" size="icon" className="h-7 w-7" aria-label="Edit transaction" onClick={() => openEditTx(tx)}><Pencil className="h-3.5 w-3.5" /></Button>

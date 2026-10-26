@@ -20,8 +20,8 @@ function formatFileSize(bytes: number): string {
 }
 
 function FileIcon({ mimeType }: { mimeType: string }) {
-  if (mimeType.startsWith('image/')) return <Image className="h-4 w-4 text-blue-500" />;
-  return <FileText className="h-4 w-4 text-muted-foreground" />;
+  if (mimeType.startsWith('image/')) return <Image className="h-4 w-4 text-[var(--blue)]" />;
+  return <FileText className="h-4 w-4 text-[var(--text-secondary)]" />;
 }
 
 export function AttachmentSection({ transactionId }: { transactionId: string }) {
@@ -82,7 +82,7 @@ export function AttachmentSection({ transactionId }: { transactionId: string }) 
           <Paperclip className="h-4 w-4" />
           Attachments
           {attachments.length > 0 && (
-            <span className="text-xs text-muted-foreground">({attachments.length})</span>
+            <span className="text-xs text-[var(--text-secondary)]">({attachments.length})</span>
           )}
         </CardTitle>
         <div>
@@ -111,7 +111,7 @@ export function AttachmentSection({ transactionId }: { transactionId: string }) 
         )}
 
         {attachments.length === 0 ? (
-          <p className="text-sm text-muted-foreground py-2">No attachments yet.</p>
+          <p className="text-sm text-[var(--text-secondary)] py-2">No attachments yet.</p>
         ) : (
           <ul className="divide-y">
             {attachments.map((att) => (
@@ -119,7 +119,7 @@ export function AttachmentSection({ transactionId }: { transactionId: string }) 
                 <FileIcon mimeType={att.mimeType} />
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-medium truncate">{att.fileName}</p>
-                  <p className="text-xs text-muted-foreground">{formatFileSize(att.fileSize)}</p>
+                  <p className="text-xs text-[var(--text-secondary)]">{formatFileSize(att.fileSize)}</p>
                 </div>
                 <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                   <a href={`/api/attachments/${att.id}/download`} download>

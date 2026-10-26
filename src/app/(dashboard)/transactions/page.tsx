@@ -128,7 +128,7 @@ export default function TransactionsPage() {
     <div className="space-y-6">
       {ConfirmDialog}
       <div className="flex items-center justify-between gap-4">
-        <h1 className="text-2xl font-bold">Transactions</h1>
+        <h1 className="text-2xl font-display font-bold text-[var(--text-primary)]">Transactions</h1>
         <Link href="/transactions/new">
           <Button size="sm" className="sm:size-default"><Plus className="h-4 w-4 sm:mr-2" /> <span className="hidden sm:inline">New Transaction</span></Button>
         </Link>
@@ -139,7 +139,7 @@ export default function TransactionsPage() {
         <CardContent className="pt-6">
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
             <div className="relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-[var(--text-secondary)]" />
               <Input
                 placeholder="Search..."
                 className="pl-9"
@@ -147,7 +147,7 @@ export default function TransactionsPage() {
                 onChange={(e) => setSearchInput(e.target.value)}
               />
               {searchInput && (
-                <button type="button" className="absolute right-2 top-1/2 -translate-y-1/2 p-1 rounded-full bg-muted hover:bg-muted-foreground/20" onClick={() => setSearchInput('')}>
+                <button type="button" className="absolute right-2 top-1/2 -translate-y-1/2 p-1 rounded-full bg-[var(--glass-bg)] hover:bg-[var(--glass-bg-hover)]" onClick={() => setSearchInput('')}>
                   <X className="h-3.5 w-3.5" />
                 </button>
               )}
@@ -209,7 +209,7 @@ export default function TransactionsPage() {
                       <div className="flex items-start justify-between gap-2">
                         <div className="min-w-0 flex-1">
                           <p className="text-sm font-medium truncate">{tx.description || '—'}</p>
-                          <p className="text-xs text-muted-foreground">{formatDate(tx.transactionDate)} · {tx.sourceAccount?.name}{tx.destAccount && ` → ${tx.destAccount.name}`}</p>
+                          <p className="text-xs text-[var(--text-secondary)]">{formatDate(tx.transactionDate)} · {tx.sourceAccount?.name}{tx.destAccount && ` → ${tx.destAccount.name}`}</p>
                         </div>
                         <span className="text-sm font-medium tabular-nums whitespace-nowrap">
                           {formatCurrency(tx.amount.toString())}
@@ -220,7 +220,7 @@ export default function TransactionsPage() {
                           <Badge variant={typeBadgeVariant[tx.type] || 'outline'} className="text-xs">
                             {tx.type.replace(/_/g, ' ')}
                           </Badge>
-                          {tx.category?.name && <span className="text-xs text-muted-foreground">{tx.category.name}</span>}
+                          {tx.category?.name && <span className="text-xs text-[var(--text-secondary)]">{tx.category.name}</span>}
                         </div>
                         {editable ? (
                           <div className="flex gap-1">
@@ -230,7 +230,7 @@ export default function TransactionsPage() {
                             <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleDelete(tx)}><Trash2 className="h-3.5 w-3.5" /></Button>
                           </div>
                         ) : (
-                          <span title="Linked record — edit from module page" className="text-muted-foreground">
+                          <span title="Linked record — edit from module page" className="text-[var(--text-secondary)]">
                             <Lock className="h-3.5 w-3.5" />
                           </span>
                         )}
@@ -263,7 +263,7 @@ export default function TransactionsPage() {
                         <TableCell className="text-sm hidden lg:table-cell">{tx.category?.name || '—'}</TableCell>
                         <TableCell className="text-sm">
                           {tx.sourceAccount?.name}
-                          {tx.destAccount && <span className="text-muted-foreground"> → {tx.destAccount.name}</span>}
+                          {tx.destAccount && <span className="text-[var(--text-secondary)]"> → {tx.destAccount.name}</span>}
                         </TableCell>
                         <TableCell>
                           <Badge variant={typeBadgeVariant[tx.type] || 'outline'} className="text-xs">
@@ -282,7 +282,7 @@ export default function TransactionsPage() {
                               <Button variant="ghost" size="icon" onClick={() => handleDelete(tx)}><Trash2 className="h-4 w-4" /></Button>
                             </div>
                           ) : (
-                            <span title="Linked to a Loan/Savings/Investment record — edit from there" className="inline-flex justify-end text-muted-foreground">
+                            <span title="Linked to a Loan/Savings/Investment record — edit from there" className="inline-flex justify-end text-[var(--text-secondary)]">
                               <Lock className="h-4 w-4" />
                             </span>
                           )}
@@ -302,7 +302,7 @@ export default function TransactionsPage() {
               <Button variant="outline" size="sm" onClick={() => setPage(page - 1)} disabled={page <= 1}>
                 Previous
               </Button>
-              <span className="text-sm text-muted-foreground">Page {page} of {totalPages}</span>
+              <span className="text-sm text-[var(--text-secondary)]">Page {page} of {totalPages}</span>
               <Button variant="outline" size="sm" onClick={() => setPage(page + 1)} disabled={page >= totalPages}>
                 Next
               </Button>

@@ -290,7 +290,7 @@ export function ContributionsSection({
             <ArrowUpCircle className="h-4 w-4 text-destructive" />
             Contributions
             {allContributions.length > 0 && (
-              <span className="text-xs text-muted-foreground">({allContributions.length})</span>
+              <span className="text-xs text-[var(--text-secondary)]">({allContributions.length})</span>
             )}
           </CardTitle>
           <Button size="sm" variant="outline" onClick={() => { resetContribForm(); setEditingContrib(null); setShowAddContrib(true); }}>
@@ -299,7 +299,7 @@ export function ContributionsSection({
         </CardHeader>
         <CardContent className="pt-0">
           {allContributions.length === 0 ? (
-            <p className="text-sm text-muted-foreground text-center py-4">No contributions recorded yet</p>
+            <p className="text-sm text-[var(--text-secondary)] text-center py-4">No contributions recorded yet</p>
           ) : (
             <Table>
               <TableHeader>
@@ -342,10 +342,10 @@ export function ContributionsSection({
       <Card>
         <CardHeader className="flex flex-row items-center justify-between pb-3">
           <CardTitle className="text-base font-medium flex items-center gap-2">
-            <ArrowDownCircle className="h-4 w-4 text-green-600" />
+            <ArrowDownCircle className="h-4 w-4 text-[var(--emerald)]" />
             Receivings
             {allReceivings.length > 0 && (
-              <span className="text-xs text-muted-foreground">({allReceivings.length})</span>
+              <span className="text-xs text-[var(--text-secondary)]">({allReceivings.length})</span>
             )}
           </CardTitle>
           <Button size="sm" variant="outline" onClick={() => { resetRecForm(); setEditingReceiving(null); setShowAddReceiving(true); }}>
@@ -354,7 +354,7 @@ export function ContributionsSection({
         </CardHeader>
         <CardContent className="pt-0">
           {allReceivings.length === 0 ? (
-            <p className="text-sm text-muted-foreground text-center py-4">No receivings recorded yet</p>
+            <p className="text-sm text-[var(--text-secondary)] text-center py-4">No receivings recorded yet</p>
           ) : (
             <Table>
               <TableHeader>

@@ -53,10 +53,10 @@ export default function SearchPage() {
 
   return (
     <div className="max-w-3xl mx-auto space-y-6">
-      <h1 className="text-2xl font-bold">Search</h1>
+      <h1 className="text-2xl font-display font-bold text-[var(--text-primary)]">Search</h1>
 
       <div className="relative">
-        <SearchIcon className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+        <SearchIcon className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-[var(--text-secondary)]" />
         <Input
           className="pl-10 h-12 text-base"
           placeholder="Search everything..."
@@ -65,24 +65,24 @@ export default function SearchPage() {
           autoFocus
         />
         {query && (
-          <button type="button" className="absolute right-3 top-1/2 -translate-y-1/2 p-1 rounded-full bg-muted hover:bg-muted-foreground/20" onClick={() => setQuery('')}>
+          <button type="button" className="absolute right-3 top-1/2 -translate-y-1/2 p-1 rounded-full bg-[var(--glass-bg)] hover:bg-[var(--glass-bg)]-foreground/20" onClick={() => setQuery('')}>
             <X className="h-4 w-4" />
           </button>
         )}
       </div>
 
-      {loading && <p className="text-sm text-muted-foreground text-center py-4">Searching...</p>}
+      {loading && <p className="text-sm text-[var(--text-secondary)] text-center py-4">Searching...</p>}
 
       {query.length >= 2 && !loading && !hasResults && (
-        <p className="text-sm text-muted-foreground text-center py-8">No results found for &ldquo;{query}&rdquo;</p>
+        <p className="text-sm text-[var(--text-secondary)] text-center py-8">No results found for &ldquo;{query}&rdquo;</p>
       )}
 
       {results && results.accounts.length > 0 && (
         <Card>
-          <CardHeader className="pb-2"><CardTitle className="text-sm text-muted-foreground">Accounts ({results.accounts.length})</CardTitle></CardHeader>
+          <CardHeader className="pb-2"><CardTitle className="text-sm text-[var(--text-secondary)]">Accounts ({results.accounts.length})</CardTitle></CardHeader>
           <CardContent className="space-y-2">
             {results.accounts.map((a) => (
-              <Link key={a.id} href={`/accounts/${a.id}`} className="flex items-center justify-between p-2 rounded-md hover:bg-muted transition-colors">
+              <Link key={a.id} href={`/accounts/${a.id}`} className="flex items-center justify-between p-2 rounded-md hover:bg-[var(--glass-bg)] transition-colors">
                 <span className="font-medium">{a.name}</span>
                 <Badge variant="secondary" className="text-xs">{a.accountType}</Badge>
               </Link>
@@ -93,10 +93,10 @@ export default function SearchPage() {
 
       {results && results.categories.length > 0 && (
         <Card>
-          <CardHeader className="pb-2"><CardTitle className="text-sm text-muted-foreground">Categories ({results.categories.length})</CardTitle></CardHeader>
+          <CardHeader className="pb-2"><CardTitle className="text-sm text-[var(--text-secondary)]">Categories ({results.categories.length})</CardTitle></CardHeader>
           <CardContent className="space-y-2">
             {results.categories.map((c) => (
-              <Link key={c.id} href="/categories" className="flex items-center justify-between p-2 rounded-md hover:bg-muted transition-colors">
+              <Link key={c.id} href="/categories" className="flex items-center justify-between p-2 rounded-md hover:bg-[var(--glass-bg)] transition-colors">
                 <span className="font-medium">{c.icon ? `${c.icon} ` : ''}{c.name}</span>
                 <div className="flex gap-2">
                   <Badge variant="secondary" className="text-xs">{c.group}</Badge>
@@ -110,12 +110,12 @@ export default function SearchPage() {
 
       {results && results.persons.length > 0 && (
         <Card>
-          <CardHeader className="pb-2"><CardTitle className="text-sm text-muted-foreground">People ({results.persons.length})</CardTitle></CardHeader>
+          <CardHeader className="pb-2"><CardTitle className="text-sm text-[var(--text-secondary)]">People ({results.persons.length})</CardTitle></CardHeader>
           <CardContent className="space-y-2">
             {results.persons.map((p) => (
               <div key={p.id} className="flex items-center justify-between p-2 rounded-md">
                 <span className="font-medium">{p.name}</span>
-                {p.relationship && <span className="text-xs text-muted-foreground">{p.relationship}</span>}
+                {p.relationship && <span className="text-xs text-[var(--text-secondary)]">{p.relationship}</span>}
               </div>
             ))}
           </CardContent>
@@ -124,13 +124,13 @@ export default function SearchPage() {
 
       {results && results.transactions.length > 0 && (
         <Card>
-          <CardHeader className="pb-2"><CardTitle className="text-sm text-muted-foreground">Transactions ({results.transactions.length})</CardTitle></CardHeader>
+          <CardHeader className="pb-2"><CardTitle className="text-sm text-[var(--text-secondary)]">Transactions ({results.transactions.length})</CardTitle></CardHeader>
           <CardContent className="space-y-2">
             {results.transactions.map((t) => (
-              <Link key={t.id} href={`/transactions/${t.id}/edit`} className="flex items-center justify-between p-2 rounded-md hover:bg-muted transition-colors">
+              <Link key={t.id} href={`/transactions/${t.id}/edit`} className="flex items-center justify-between p-2 rounded-md hover:bg-[var(--glass-bg)] transition-colors">
                 <div>
                   <p className="font-medium text-sm">{t.description || 'No description'}</p>
-                  <p className="text-xs text-muted-foreground">
+                  <p className="text-xs text-[var(--text-secondary)]">
                     {formatDate(t.transactionDate)} · {t.type}
                     {t.category && ` · ${t.category.name}`}
                     {t.person && ` · ${t.person.name}`}
@@ -145,13 +145,13 @@ export default function SearchPage() {
 
       {results && results.investments.length > 0 && (
         <Card>
-          <CardHeader className="pb-2"><CardTitle className="text-sm text-muted-foreground">Investments ({results.investments.length})</CardTitle></CardHeader>
+          <CardHeader className="pb-2"><CardTitle className="text-sm text-[var(--text-secondary)]">Investments ({results.investments.length})</CardTitle></CardHeader>
           <CardContent className="space-y-2">
             {results.investments.map((inv) => (
-              <Link key={inv.id} href="/investments" className="flex items-center justify-between p-2 rounded-md hover:bg-muted transition-colors">
+              <Link key={inv.id} href="/investments" className="flex items-center justify-between p-2 rounded-md hover:bg-[var(--glass-bg)] transition-colors">
                 <div>
                   <p className="font-medium text-sm">{inv.name}</p>
-                  <p className="text-xs text-muted-foreground">{inv.investmentType}</p>
+                  <p className="text-xs text-[var(--text-secondary)]">{inv.investmentType}</p>
                 </div>
                 <div className="text-right">
                   <span className="font-medium tabular-nums">{formatCurrency(inv.amountInvested.toString())}</span>
@@ -165,13 +165,13 @@ export default function SearchPage() {
 
       {results && results.loans.length > 0 && (
         <Card>
-          <CardHeader className="pb-2"><CardTitle className="text-sm text-muted-foreground">Loans ({results.loans.length})</CardTitle></CardHeader>
+          <CardHeader className="pb-2"><CardTitle className="text-sm text-[var(--text-secondary)]">Loans ({results.loans.length})</CardTitle></CardHeader>
           <CardContent className="space-y-2">
             {results.loans.map((l) => (
-              <Link key={l.id} href={`/loans/${l.id}`} className="flex items-center justify-between p-2 rounded-md hover:bg-muted transition-colors">
+              <Link key={l.id} href={`/loans/${l.id}`} className="flex items-center justify-between p-2 rounded-md hover:bg-[var(--glass-bg)] transition-colors">
                 <div>
                   <p className="font-medium text-sm">{l.person.name}</p>
-                  <p className="text-xs text-muted-foreground">{l.direction}</p>
+                  <p className="text-xs text-[var(--text-secondary)]">{l.direction}</p>
                 </div>
                 <div className="text-right">
                   <span className="font-medium tabular-nums">{formatCurrency(l.amount.toString())}</span>
@@ -185,13 +185,13 @@ export default function SearchPage() {
 
       {results && results.committees.length > 0 && (
         <Card>
-          <CardHeader className="pb-2"><CardTitle className="text-sm text-muted-foreground">Committees ({results.committees.length})</CardTitle></CardHeader>
+          <CardHeader className="pb-2"><CardTitle className="text-sm text-[var(--text-secondary)]">Committees ({results.committees.length})</CardTitle></CardHeader>
           <CardContent className="space-y-2">
             {results.committees.map((c) => (
-              <Link key={c.id} href={`/committees/${c.id}`} className="flex items-center justify-between p-2 rounded-md hover:bg-muted transition-colors">
+              <Link key={c.id} href={`/committees/${c.id}`} className="flex items-center justify-between p-2 rounded-md hover:bg-[var(--glass-bg)] transition-colors">
                 <div>
                   <p className="font-medium text-sm">{c.name}</p>
-                  <p className="text-xs text-muted-foreground">{c.type} · {formatCurrency(c.monthlyContribution.toString())}/mo</p>
+                  <p className="text-xs text-[var(--text-secondary)]">{c.type} · {formatCurrency(c.monthlyContribution.toString())}/mo</p>
                 </div>
                 <Badge variant={c.status === 'ACTIVE' ? 'success' : 'secondary'} className="text-xs">{c.status}</Badge>
               </Link>
@@ -202,10 +202,10 @@ export default function SearchPage() {
 
       {results && results.savingsGoals.length > 0 && (
         <Card>
-          <CardHeader className="pb-2"><CardTitle className="text-sm text-muted-foreground">Savings Goals ({results.savingsGoals.length})</CardTitle></CardHeader>
+          <CardHeader className="pb-2"><CardTitle className="text-sm text-[var(--text-secondary)]">Savings Goals ({results.savingsGoals.length})</CardTitle></CardHeader>
           <CardContent className="space-y-2">
             {results.savingsGoals.map((s) => (
-              <Link key={s.id} href="/savings" className="flex items-center justify-between p-2 rounded-md hover:bg-muted transition-colors">
+              <Link key={s.id} href="/savings" className="flex items-center justify-between p-2 rounded-md hover:bg-[var(--glass-bg)] transition-colors">
                 <span className="font-medium">{s.name}</span>
                 <div className="text-right">
                   <span className="font-medium tabular-nums">{formatCurrency(s.targetAmount.toString())}</span>
@@ -219,13 +219,13 @@ export default function SearchPage() {
 
       {results && results.plots.length > 0 && (
         <Card>
-          <CardHeader className="pb-2"><CardTitle className="text-sm text-muted-foreground">Plots ({results.plots.length})</CardTitle></CardHeader>
+          <CardHeader className="pb-2"><CardTitle className="text-sm text-[var(--text-secondary)]">Plots ({results.plots.length})</CardTitle></CardHeader>
           <CardContent className="space-y-2">
             {results.plots.map((p) => (
-              <Link key={p.id} href={`/plots/${p.id}`} className="flex items-center justify-between p-2 rounded-md hover:bg-muted transition-colors">
+              <Link key={p.id} href={`/plots/${p.id}`} className="flex items-center justify-between p-2 rounded-md hover:bg-[var(--glass-bg)] transition-colors">
                 <div>
                   <p className="font-medium text-sm">{p.name}</p>
-                  {p.location && <p className="text-xs text-muted-foreground">{p.location}</p>}
+                  {p.location && <p className="text-xs text-[var(--text-secondary)]">{p.location}</p>}
                 </div>
                 <div className="text-right">
                   <span className="font-medium tabular-nums">{formatCurrency(p.totalPrice.toString())}</span>

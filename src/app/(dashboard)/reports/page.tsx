@@ -47,7 +47,7 @@ export default function ReportsPage() {
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold">Reports</h1>
+        <h1 className="text-2xl font-display font-bold text-[var(--text-primary)]">Reports</h1>
       </div>
 
       <Card>
@@ -93,25 +93,25 @@ export default function ReportsPage() {
               <div className="grid gap-4 grid-cols-2 lg:grid-cols-4">
                 <Card>
                   <CardContent className="pt-6">
-                    <p className="text-xs text-muted-foreground">Total Income</p>
-                    <p className="text-xl font-bold tabular-nums text-green-600 dark:text-green-400">{formatCurrency(data.totalIncome || '0')}</p>
+                    <p className="text-xs text-[var(--text-secondary)]">Total Income</p>
+                    <p className="text-xl font-bold tabular-nums text-[var(--emerald)]">{formatCurrency(data.totalIncome || '0')}</p>
                   </CardContent>
                 </Card>
                 <Card>
                   <CardContent className="pt-6">
-                    <p className="text-xs text-muted-foreground">Total Expenses</p>
-                    <p className="text-xl font-bold tabular-nums text-red-600 dark:text-red-400">{formatCurrency(data.totalExpense || '0')}</p>
+                    <p className="text-xs text-[var(--text-secondary)]">Total Expenses</p>
+                    <p className="text-xl font-bold tabular-nums text-[var(--coral)]">{formatCurrency(data.totalExpense || '0')}</p>
                   </CardContent>
                 </Card>
                 <Card>
                   <CardContent className="pt-6">
-                    <p className="text-xs text-muted-foreground">Net Savings</p>
-                    <p className={`text-xl font-bold tabular-nums ${parseFloat(data.netSavings || '0') >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>{formatCurrency(data.netSavings || '0')}</p>
+                    <p className="text-xs text-[var(--text-secondary)]">Net Savings</p>
+                    <p className={`text-xl font-bold tabular-nums ${parseFloat(data.netSavings || '0') >= 0 ? 'text-[var(--emerald)]' : 'text-[var(--coral)]'}`}>{formatCurrency(data.netSavings || '0')}</p>
                   </CardContent>
                 </Card>
                 <Card>
                   <CardContent className="pt-6">
-                    <p className="text-xs text-muted-foreground">Transactions</p>
+                    <p className="text-xs text-[var(--text-secondary)]">Transactions</p>
                     <p className="text-xl font-bold">{(data.transactionCounts?.income || 0) + (data.transactionCounts?.expense || 0) + (data.transactionCounts?.transfers || 0)}</p>
                   </CardContent>
                 </Card>
@@ -126,7 +126,7 @@ export default function ReportsPage() {
                 <CardHeader><CardTitle className="text-base">Income by Category</CardTitle></CardHeader>
                 <CardContent className="p-0">
                   {(!data.incomeByCategory || data.incomeByCategory.length === 0) ? (
-                    <p className="text-sm text-muted-foreground text-center py-8">No income for selected period</p>
+                    <p className="text-sm text-[var(--text-secondary)] text-center py-8">No income for selected period</p>
                   ) : (
                     <Table>
                       <TableHeader>
@@ -139,7 +139,7 @@ export default function ReportsPage() {
                         {data.incomeByCategory.map((cat, i) => (
                           <TableRow key={i}>
                             <TableCell className="font-medium">{cat.name}</TableCell>
-                            <TableCell className="text-right tabular-nums text-green-600 dark:text-green-400">{formatCurrency(cat.total)}</TableCell>
+                            <TableCell className="text-right tabular-nums text-[var(--emerald)]">{formatCurrency(cat.total)}</TableCell>
                           </TableRow>
                         ))}
                       </TableBody>
@@ -151,7 +151,7 @@ export default function ReportsPage() {
                 <CardHeader><CardTitle className="text-base">Expenses by Category</CardTitle></CardHeader>
                 <CardContent className="p-0">
                   {(!data.expenseByCategory || data.expenseByCategory.length === 0) ? (
-                    <p className="text-sm text-muted-foreground text-center py-8">No expenses for selected period</p>
+                    <p className="text-sm text-[var(--text-secondary)] text-center py-8">No expenses for selected period</p>
                   ) : (
                     <Table>
                       <TableHeader>
@@ -164,7 +164,7 @@ export default function ReportsPage() {
                         {data.expenseByCategory.map((cat, i) => (
                           <TableRow key={i}>
                             <TableCell className="font-medium">{cat.name}</TableCell>
-                            <TableCell className="text-right tabular-nums text-red-600 dark:text-red-400">{formatCurrency(cat.total)}</TableCell>
+                            <TableCell className="text-right tabular-nums text-[var(--coral)]">{formatCurrency(cat.total)}</TableCell>
                           </TableRow>
                         ))}
                       </TableBody>
@@ -181,7 +181,7 @@ export default function ReportsPage() {
               <CardHeader><CardTitle className="text-base">Daily Breakdown</CardTitle></CardHeader>
               <CardContent className="p-0">
                 {(!data.dailyData || data.dailyData.length === 0) ? (
-                  <p className="text-sm text-muted-foreground text-center py-8">No data for selected period</p>
+                  <p className="text-sm text-[var(--text-secondary)] text-center py-8">No data for selected period</p>
                 ) : (
                   <Table>
                     <TableHeader>
@@ -196,9 +196,9 @@ export default function ReportsPage() {
                       {data.dailyData.map((day, i) => (
                         <TableRow key={i}>
                           <TableCell className="font-medium">{new Date(day.date).toLocaleDateString('en-PK', { weekday: 'short', day: 'numeric', month: 'short' })}</TableCell>
-                          <TableCell className="text-right tabular-nums text-green-600 dark:text-green-400">{formatCurrency(day.income)}</TableCell>
-                          <TableCell className="text-right tabular-nums text-red-600 dark:text-red-400">{formatCurrency(day.expense)}</TableCell>
-                          <TableCell className={`text-right tabular-nums font-medium ${parseFloat(day.net) >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>{formatCurrency(day.net)}</TableCell>
+                          <TableCell className="text-right tabular-nums text-[var(--emerald)]">{formatCurrency(day.income)}</TableCell>
+                          <TableCell className="text-right tabular-nums text-[var(--coral)]">{formatCurrency(day.expense)}</TableCell>
+                          <TableCell className={`text-right tabular-nums font-medium ${parseFloat(day.net) >= 0 ? 'text-[var(--emerald)]' : 'text-[var(--coral)]'}`}>{formatCurrency(day.net)}</TableCell>
                         </TableRow>
                       ))}
                     </TableBody>

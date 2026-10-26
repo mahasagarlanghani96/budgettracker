@@ -38,7 +38,7 @@ export default function CommitteesPage() {
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold">Committees</h1>
+        <h1 className="text-2xl font-display font-bold text-[var(--text-primary)]">Committees</h1>
         <Link href="/committees/new">
           <Button><Plus className="h-4 w-4 mr-2" /> New Committee</Button>
         </Link>
@@ -67,22 +67,22 @@ export default function CommitteesPage() {
                 </CardHeader>
                 <CardContent className="space-y-2 text-sm">
                   <div className="flex justify-between">
-                    <span className="text-muted-foreground">Monthly</span>
+                    <span className="text-[var(--text-secondary)]">Monthly</span>
                     <span className="font-medium tabular-nums">{formatCurrency(c.monthlyContribution.toString())}</span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-muted-foreground">Total Pool</span>
+                    <span className="text-[var(--text-secondary)]">Total Pool</span>
                     <span className="font-medium tabular-nums">{c.totalAmount ? formatCurrency(c.totalAmount.toString()) : formatCurrency((c.memberCount * Number(c.monthlyContribution.toString())).toString())}</span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-muted-foreground">Members</span>
+                    <span className="text-[var(--text-secondary)]">Members</span>
                     <span>{c._count.members} / {c.memberCount}</span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-muted-foreground">Rounds</span>
+                    <span className="text-[var(--text-secondary)]">Rounds</span>
                     <span>{c._count.rounds} / {c.memberCount}</span>
                   </div>
-                  <p className="text-xs text-muted-foreground pt-1">Started {formatDate(c.startDate)}</p>
+                  <p className="text-xs text-[var(--text-secondary)] pt-1">Started {formatDate(c.startDate)}</p>
                 </CardContent>
               </Card>
             </Link>

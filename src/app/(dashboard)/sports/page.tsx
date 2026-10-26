@@ -257,7 +257,7 @@ export default function SportsPage() {
     <div className="space-y-6">
       {ConfirmDialog}
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold">Sports</h1>
+        <h1 className="text-2xl font-display font-bold text-[var(--text-primary)]">Sports</h1>
         <div className="flex gap-2">
           {activeTab === 'teams' && (
             <Button onClick={() => { createTeamForm.reset(); setShowCreateTeam(true); }}>
@@ -275,14 +275,14 @@ export default function SportsPage() {
       {/* Tabs */}
       <div className="flex gap-2 border-b">
         <button
-          className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${activeTab === 'teams' ? 'border-primary text-primary' : 'border-transparent text-muted-foreground hover:text-foreground'}`}
+          className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${activeTab === 'teams' ? 'border-primary text-primary' : 'border-transparent text-[var(--text-secondary)] hover:text-foreground'}`}
           onClick={() => setActiveTab('teams')}
         >
           <Users className="h-4 w-4 inline mr-1.5" />
           Teams
         </button>
         <button
-          className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${activeTab === 'matches' ? 'border-primary text-primary' : 'border-transparent text-muted-foreground hover:text-foreground'}`}
+          className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${activeTab === 'matches' ? 'border-primary text-primary' : 'border-transparent text-[var(--text-secondary)] hover:text-foreground'}`}
           onClick={() => setActiveTab('matches')}
         >
           <Swords className="h-4 w-4 inline mr-1.5" />
@@ -325,14 +325,14 @@ export default function SportsPage() {
                   </CardHeader>
                   <CardContent className="space-y-2">
                     <div className="flex justify-between text-sm">
-                      <span className="text-muted-foreground">Players</span>
+                      <span className="text-[var(--text-secondary)]">Players</span>
                       <span className="font-medium">{team._count?.players ?? 0}</span>
                     </div>
                     <div className="flex justify-between text-sm">
-                      <span className="text-muted-foreground">Matches</span>
+                      <span className="text-[var(--text-secondary)]">Matches</span>
                       <span className="font-medium">{team._count?.matches ?? 0}</span>
                     </div>
-                    {team.notes && <p className="text-xs text-muted-foreground truncate">{team.notes}</p>}
+                    {team.notes && <p className="text-xs text-[var(--text-secondary)] truncate">{team.notes}</p>}
                   </CardContent>
                 </Card>
               ))}
@@ -387,7 +387,7 @@ export default function SportsPage() {
                         <TableCell className="text-right tabular-nums">{formatCurrency(match.totalFees)}</TableCell>
                         <TableCell className="text-center">
                           {total === 0 ? (
-                            <span className="text-xs text-muted-foreground">No fees</span>
+                            <span className="text-xs text-[var(--text-secondary)]">No fees</span>
                           ) : allPaid ? (
                             <Badge variant="success" className="text-xs">
                               <CheckCircle className="h-3 w-3 mr-1" />
@@ -498,13 +498,13 @@ export default function SportsPage() {
                   )}
                 </div>
                 {loadingPlayers ? (
-                  <p className="text-xs text-muted-foreground py-2">Loading players...</p>
+                  <p className="text-xs text-[var(--text-secondary)] py-2">Loading players...</p>
                 ) : teamPlayers.length === 0 ? (
-                  <p className="text-xs text-muted-foreground py-2">No active players in this team. <Link href={`/sports/teams/${createMatchForm.form.teamId}`} className="text-primary hover:underline">Add players</Link></p>
+                  <p className="text-xs text-[var(--text-secondary)] py-2">No active players in this team. <Link href={`/sports/teams/${createMatchForm.form.teamId}`} className="text-primary hover:underline">Add players</Link></p>
                 ) : (
                   <div className="border rounded-md max-h-48 overflow-y-auto divide-y">
                     {teamPlayers.map((player) => (
-                      <label key={player.id} className="flex items-center gap-3 px-3 py-2 hover:bg-muted/50 cursor-pointer">
+                      <label key={player.id} className="flex items-center gap-3 px-3 py-2 hover:bg-[var(--glass-bg)] cursor-pointer">
                         <input
                           type="checkbox"
                           checked={selectedPlayerIds.has(player.id)}
@@ -513,9 +513,9 @@ export default function SportsPage() {
                         />
                         <div className="flex-1 min-w-0">
                           <span className="text-sm font-medium">{player.name}</span>
-                          {player.role && <span className="text-xs text-muted-foreground ml-2">{player.role}</span>}
+                          {player.role && <span className="text-xs text-[var(--text-secondary)] ml-2">{player.role}</span>}
                         </div>
-                        <span className="text-xs tabular-nums text-muted-foreground">
+                        <span className="text-xs tabular-nums text-[var(--text-secondary)]">
                           {formatCurrency(player.matchFee.toString())}
                         </span>
                       </label>
@@ -523,7 +523,7 @@ export default function SportsPage() {
                   </div>
                 )}
                 {selectedPlayerIds.size > 0 && (
-                  <p className="text-xs text-muted-foreground">
+                  <p className="text-xs text-[var(--text-secondary)]">
                     Fees will be auto-generated for {selectedPlayerIds.size} selected player{selectedPlayerIds.size !== 1 ? 's' : ''} based on their default match fee.
                   </p>
                 )}

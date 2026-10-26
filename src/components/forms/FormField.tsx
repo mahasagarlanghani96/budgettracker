@@ -33,7 +33,7 @@ export function FormField({ label, required, error, hint, children, className }:
       {error ? (
         <p className="text-sm text-destructive" role="alert">{error}</p>
       ) : hint ? (
-        <p className="text-xs text-muted-foreground">{hint}</p>
+        <p className="text-xs text-[var(--text-secondary)]">{hint}</p>
       ) : null}
     </div>
   );

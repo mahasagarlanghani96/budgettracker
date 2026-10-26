@@ -224,7 +224,7 @@ export default function NewTransactionPage() {
         <Link href="/transactions">
           <Button variant="ghost" size="icon"><ArrowLeft className="h-4 w-4" /></Button>
         </Link>
-        <h1 className="text-2xl font-bold">New Transaction</h1>
+        <h1 className="text-2xl font-display font-bold text-[var(--text-primary)]">New Transaction</h1>
       </div>
 
       <Card>
@@ -299,7 +299,7 @@ export default function NewTransactionPage() {
                     />
                   </FormField>
                 </div>
-                <p className="text-xs text-muted-foreground -mt-2">
+                <p className="text-xs text-[var(--text-secondary)] -mt-2">
                   The net received amount will be credited to your account.
                 </p>
               </>

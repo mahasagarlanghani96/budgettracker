@@ -97,8 +97,8 @@ export default function AccountsPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold">Accounts</h1>
-          <p className="text-muted-foreground">Total: {formatCurrency(totalBalance.toString())}</p>
+          <h1 className="text-2xl font-display font-bold text-[var(--text-primary)]">Accounts</h1>
+          <p className="text-[var(--text-secondary)]">Total: {formatCurrency(totalBalance.toString())}</p>
         </div>
         <Button onClick={() => setShowCreate(true)}>
           <Plus className="h-4 w-4 mr-2" /> Add Account
@@ -126,7 +126,7 @@ export default function AccountsPage() {
                       <div>
                         <CardTitle className="text-base">{account.name}</CardTitle>
                         {account.bankName && (
-                          <p className="text-xs text-muted-foreground">{account.bankName}</p>
+                          <p className="text-xs text-[var(--text-secondary)]">{account.bankName}</p>
                         )}
                       </div>
                     </div>
@@ -136,10 +136,10 @@ export default function AccountsPage() {
                   </div>
                 </CardHeader>
                 <CardContent>
-                  <p className="text-2xl font-bold tabular-nums">
+                  <p className="text-2xl font-display font-bold text-[var(--text-primary)] tabular-nums">
                     {formatCurrency(account.currentBalance)}
                   </p>
-                  <p className="text-xs text-muted-foreground mt-1">
+                  <p className="text-xs text-[var(--text-secondary)] mt-1">
                     Opening: {formatCurrency(account.openingBalance.toString())}
                   </p>
                 </CardContent>

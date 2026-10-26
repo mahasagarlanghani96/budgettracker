@@ -249,7 +249,7 @@ export default function MatchDetailPage() {
   }
 
   if (loading) return <PageLoading />;
-  if (!match) return <div className="text-center py-12 text-muted-foreground">Match not found</div>;
+  if (!match) return <div className="text-center py-12 text-[var(--text-secondary)]">Match not found</div>;
 
   const accountOptions = accounts.map((a) => ({ value: a.id, label: a.name }));
   const playerOptions = (match.players || []).map((p) => ({ value: p.id, label: p.name }));
@@ -265,8 +265,8 @@ export default function MatchDetailPage() {
           </Button>
         </Link>
         <div className="flex-1">
-          <h1 className="text-2xl font-bold">{match.opponent || 'Match'}</h1>
-          <p className="text-sm text-muted-foreground">
+          <h1 className="text-2xl font-display font-bold text-[var(--text-primary)]">{match.opponent || 'Match'}</h1>
+          <p className="text-sm text-[var(--text-secondary)]">
             {match.team.name} &middot; {formatDate(match.matchDate)} {match.venue ? ` &middot; ${match.venue}` : ''}
           </p>
         </div>
@@ -276,26 +276,26 @@ export default function MatchDetailPage() {
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <Card>
           <CardContent className="pt-6">
-            <p className="text-xs text-muted-foreground">Total Expenses</p>
+            <p className="text-xs text-[var(--text-secondary)]">Total Expenses</p>
             <p className="text-xl font-bold tabular-nums">{formatCurrency(match.totalExpenses)}</p>
           </CardContent>
         </Card>
         <Card>
           <CardContent className="pt-6">
-            <p className="text-xs text-muted-foreground">Total Fees</p>
+            <p className="text-xs text-[var(--text-secondary)]">Total Fees</p>
             <p className="text-xl font-bold tabular-nums">{formatCurrency(match.totalFees)}</p>
           </CardContent>
         </Card>
         <Card>
           <CardContent className="pt-6">
-            <p className="text-xs text-muted-foreground">Collected</p>
-            <p className="text-xl font-bold tabular-nums text-green-600 dark:text-green-400">{formatCurrency(match.collectedFees)}</p>
+            <p className="text-xs text-[var(--text-secondary)]">Collected</p>
+            <p className="text-xl font-bold tabular-nums text-[var(--emerald)]">{formatCurrency(match.collectedFees)}</p>
           </CardContent>
         </Card>
         <Card>
           <CardContent className="pt-6">
-            <p className="text-xs text-muted-foreground">Pending</p>
-            <p className="text-xl font-bold tabular-nums text-orange-600">{formatCurrency(match.pendingFees)}</p>
+            <p className="text-xs text-[var(--text-secondary)]">Pending</p>
+            <p className="text-xl font-bold tabular-nums text-[var(--amber)]">{formatCurrency(match.pendingFees)}</p>
           </CardContent>
         </Card>
       </div>
@@ -312,7 +312,7 @@ export default function MatchDetailPage() {
         </CardHeader>
         <CardContent>
           {match.expenses.length === 0 ? (
-            <p className="text-sm text-muted-foreground text-center py-4">No expenses recorded</p>
+            <p className="text-sm text-[var(--text-secondary)] text-center py-4">No expenses recorded</p>
           ) : (
             <div className="overflow-x-auto">
               <Table>
@@ -366,7 +366,7 @@ export default function MatchDetailPage() {
         </CardHeader>
         <CardContent>
           {match.fees.length === 0 ? (
-            <p className="text-sm text-muted-foreground text-center py-4">No fees recorded. Use &quot;Generate Fees&quot; to create fees for all players.</p>
+            <p className="text-sm text-[var(--text-secondary)] text-center py-4">No fees recorded. Use &quot;Generate Fees&quot; to create fees for all players.</p>
           ) : (
             <div className="overflow-x-auto">
               <Table>
@@ -396,7 +396,7 @@ export default function MatchDetailPage() {
                         <div className="flex justify-end gap-1">
                           {!fee.isPaid && (
                             <Button variant="ghost" size="icon" className="h-7 w-7" aria-label="Mark as paid" onClick={() => openMarkPaid(fee)}>
-                              <CheckCircle className="h-3.5 w-3.5 text-green-600 dark:text-green-400" />
+                              <CheckCircle className="h-3.5 w-3.5 text-[var(--emerald)]" />
                             </Button>
                           )}
                           <Button variant="ghost" size="icon" className="h-7 w-7" aria-label="Edit fee" onClick={() => openEditFee(fee)}>
@@ -424,7 +424,7 @@ export default function MatchDetailPage() {
           </DialogHeader>
           <div className="space-y-4">
             <div className="flex justify-between text-sm">
-              <span className="text-muted-foreground">Amount</span>
+              <span className="text-[var(--text-secondary)]">Amount</span>
               <span className="font-bold tabular-nums">{markingPaidFee ? formatCurrency(markingPaidFee.amount.toString()) : ''}</span>
             </div>
             <FormField label="Paid To Account" required>

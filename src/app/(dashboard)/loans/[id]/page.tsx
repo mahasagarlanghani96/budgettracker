@@ -164,7 +164,7 @@ export default function LoanDetailPage() {
   }
 
   if (loading) return <PageLoading />;
-  if (!loan) return <div className="text-center py-12 text-muted-foreground">Loan not found</div>;
+  if (!loan) return <div className="text-center py-12 text-[var(--text-secondary)]">Loan not found</div>;
 
   const person = loan.person as { name: string };
   const repayments = (loan.repayments || []) as Array<Record<string, unknown>>;
@@ -177,7 +177,7 @@ export default function LoanDetailPage() {
       <div className="flex items-center gap-4">
         <Link href="/loans"><Button variant="ghost" size="icon"><ArrowLeft className="h-4 w-4" /></Button></Link>
         <div className="flex-1">
-          <h1 className="text-2xl font-bold">Loan — {person.name}</h1>
+          <h1 className="text-2xl font-display font-bold text-[var(--text-primary)]">Loan — {person.name}</h1>
           <div className="flex gap-2 mt-1">
             <Badge variant={loan.direction === 'GIVEN' ? 'success' : 'warning'}>{loan.direction as string}</Badge>
             <Badge variant={loan.status === 'ACTIVE' ? 'default' : 'secondary'}>{loan.status as string}</Badge>
@@ -206,15 +206,15 @@ export default function LoanDetailPage() {
       )}
 
       <div className="grid gap-4 sm:grid-cols-3">
-        <Card><CardContent className="pt-6"><p className="text-xs text-muted-foreground">Total Amount</p><p className="text-2xl font-bold tabular-nums">{formatCurrency((loan.amount as { toString(): string }).toString())}</p></CardContent></Card>
-        <Card><CardContent className="pt-6"><p className="text-xs text-muted-foreground">Repaid</p><p className="text-2xl font-bold tabular-nums text-green-600 dark:text-green-400">{formatCurrency(loan.totalRepaid as string)}</p></CardContent></Card>
-        <Card><CardContent className="pt-6"><p className="text-xs text-muted-foreground">Outstanding</p><p className="text-2xl font-bold tabular-nums text-primary">{formatCurrency(loan.remainingAmount as string)}</p></CardContent></Card>
+        <Card><CardContent className="pt-6"><p className="text-xs text-[var(--text-secondary)]">Total Amount</p><p className="text-2xl font-display font-bold text-[var(--text-primary)] tabular-nums">{formatCurrency((loan.amount as { toString(): string }).toString())}</p></CardContent></Card>
+        <Card><CardContent className="pt-6"><p className="text-xs text-[var(--text-secondary)]">Repaid</p><p className="text-2xl font-display font-bold text-[var(--text-primary)] tabular-nums text-[var(--emerald)]">{formatCurrency(loan.totalRepaid as string)}</p></CardContent></Card>
+        <Card><CardContent className="pt-6"><p className="text-xs text-[var(--text-secondary)]">Outstanding</p><p className="text-2xl font-display font-bold text-[var(--text-primary)] tabular-nums text-primary">{formatCurrency(loan.remainingAmount as string)}</p></CardContent></Card>
       </div>
 
       {/* Progress bar */}
-      <div className="h-3 bg-muted rounded-full overflow-hidden">
+      <div className="h-3 bg-[var(--glass-bg)] rounded-full overflow-hidden">
         <div
-          className="h-full bg-green-500 rounded-full transition-all"
+          className="h-full bg-[var(--emerald)] rounded-full transition-all"
           style={{ width: `${Math.min((parseFloat(loan.totalRepaid as string) / parseFloat((loan.amount as { toString(): string }).toString())) * 100, 100)}%` }}
         />
       </div>
@@ -223,7 +223,7 @@ export default function LoanDetailPage() {
         <CardHeader><CardTitle className="text-base">Repayment History</CardTitle></CardHeader>
         <CardContent>
           {repayments.length === 0 ? (
-            <p className="text-sm text-muted-foreground text-center py-4">No repayments recorded yet</p>
+            <p className="text-sm text-[var(--text-secondary)] text-center py-4">No repayments recorded yet</p>
           ) : (
             <Table>
               <TableHeader>

@@ -204,7 +204,7 @@ export default function EditTransactionPage() {
   );
 
   if (loading) return <PageLoading />;
-  if (!transaction) return <div className="text-center py-12 text-muted-foreground">Transaction not found</div>;
+  if (!transaction) return <div className="text-center py-12 text-[var(--text-secondary)]">Transaction not found</div>;
 
   // Loan/Savings/Investment types still can't be edited here
   if (isLinked && !isEditableLinked) {
@@ -214,10 +214,10 @@ export default function EditTransactionPage() {
           <Link href="/transactions">
             <Button variant="ghost" size="icon"><ArrowLeft className="h-4 w-4" /></Button>
           </Link>
-          <h1 className="text-2xl font-bold">Edit Transaction</h1>
+          <h1 className="text-2xl font-display font-bold text-[var(--text-primary)]">Edit Transaction</h1>
         </div>
         <Card>
-          <CardContent className="pt-6 text-sm text-muted-foreground">
+          <CardContent className="pt-6 text-sm text-[var(--text-secondary)]">
             This transaction was created automatically as part of a Loan, Savings, or
             Investment record, so it can&rsquo;t be edited directly here &mdash; doing so
             would leave that record out of sync. Edit it from the resource it belongs to
@@ -234,13 +234,13 @@ export default function EditTransactionPage() {
         <Link href="/transactions">
           <Button variant="ghost" size="icon"><ArrowLeft className="h-4 w-4" /></Button>
         </Link>
-        <h1 className="text-2xl font-bold">Edit Transaction</h1>
+        <h1 className="text-2xl font-display font-bold text-[var(--text-primary)]">Edit Transaction</h1>
       </div>
 
       {/* Show linked resource info */}
       {(isCommittee || isPlot) && (
         <Card>
-          <CardContent className="pt-4 pb-3 text-sm text-muted-foreground">
+          <CardContent className="pt-4 pb-3 text-sm text-[var(--text-secondary)]">
             {isCommittee && (
               <p>Linked to committee <span className="font-medium text-foreground">{linkedInfo.committeeName}</span>
                 {linkedInfo.entrySlot != null && <>, Slot #{linkedInfo.entrySlot}</>}
@@ -331,7 +331,7 @@ export default function EditTransactionPage() {
                     />
                   </FormField>
                 </div>
-                <p className="text-xs text-muted-foreground -mt-2">
+                <p className="text-xs text-[var(--text-secondary)] -mt-2">
                   The net received amount will be credited to your account.
                 </p>
               </>

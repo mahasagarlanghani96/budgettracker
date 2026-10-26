@@ -102,25 +102,25 @@ export default function LoansPage() {
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold">Loans</h1>
+        <h1 className="text-2xl font-display font-bold text-[var(--text-primary)]">Loans</h1>
         <Button onClick={() => { reset(getInitialForm()); setShowCreate(true); }}><Plus className="h-4 w-4 mr-2" /> New Loan</Button>
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2">
         <Card>
           <CardContent className="pt-6 flex items-center gap-3">
-            <ArrowUpRight className="h-6 w-6 text-green-600 dark:text-green-400" />
+            <ArrowUpRight className="h-6 w-6 text-[var(--emerald)]" />
             <div>
-              <p className="text-xs text-muted-foreground">Total Receivable (Given)</p>
+              <p className="text-xs text-[var(--text-secondary)]">Total Receivable (Given)</p>
               <p className="text-xl font-bold tabular-nums">{formatCurrency(totalReceivable.toString())}</p>
             </div>
           </CardContent>
         </Card>
         <Card>
           <CardContent className="pt-6 flex items-center gap-3">
-            <ArrowDownRight className="h-6 w-6 text-red-600 dark:text-red-400" />
+            <ArrowDownRight className="h-6 w-6 text-[var(--coral)]" />
             <div>
-              <p className="text-xs text-muted-foreground">Total Payable (Taken)</p>
+              <p className="text-xs text-[var(--text-secondary)]">Total Payable (Taken)</p>
               <p className="text-xl font-bold tabular-nums">{formatCurrency(totalPayable.toString())}</p>
             </div>
           </CardContent>
@@ -174,20 +174,20 @@ export default function LoansPage() {
                 </CardHeader>
                 <CardContent className="space-y-2">
                   <div className="flex justify-between text-sm">
-                    <span className="text-muted-foreground">Total</span>
+                    <span className="text-[var(--text-secondary)]">Total</span>
                     <span className="font-medium tabular-nums">{formatCurrency(loan.amount.toString())}</span>
                   </div>
                   <div className="flex justify-between text-sm">
-                    <span className="text-muted-foreground">Repaid</span>
+                    <span className="text-[var(--text-secondary)]">Repaid</span>
                     <span className="font-medium tabular-nums">{formatCurrency(loan.totalRepaid)}</span>
                   </div>
                   <div className="flex justify-between text-sm">
-                    <span className="text-muted-foreground">Outstanding</span>
+                    <span className="text-[var(--text-secondary)]">Outstanding</span>
                     <span className="font-bold tabular-nums text-primary">{formatCurrency(loan.remainingAmount)}</span>
                   </div>
-                  {loan.account && <p className="text-xs text-muted-foreground">{loan.account.name}</p>}
-                  {loan.notes && <p className="text-xs text-muted-foreground truncate">{loan.notes}</p>}
-                  <p className="text-xs text-muted-foreground">{formatDate(loan.transactionDate)}</p>
+                  {loan.account && <p className="text-xs text-[var(--text-secondary)]">{loan.account.name}</p>}
+                  {loan.notes && <p className="text-xs text-[var(--text-secondary)] truncate">{loan.notes}</p>}
+                  <p className="text-xs text-[var(--text-secondary)]">{formatDate(loan.transactionDate)}</p>
                 </CardContent>
               </Card>
             </Link>

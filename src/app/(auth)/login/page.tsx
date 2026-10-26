@@ -56,7 +56,7 @@ export default function LoginPage() {
       <form onSubmit={handleSubmit}>
         <CardContent className="space-y-4">
           {justRegistered && !error && (
-            <div className="rounded-md bg-green-50 border border-green-200 px-3 py-2 text-sm text-green-700 dark:bg-green-950 dark:border-green-800 dark:text-green-300">
+            <div className="rounded-md bg-[var(--emerald-dim)] border border-[var(--emerald)]/20 px-3 py-2 text-sm text-[var(--emerald)]">
               Account created successfully. Please sign in.
             </div>
           )}
@@ -93,7 +93,7 @@ export default function LoginPage() {
           <Button type="submit" className="w-full" disabled={loading}>
             {loading ? 'Signing in...' : 'Sign In'}
           </Button>
-          <p className="text-sm text-muted-foreground">
+          <p className="text-sm text-[var(--text-secondary)]">
             Don&apos;t have an account?{' '}
             <Link href="/register" className="text-primary hover:underline font-medium">
               Create one

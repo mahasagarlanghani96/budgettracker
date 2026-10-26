@@ -155,7 +155,7 @@ export default function PlotsPage() {
     <div className="space-y-6">
       {ConfirmDialog}
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold">Plot Payments</h1>
+        <h1 className="text-2xl font-display font-bold text-[var(--text-primary)]">Plot Payments</h1>
         <Button onClick={() => setShowCreate(true)}><Plus className="h-4 w-4 mr-2" /> Add Plot</Button>
       </div>
 
@@ -174,20 +174,20 @@ export default function PlotsPage() {
                     <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => handleDelete(plot)}><Trash2 className="h-3.5 w-3.5" /></Button>
                   </div>
                 </div>
-                {plot.location && <p className="text-xs text-muted-foreground">{plot.location}</p>}
+                {plot.location && <p className="text-xs text-[var(--text-secondary)]">{plot.location}</p>}
               </CardHeader>
               <CardContent className="space-y-3">
                 <div>
                   <div className="flex justify-between text-sm mb-1">
                     <span>{formatCurrency(plot.paidAmount)}</span>
-                    <span className="text-muted-foreground">{formatCurrency(plot.totalPrice.toString())}</span>
+                    <span className="text-[var(--text-secondary)]">{formatCurrency(plot.totalPrice.toString())}</span>
                   </div>
-                  <div className="h-2.5 bg-muted rounded-full overflow-hidden">
+                  <div className="h-2.5 bg-[var(--glass-bg)] rounded-full overflow-hidden">
                     <div className="h-full bg-primary rounded-full transition-all" style={{ width: `${plot.progress}%` }} />
                   </div>
                   <div className="flex justify-between mt-1">
-                    <p className="text-xs text-muted-foreground">{plot.progress.toFixed(1)}% paid</p>
-                    <p className="text-xs text-muted-foreground">Remaining: {formatCurrency(Math.max(0, parseFloat(plot.remainingAmount)).toString())}</p>
+                    <p className="text-xs text-[var(--text-secondary)]">{plot.progress.toFixed(1)}% paid</p>
+                    <p className="text-xs text-[var(--text-secondary)]">Remaining: {formatCurrency(Math.max(0, parseFloat(plot.remainingAmount)).toString())}</p>
                   </div>
                 </div>
                 <div className="flex gap-2">
@@ -309,17 +309,17 @@ export default function PlotsPage() {
               </DialogFooter>
             </form>
           ) : historyLoading ? (
-            <p className="text-sm text-muted-foreground text-center py-4">Loading...</p>
+            <p className="text-sm text-[var(--text-secondary)] text-center py-4">Loading...</p>
           ) : payments.length === 0 ? (
-            <p className="text-sm text-muted-foreground text-center py-4">No payments recorded yet</p>
+            <p className="text-sm text-[var(--text-secondary)] text-center py-4">No payments recorded yet</p>
           ) : (
             <div className="divide-y">
               {payments.map((p) => (
                 <div key={p.id} className="flex items-center justify-between gap-2 py-2">
                   <div className="min-w-0 flex-1">
                     <p className="text-sm font-medium tabular-nums">{formatCurrency(p.amount.toString())}</p>
-                    <p className="text-xs text-muted-foreground">{formatDate(p.transactionDate)}{p.dueDate ? ` · Due ${formatDate(p.dueDate)}` : ''}</p>
-                    {p.notes && <p className="text-xs text-muted-foreground break-words">{p.notes}</p>}
+                    <p className="text-xs text-[var(--text-secondary)]">{formatDate(p.transactionDate)}{p.dueDate ? ` · Due ${formatDate(p.dueDate)}` : ''}</p>
+                    {p.notes && <p className="text-xs text-[var(--text-secondary)] break-words">{p.notes}</p>}
                   </div>
                   <div className="flex items-center gap-1 shrink-0">
                     <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => openEditPayment(p)}><Pencil className="h-3.5 w-3.5" /></Button>

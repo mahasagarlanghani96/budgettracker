@@ -121,7 +121,7 @@ export default function TargetsPage() {
     <div className="space-y-6">
       {ConfirmDialog}
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold">Financial Targets</h1>
+        <h1 className="text-2xl font-display font-bold text-[var(--text-primary)]">Financial Targets</h1>
         <Button onClick={() => setShowCreate(true)}><Plus className="h-4 w-4 mr-2" /> New Target</Button>
       </div>
 
@@ -132,9 +132,9 @@ export default function TargetsPage() {
           {targets.map((t) => {
             const isMax = t.type.startsWith('MAX');
             const progressColor = t.onTrack
-              ? 'bg-green-500'
+              ? 'bg-[var(--emerald)]'
               : t.progress > 90
-              ? 'bg-red-500'
+              ? 'bg-[var(--coral)]'
               : 'bg-yellow-500';
 
             return (
@@ -150,18 +150,18 @@ export default function TargetsPage() {
                       <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => handleDelete(t)}><Trash2 className="h-3.5 w-3.5" /></Button>
                     </div>
                   </div>
-                  <p className="text-xs text-muted-foreground">{typeLabels[t.type] || t.type} · {t.month}/{t.year}</p>
+                  <p className="text-xs text-[var(--text-secondary)]">{typeLabels[t.type] || t.type} · {t.month}/{t.year}</p>
                 </CardHeader>
                 <CardContent className="space-y-3">
                   <div>
                     <div className="flex justify-between text-sm mb-1">
                       <span className="font-medium">{formatCurrency(t.currentAmount)}</span>
-                      <span className="text-muted-foreground">{isMax ? 'limit' : 'target'} {formatCurrency(t.amount.toString())}</span>
+                      <span className="text-[var(--text-secondary)]">{isMax ? 'limit' : 'target'} {formatCurrency(t.amount.toString())}</span>
                     </div>
-                    <div className="h-2.5 bg-muted rounded-full overflow-hidden">
+                    <div className="h-2.5 bg-[var(--glass-bg)] rounded-full overflow-hidden">
                       <div className={`h-full rounded-full transition-all ${progressColor}`} style={{ width: `${Math.min(t.progress, 100)}%` }} />
                     </div>
-                    <p className="text-xs text-muted-foreground mt-1">{t.progress.toFixed(1)}% {isMax ? 'used' : 'achieved'}</p>
+                    <p className="text-xs text-[var(--text-secondary)] mt-1">{t.progress.toFixed(1)}% {isMax ? 'used' : 'achieved'}</p>
                   </div>
                 </CardContent>
               </Card>

@@ -206,14 +206,14 @@ export default function InvestmentsPage() {
     <div className="space-y-6">
       {ConfirmDialog}
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold">Investments</h1>
+        <h1 className="text-2xl font-display font-bold text-[var(--text-primary)]">Investments</h1>
         <Button onClick={() => setShowCreate(true)}><Plus className="h-4 w-4 mr-2" /> Add Investment</Button>
       </div>
 
       <div className="grid gap-4 sm:grid-cols-3">
-        <Card><CardContent className="pt-6"><p className="text-xs text-muted-foreground">Total Invested</p><p className="text-xl font-bold tabular-nums">{formatCurrency(totalInvested.toString())}</p></CardContent></Card>
-        <Card><CardContent className="pt-6"><p className="text-xs text-muted-foreground">Current Value</p><p className="text-xl font-bold tabular-nums">{formatCurrency(totalCurrent.toString())}</p></CardContent></Card>
-        <Card><CardContent className="pt-6"><p className="text-xs text-muted-foreground">Profit / Loss</p><p className={`text-xl font-bold tabular-nums ${totalPL >= 0 ? 'text-green-600' : 'text-red-600'}`}>{totalPL >= 0 ? '+' : ''}{formatCurrency(totalPL.toString())}</p></CardContent></Card>
+        <Card><CardContent className="pt-6"><p className="text-xs text-[var(--text-secondary)]">Total Invested</p><p className="text-xl font-bold tabular-nums">{formatCurrency(totalInvested.toString())}</p></CardContent></Card>
+        <Card><CardContent className="pt-6"><p className="text-xs text-[var(--text-secondary)]">Current Value</p><p className="text-xl font-bold tabular-nums">{formatCurrency(totalCurrent.toString())}</p></CardContent></Card>
+        <Card><CardContent className="pt-6"><p className="text-xs text-[var(--text-secondary)]">Profit / Loss</p><p className={`text-xl font-bold tabular-nums ${totalPL >= 0 ? 'text-[var(--emerald)]' : 'text-[var(--coral)]'}`}>{totalPL >= 0 ? '+' : ''}{formatCurrency(totalPL.toString())}</p></CardContent></Card>
       </div>
 
       {investments.length === 0 ? (
@@ -230,14 +230,14 @@ export default function InvestmentsPage() {
                   <div className="flex items-start justify-between gap-2">
                     <div>
                       <p className="font-medium">{inv.name}</p>
-                      <p className="text-xs text-muted-foreground">{inv.investmentType}</p>
+                      <p className="text-xs text-[var(--text-secondary)]">{inv.investmentType}</p>
                     </div>
                     <Badge variant={inv.isActive ? 'success' : 'secondary'} className="text-xs">{inv.isActive ? 'Active' : 'Inactive'}</Badge>
                   </div>
                   <div className="grid grid-cols-3 gap-2 text-sm">
-                    <div><p className="text-xs text-muted-foreground">Invested</p><p className="font-medium tabular-nums">{formatCurrency(inv.amountInvested.toString())}</p></div>
-                    <div><p className="text-xs text-muted-foreground">Current</p><p className="font-medium tabular-nums">{formatCurrency(inv.currentValue.toString())}</p></div>
-                    <div><p className="text-xs text-muted-foreground">P/L</p><p className={`font-medium tabular-nums ${pl >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>{pl >= 0 ? '+' : ''}{inv.profitLossPercent}%</p></div>
+                    <div><p className="text-xs text-[var(--text-secondary)]">Invested</p><p className="font-medium tabular-nums">{formatCurrency(inv.amountInvested.toString())}</p></div>
+                    <div><p className="text-xs text-[var(--text-secondary)]">Current</p><p className="font-medium tabular-nums">{formatCurrency(inv.currentValue.toString())}</p></div>
+                    <div><p className="text-xs text-[var(--text-secondary)]">P/L</p><p className={`font-medium tabular-nums ${pl >= 0 ? 'text-[var(--emerald)]' : 'text-[var(--coral)]'}`}>{pl >= 0 ? '+' : ''}{inv.profitLossPercent}%</p></div>
                   </div>
                   <div className="flex justify-end gap-1 pt-1 border-t">
                     {inv.isActive && <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openProfitRecord(inv)} aria-label="Record profit"><DollarSign className="h-3.5 w-3.5" /></Button>}
@@ -281,7 +281,7 @@ export default function InvestmentsPage() {
                       <TableCell className="text-right tabular-nums">{formatCurrency(inv.amountInvested.toString())}</TableCell>
                       <TableCell className="text-right tabular-nums">{formatCurrency(inv.currentValue.toString())}</TableCell>
                       <TableCell className="text-right">
-                        <span className={`inline-flex items-center gap-1 tabular-nums ${pl >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
+                        <span className={`inline-flex items-center gap-1 tabular-nums ${pl >= 0 ? 'text-[var(--emerald)]' : 'text-[var(--coral)]'}`}>
                           {pl >= 0 ? <ArrowUp className="h-3 w-3" /> : <ArrowDown className="h-3 w-3" />}
                           {inv.profitLossPercent}%
                         </span>
@@ -448,7 +448,7 @@ export default function InvestmentsPage() {
             <FormField label="Notes" error={profitForm.errors.notes}>
               <Textarea value={profitForm.form.notes as string} onChange={(e) => profitForm.setField('notes', e.target.value)} placeholder="Optional" />
             </FormField>
-            <p className="text-xs text-muted-foreground">
+            <p className="text-xs text-[var(--text-secondary)]">
               The net amount will be credited to the investment&apos;s linked account and the investment&apos;s current value will be updated.
             </p>
             {profitForm.serverError && <p className="text-sm text-destructive bg-destructive/10 rounded-md px-3 py-2">{profitForm.serverError}</p>}
@@ -465,10 +465,10 @@ export default function InvestmentsPage() {
         <DialogContent>
           <DialogHeader><DialogTitle>Close Investment — {closing?.name}</DialogTitle></DialogHeader>
           {closing && (
-            <div className="rounded-md bg-muted px-3 py-2 text-sm space-y-1">
-              <div className="flex justify-between"><span className="text-muted-foreground">Amount Invested</span><span className="font-medium tabular-nums">{formatCurrency(closing.amountInvested.toString())}</span></div>
-              <div className="flex justify-between"><span className="text-muted-foreground">Current Value</span><span className="font-medium tabular-nums">{formatCurrency(closing.currentValue.toString())}</span></div>
-              <div className="flex justify-between"><span className="text-muted-foreground">Total P/L</span><span className={`font-medium tabular-nums ${parseFloat(closing.profitLoss) >= 0 ? 'text-green-600' : 'text-red-600'}`}>{parseFloat(closing.profitLoss) >= 0 ? '+' : ''}{formatCurrency(closing.profitLoss)}</span></div>
+            <div className="rounded-md bg-[var(--glass-bg)] px-3 py-2 text-sm space-y-1">
+              <div className="flex justify-between"><span className="text-[var(--text-secondary)]">Amount Invested</span><span className="font-medium tabular-nums">{formatCurrency(closing.amountInvested.toString())}</span></div>
+              <div className="flex justify-between"><span className="text-[var(--text-secondary)]">Current Value</span><span className="font-medium tabular-nums">{formatCurrency(closing.currentValue.toString())}</span></div>
+              <div className="flex justify-between"><span className="text-[var(--text-secondary)]">Total P/L</span><span className={`font-medium tabular-nums ${parseFloat(closing.profitLoss) >= 0 ? 'text-[var(--emerald)]' : 'text-[var(--coral)]'}`}>{parseFloat(closing.profitLoss) >= 0 ? '+' : ''}{formatCurrency(closing.profitLoss)}</span></div>
             </div>
           )}
           <form onSubmit={closeForm.handleSubmit} className="space-y-4">
@@ -521,7 +521,7 @@ export default function InvestmentsPage() {
             <FormField label="Notes" error={closeForm.errors.notes}>
               <Textarea value={closeForm.form.notes as string} onChange={(e) => closeForm.setField('notes', e.target.value)} placeholder="Optional" />
             </FormField>
-            <p className="text-xs text-muted-foreground">
+            <p className="text-xs text-[var(--text-secondary)]">
               The net amount will be credited to the linked account. The investment will be marked as closed.
             </p>
             {closeForm.serverError && <p className="text-sm text-destructive bg-destructive/10 rounded-md px-3 py-2">{closeForm.serverError}</p>}
@@ -538,9 +538,9 @@ export default function InvestmentsPage() {
         <DialogContent>
           <DialogHeader><DialogTitle>Profit History — {viewingHistory?.name}</DialogTitle></DialogHeader>
           {historyLoading ? (
-            <p className="text-sm text-muted-foreground py-4">Loading...</p>
+            <p className="text-sm text-[var(--text-secondary)] py-4">Loading...</p>
           ) : profitHistory.length === 0 ? (
-            <p className="text-sm text-muted-foreground py-4">No profit entries recorded yet.</p>
+            <p className="text-sm text-[var(--text-secondary)] py-4">No profit entries recorded yet.</p>
           ) : (
             <div className="max-h-80 overflow-y-auto">
               <Table>
@@ -558,7 +558,7 @@ export default function InvestmentsPage() {
                       <TableCell className="text-sm">{formatDate(entry.transactionDate)}</TableCell>
                       <TableCell className="text-right tabular-nums text-sm">{entry.expectedAmount ? formatCurrency(entry.expectedAmount.toString()) : '—'}</TableCell>
                       <TableCell className="text-right tabular-nums text-sm text-destructive">{entry.taxAmount ? `-${formatCurrency(entry.taxAmount.toString())}` : '—'}</TableCell>
-                      <TableCell className="text-right tabular-nums text-sm font-medium text-green-600">{formatCurrency(entry.amount.toString())}</TableCell>
+                      <TableCell className="text-right tabular-nums text-sm font-medium text-[var(--emerald)]">{formatCurrency(entry.amount.toString())}</TableCell>
                     </TableRow>
                   ))}
                 </TableBody>
@@ -566,7 +566,7 @@ export default function InvestmentsPage() {
               <div className="border-t pt-2 mt-2 px-4 pb-2">
                 <div className="flex justify-between text-sm font-medium">
                   <span>Total Net Profit</span>
-                  <span className="text-green-600 tabular-nums">
+                  <span className="text-[var(--emerald)] tabular-nums">
                     {formatCurrency(profitHistory.reduce((s, e) => s + parseFloat(e.amount.toString()), 0).toString())}
                   </span>
                 </div>
