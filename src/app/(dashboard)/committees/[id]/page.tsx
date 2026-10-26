@@ -278,13 +278,13 @@ export default function CommitteeDetailPage() {
             <Badge variant={committee.status === 'ACTIVE' ? 'success' : 'outline'}>{committee.status as string}</Badge>
           </div>
         </div>
-        <div className="flex gap-2">
-          <Button variant="outline" onClick={openEdit}><Pencil className="h-4 w-4 mr-1" /> Edit</Button>
-          <Button variant="outline" onClick={handleDelete}><Trash2 className="h-4 w-4 mr-1" /> Delete</Button>
+        <div className="flex flex-wrap gap-2">
+          <Button variant="outline" size="sm" onClick={openEdit}><Pencil className="h-4 w-4 sm:mr-1" /> <span className="hidden sm:inline">Edit</span></Button>
+          <Button variant="outline" size="sm" onClick={handleDelete}><Trash2 className="h-4 w-4 sm:mr-1" /> <span className="hidden sm:inline">Delete</span></Button>
           {committee.status === 'ACTIVE' && (
             <>
-              <Button variant="outline" onClick={() => { addMemberForm.reset(); setShowAddMember(true); }}><UserPlus className="h-4 w-4 mr-1" /> Add Member</Button>
-              <Button onClick={() => { addRoundForm.reset({ roundDate: new Date().toISOString().split('T')[0], winningBid: '', winningMember: '', notes: '' }); setShowAddRound(true); }}><Plus className="h-4 w-4 mr-1" /> New Round</Button>
+              <Button variant="outline" size="sm" onClick={() => { addMemberForm.reset(); setShowAddMember(true); }}><UserPlus className="h-4 w-4 sm:mr-1" /> <span className="hidden sm:inline">Add Member</span></Button>
+              <Button size="sm" onClick={() => { addRoundForm.reset({ roundDate: new Date().toISOString().split('T')[0], winningBid: '', winningMember: '', notes: '' }); setShowAddRound(true); }}><Plus className="h-4 w-4 sm:mr-1" /> <span className="hidden sm:inline">New Round</span></Button>
             </>
           )}
         </div>
@@ -318,28 +318,28 @@ export default function CommitteeDetailPage() {
               </div>
               <div className="rounded-lg border p-4">
                 <p className="text-xs text-muted-foreground">Your Total Paid</p>
-                <p className="text-lg font-bold tabular-nums text-green-600">{formatCurrency(myPaid.toString())}</p>
-                {myPending > 0 && <p className="text-xs text-yellow-600 mt-1">{formatCurrency(myPending.toString())} pending</p>}
+                <p className="text-lg font-bold tabular-nums text-green-600 dark:text-green-400">{formatCurrency(myPaid.toString())}</p>
+                {myPending > 0 && <p className="text-xs text-yellow-600 dark:text-yellow-400 mt-1">{formatCurrency(myPending.toString())} pending</p>}
               </div>
               <div className="rounded-lg border p-4">
                 <p className="text-xs text-muted-foreground">Your Total Received</p>
-                <p className="text-lg font-bold tabular-nums text-blue-600">{formatCurrency(myReceived.toString())}</p>
+                <p className="text-lg font-bold tabular-nums text-blue-600 dark:text-blue-400">{formatCurrency(myReceived.toString())}</p>
               </div>
               <div className="rounded-lg border p-4">
                 <p className="text-xs text-muted-foreground">Remaining to Pay</p>
-                <p className="text-lg font-bold tabular-nums text-orange-600">{formatCurrency(myRemaining.toString())}</p>
+                <p className="text-lg font-bold tabular-nums text-orange-600 dark:text-orange-400">{formatCurrency(myRemaining.toString())}</p>
                 <p className="text-xs text-muted-foreground mt-1">{totalRounds - rounds.length} rounds left</p>
               </div>
               {isWaiyk && (
                 <div className="rounded-lg border p-4">
                   <p className="text-xs text-muted-foreground">Profit Earned</p>
-                  <p className="text-lg font-bold tabular-nums text-emerald-600">{formatCurrency(myProfitEarned.toString())}</p>
+                  <p className="text-lg font-bold tabular-nums text-emerald-600 dark:text-emerald-400">{formatCurrency(myProfitEarned.toString())}</p>
                   <p className="text-xs text-muted-foreground mt-1">from Waiyk profit deductions</p>
                 </div>
               )}
               <div className="rounded-lg border p-4">
                 <p className="text-xs text-muted-foreground">Net Position</p>
-                <p className={`text-lg font-bold tabular-nums ${myNetPosition >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                <p className={`text-lg font-bold tabular-nums ${myNetPosition >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
                   {myNetPosition >= 0 ? '+' : ''}{formatCurrency(myNetPosition.toString())}
                 </p>
                 <p className="text-xs text-muted-foreground mt-1">received − paid</p>
@@ -361,12 +361,12 @@ export default function CommitteeDetailPage() {
             </div>
             <div className="rounded-lg border p-4">
               <p className="text-xs text-muted-foreground">Total Collected</p>
-              <p className="text-lg font-bold tabular-nums text-green-600">{formatCurrency(allPaid.toString())}</p>
-              {allPending > 0 && <p className="text-xs text-yellow-600 mt-1">{formatCurrency(allPending.toString())} pending</p>}
+              <p className="text-lg font-bold tabular-nums text-green-600 dark:text-green-400">{formatCurrency(allPaid.toString())}</p>
+              {allPending > 0 && <p className="text-xs text-yellow-600 dark:text-yellow-400 mt-1">{formatCurrency(allPending.toString())} pending</p>}
             </div>
             <div className="rounded-lg border p-4">
               <p className="text-xs text-muted-foreground">Total Disbursed</p>
-              <p className="text-lg font-bold tabular-nums text-blue-600">{formatCurrency(allReceived.toString())}</p>
+              <p className="text-lg font-bold tabular-nums text-blue-600 dark:text-blue-400">{formatCurrency(allReceived.toString())}</p>
             </div>
           </div>
         </CardContent>

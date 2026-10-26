@@ -59,11 +59,11 @@ export default function DashboardPage() {
   if (!data) return <div className="text-center py-12 text-muted-foreground">Failed to load dashboard</div>;
 
   const statCards = [
-    { label: 'Total Balance', value: formatCurrency(data.totalBalance), icon: Wallet, color: 'text-blue-600', href: '/accounts' },
-    { label: 'Monthly Income', value: formatCurrency(data.monthlyIncome), icon: TrendingUp, color: 'text-green-600', href: '/reports' },
-    { label: 'Monthly Expense', value: formatCurrency(data.monthlyExpense), icon: TrendingDown, color: 'text-red-600', href: '/reports' },
-    { label: 'Receivables', value: formatCurrency(data.receivables), icon: HandCoins, color: 'text-orange-600', href: '/loans?direction=GIVEN' },
-    { label: 'Payables', value: formatCurrency(data.payables), icon: HandCoins, color: 'text-purple-600', href: '/loans?direction=TAKEN' },
+    { label: 'Total Balance', value: formatCurrency(data.totalBalance), icon: Wallet, color: 'text-blue-600 dark:text-blue-400', href: '/accounts' },
+    { label: 'Monthly Income', value: formatCurrency(data.monthlyIncome), icon: TrendingUp, color: 'text-green-600 dark:text-green-400', href: '/reports' },
+    { label: 'Monthly Expense', value: formatCurrency(data.monthlyExpense), icon: TrendingDown, color: 'text-red-600 dark:text-red-400', href: '/reports' },
+    { label: 'Receivables', value: formatCurrency(data.receivables), icon: HandCoins, color: 'text-orange-600 dark:text-orange-400', href: '/loans?direction=GIVEN' },
+    { label: 'Payables', value: formatCurrency(data.payables), icon: HandCoins, color: 'text-purple-600 dark:text-purple-400', href: '/loans?direction=TAKEN' },
   ];
 
   return (
@@ -159,10 +159,10 @@ export default function DashboardPage() {
                     <span
                       className={`font-medium tabular-nums ml-2 whitespace-nowrap ${
                         ['INCOME', 'LOAN_REPAYMENT_RECEIVED', 'COMMITTEE_RECEIVING', 'SAVINGS_WITHDRAWAL', 'INVESTMENT_RETURN', 'LOAN_TAKEN'].includes(tx.type)
-                          ? 'text-green-600'
+                          ? 'text-green-600 dark:text-green-400'
                           : tx.type === 'TRANSFER'
-                            ? 'text-blue-600'
-                            : 'text-red-600'
+                            ? 'text-blue-600 dark:text-blue-400'
+                            : 'text-red-600 dark:text-red-400'
                       }`}
                     >
                       {['INCOME', 'LOAN_REPAYMENT_RECEIVED', 'COMMITTEE_RECEIVING', 'SAVINGS_WITHDRAWAL', 'INVESTMENT_RETURN', 'LOAN_TAKEN'].includes(tx.type) ? '+' : '-'}

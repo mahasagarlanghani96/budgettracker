@@ -167,7 +167,7 @@ export default function PersonDetailPage() {
         </Card>
         <Card>
           <CardContent className="pt-6 flex items-center gap-3">
-            <ArrowDownRight className="h-5 w-5 text-green-600 shrink-0" />
+            <ArrowDownRight className="h-5 w-5 text-green-600 dark:text-green-400 shrink-0" />
             <div>
               <p className="text-xs text-muted-foreground">Total Inflow</p>
               <p className="text-xl font-bold tabular-nums">{formatCurrency(s.totalInflow)}</p>
@@ -176,7 +176,7 @@ export default function PersonDetailPage() {
         </Card>
         <Card>
           <CardContent className="pt-6 flex items-center gap-3">
-            <ArrowUpRight className="h-5 w-5 text-red-600 shrink-0" />
+            <ArrowUpRight className="h-5 w-5 text-red-600 dark:text-red-400 shrink-0" />
             <div>
               <p className="text-xs text-muted-foreground">Total Outflow</p>
               <p className="text-xl font-bold tabular-nums">{formatCurrency(s.totalOutflow)}</p>
@@ -186,7 +186,7 @@ export default function PersonDetailPage() {
         <Card>
           <CardContent className="pt-6">
             <p className="text-xs text-muted-foreground">Net</p>
-            <p className={`text-xl font-bold tabular-nums ${net >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+            <p className={`text-xl font-bold tabular-nums ${net >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
               {formatCurrency(s.net)}
             </p>
           </CardContent>

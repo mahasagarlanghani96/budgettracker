@@ -219,7 +219,40 @@ export default function InvestmentsPage() {
       {investments.length === 0 ? (
         <EmptyState icon={<TrendingUp className="h-12 w-12" />} title="No investments" description="Track your investment portfolio" action={<Button onClick={() => setShowCreate(true)}>Add Investment</Button>} />
       ) : (
-        <Card>
+        <>
+        {/* Mobile card view */}
+        <div className="space-y-3 md:hidden">
+          {investments.map((inv) => {
+            const pl = parseFloat(inv.profitLoss);
+            return (
+              <Card key={inv.id}>
+                <CardContent className="pt-4 pb-3 space-y-2">
+                  <div className="flex items-start justify-between gap-2">
+                    <div>
+                      <p className="font-medium">{inv.name}</p>
+                      <p className="text-xs text-muted-foreground">{inv.investmentType}</p>
+                    </div>
+                    <Badge variant={inv.isActive ? 'success' : 'secondary'} className="text-xs">{inv.isActive ? 'Active' : 'Inactive'}</Badge>
+                  </div>
+                  <div className="grid grid-cols-3 gap-2 text-sm">
+                    <div><p className="text-xs text-muted-foreground">Invested</p><p className="font-medium tabular-nums">{formatCurrency(inv.amountInvested.toString())}</p></div>
+                    <div><p className="text-xs text-muted-foreground">Current</p><p className="font-medium tabular-nums">{formatCurrency(inv.currentValue.toString())}</p></div>
+                    <div><p className="text-xs text-muted-foreground">P/L</p><p className={`font-medium tabular-nums ${pl >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>{pl >= 0 ? '+' : ''}{inv.profitLossPercent}%</p></div>
+                  </div>
+                  <div className="flex justify-end gap-1 pt-1 border-t">
+                    {inv.isActive && <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openProfitRecord(inv)} aria-label="Record profit"><DollarSign className="h-3.5 w-3.5" /></Button>}
+                    <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openHistory(inv)} aria-label="Profit history"><History className="h-3.5 w-3.5" /></Button>
+                    {inv.isActive && <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openClose(inv)} aria-label={`Close ${inv.name}`}><XCircle className="h-3.5 w-3.5" /></Button>}
+                    <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openEdit(inv)} aria-label={`Edit ${inv.name}`}><Pencil className="h-3.5 w-3.5" /></Button>
+                    <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleDelete(inv)} aria-label={`Delete ${inv.name}`}><Trash2 className="h-3.5 w-3.5" /></Button>
+                  </div>
+                </CardContent>
+              </Card>
+            );
+          })}
+        </div>
+        {/* Desktop table view */}
+        <Card className="hidden md:block">
           <CardContent className="p-0">
             <Table>
               <TableHeader>
@@ -248,7 +281,7 @@ export default function InvestmentsPage() {
                       <TableCell className="text-right tabular-nums">{formatCurrency(inv.amountInvested.toString())}</TableCell>
                       <TableCell className="text-right tabular-nums">{formatCurrency(inv.currentValue.toString())}</TableCell>
                       <TableCell className="text-right">
-                        <span className={`inline-flex items-center gap-1 tabular-nums ${pl >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                        <span className={`inline-flex items-center gap-1 tabular-nums ${pl >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
                           {pl >= 0 ? <ArrowUp className="h-3 w-3" /> : <ArrowDown className="h-3 w-3" />}
                           {inv.profitLossPercent}%
                         </span>
@@ -270,6 +303,7 @@ export default function InvestmentsPage() {
             </Table>
           </CardContent>
         </Card>
+        </>
       )}
 
       {/* Create Investment Modal */}

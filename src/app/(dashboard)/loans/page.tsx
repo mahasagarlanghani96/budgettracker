@@ -109,7 +109,7 @@ export default function LoansPage() {
       <div className="grid gap-4 sm:grid-cols-2">
         <Card>
           <CardContent className="pt-6 flex items-center gap-3">
-            <ArrowUpRight className="h-6 w-6 text-green-600" />
+            <ArrowUpRight className="h-6 w-6 text-green-600 dark:text-green-400" />
             <div>
               <p className="text-xs text-muted-foreground">Total Receivable (Given)</p>
               <p className="text-xl font-bold tabular-nums">{formatCurrency(totalReceivable.toString())}</p>
@@ -118,7 +118,7 @@ export default function LoansPage() {
         </Card>
         <Card>
           <CardContent className="pt-6 flex items-center gap-3">
-            <ArrowDownRight className="h-6 w-6 text-red-600" />
+            <ArrowDownRight className="h-6 w-6 text-red-600 dark:text-red-400" />
             <div>
               <p className="text-xs text-muted-foreground">Total Payable (Taken)</p>
               <p className="text-xl font-bold tabular-nums">{formatCurrency(totalPayable.toString())}</p>
@@ -127,18 +127,18 @@ export default function LoansPage() {
         </Card>
       </div>
 
-      <div className="flex gap-3 items-center">
+      <div className="flex flex-wrap gap-3 items-center">
         <Select
           options={[{ value: '', label: 'All' }, { value: 'GIVEN', label: 'Given' }, { value: 'TAKEN', label: 'Taken' }]}
           value={filter.direction}
           onChange={(e) => setFilter({ ...filter, direction: e.target.value })}
-          className="w-40"
+          className="w-full sm:w-40"
         />
         <Select
           options={[{ value: '', label: 'All Status' }, { value: 'ACTIVE', label: 'Active' }, { value: 'SETTLED', label: 'Settled' }, { value: 'WRITTEN_OFF', label: 'Written Off' }, { value: 'CANCELLED', label: 'Cancelled' }]}
           value={filter.status}
           onChange={(e) => setFilter({ ...filter, status: e.target.value })}
-          className="w-40"
+          className="w-full sm:w-40"
         />
         {(filter.direction || filter.status) && (
           <Button variant="outline" size="sm" onClick={() => setFilter({ direction: '', status: '' })}>

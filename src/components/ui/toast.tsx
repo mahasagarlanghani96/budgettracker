@@ -21,7 +21,7 @@ export function ToastContainer({
           className={cn(
             'rounded-lg border px-4 py-3 shadow-lg animate-in slide-in-from-bottom-5 fade-in',
             toast.variant === 'destructive' && 'border-destructive bg-destructive text-destructive-foreground',
-            toast.variant === 'success' && 'border-green-500 bg-green-50 text-green-900',
+            toast.variant === 'success' && 'border-success bg-success/10 text-success-foreground dark:text-success',
             toast.variant === 'default' && 'bg-background'
           )}
         >

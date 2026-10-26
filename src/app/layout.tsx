@@ -48,6 +48,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <head>
         <link rel="apple-touch-icon" href="/icons/icon-192x192.png" />
         <meta name="mobile-web-app-capable" content="yes" />
+        <meta name="theme-color" content="#1fa08a" media="(prefers-color-scheme: light)" />
+        <meta name="theme-color" content="#0c1425" media="(prefers-color-scheme: dark)" />
       </head>
       <body className={`${inter.variable} font-sans antialiased`}>
         <Providers>{children}</Providers>

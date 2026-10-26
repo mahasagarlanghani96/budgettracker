@@ -138,15 +138,38 @@ export default function PeoplePage() {
       {persons.length === 0 ? (
         <EmptyState icon={<Contact className="h-12 w-12" />} title="No people" description="Add the people you lend to, borrow from, or share committees with" action={<Button onClick={openCreate}>Add Person</Button>} />
       ) : (
-        <Card>
+        <>
+        {/* Mobile card view */}
+        <div className="space-y-3 md:hidden">
+          {persons.map((p) => (
+            <Link key={p.id} href={`/people/${p.id}`}>
+              <Card className="hover:shadow-md transition-shadow cursor-pointer">
+                <CardContent className="pt-4 pb-3">
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="min-w-0 flex-1">
+                      <p className="font-medium">{p.name}</p>
+                      <p className="text-xs text-muted-foreground">{p.relationship || 'No relationship'}{p.phone ? ` · ${p.phone}` : ''}</p>
+                      <p className="text-xs text-muted-foreground mt-0.5">{usageText(p)}</p>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Badge variant={p.isActive ? 'success' : 'secondary'} className="text-xs">{p.isActive ? 'Active' : 'Inactive'}</Badge>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </Link>
+          ))}
+        </div>
+        {/* Desktop table view */}
+        <Card className="hidden md:block">
           <CardContent className="pt-6">
             <Table>
               <TableHeader>
                 <TableRow>
                   <TableHead>Name</TableHead>
                   <TableHead>Relationship</TableHead>
-                  <TableHead>Phone</TableHead>
-                  <TableHead>Email</TableHead>
+                  <TableHead className="hidden lg:table-cell">Phone</TableHead>
+                  <TableHead className="hidden lg:table-cell">Email</TableHead>
                   <TableHead>Usage</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead className="text-right">Actions</TableHead>
@@ -159,8 +182,8 @@ export default function PeoplePage() {
                       <Link href={`/people/${p.id}`} className="hover:underline">{p.name}</Link>
                     </TableCell>
                     <TableCell>{p.relationship || '—'}</TableCell>
-                    <TableCell>{p.phone || '—'}</TableCell>
-                    <TableCell>{p.email || '—'}</TableCell>
+                    <TableCell className="hidden lg:table-cell">{p.phone || '—'}</TableCell>
+                    <TableCell className="hidden lg:table-cell">{p.email || '—'}</TableCell>
                     <TableCell className="text-muted-foreground text-xs">{usageText(p)}</TableCell>
                     <TableCell><Badge variant={p.isActive ? 'success' : 'secondary'} className="text-xs">{p.isActive ? 'Active' : 'Inactive'}</Badge></TableCell>
                     <TableCell className="text-right">
@@ -178,6 +201,7 @@ export default function PeoplePage() {
             </Table>
           </CardContent>
         </Card>
+        </>
       )}
 
       {ConfirmDialog}

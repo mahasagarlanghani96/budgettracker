@@ -207,7 +207,7 @@ export default function LoanDetailPage() {
 
       <div className="grid gap-4 sm:grid-cols-3">
         <Card><CardContent className="pt-6"><p className="text-xs text-muted-foreground">Total Amount</p><p className="text-2xl font-bold tabular-nums">{formatCurrency((loan.amount as { toString(): string }).toString())}</p></CardContent></Card>
-        <Card><CardContent className="pt-6"><p className="text-xs text-muted-foreground">Repaid</p><p className="text-2xl font-bold tabular-nums text-green-600">{formatCurrency(loan.totalRepaid as string)}</p></CardContent></Card>
+        <Card><CardContent className="pt-6"><p className="text-xs text-muted-foreground">Repaid</p><p className="text-2xl font-bold tabular-nums text-green-600 dark:text-green-400">{formatCurrency(loan.totalRepaid as string)}</p></CardContent></Card>
         <Card><CardContent className="pt-6"><p className="text-xs text-muted-foreground">Outstanding</p><p className="text-2xl font-bold tabular-nums text-primary">{formatCurrency(loan.remainingAmount as string)}</p></CardContent></Card>
       </div>
 

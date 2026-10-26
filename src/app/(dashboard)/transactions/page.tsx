@@ -127,10 +127,10 @@ export default function TransactionsPage() {
   return (
     <div className="space-y-6">
       {ConfirmDialog}
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between gap-4">
         <h1 className="text-2xl font-bold">Transactions</h1>
         <Link href="/transactions/new">
-          <Button><Plus className="h-4 w-4 mr-2" /> New Transaction</Button>
+          <Button size="sm" className="sm:size-default"><Plus className="h-4 w-4 sm:mr-2" /> <span className="hidden sm:inline">New Transaction</span></Button>
         </Link>
       </div>
 
@@ -200,12 +200,53 @@ export default function TransactionsPage() {
         <>
           <Card>
             <CardContent className="p-0">
+              {/* Mobile card view */}
+              <div className="divide-y md:hidden">
+                {transactions.map((tx) => {
+                  const editable = EDITABLE_TYPES.includes(tx.type);
+                  return (
+                    <div key={tx.id} className={`p-4 space-y-2 ${tx.isHistorical ? 'opacity-50' : ''}`}>
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="min-w-0 flex-1">
+                          <p className="text-sm font-medium truncate">{tx.description || '—'}</p>
+                          <p className="text-xs text-muted-foreground">{formatDate(tx.transactionDate)} · {tx.sourceAccount?.name}{tx.destAccount && ` → ${tx.destAccount.name}`}</p>
+                        </div>
+                        <span className="text-sm font-medium tabular-nums whitespace-nowrap">
+                          {formatCurrency(tx.amount.toString())}
+                        </span>
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <Badge variant={typeBadgeVariant[tx.type] || 'outline'} className="text-xs">
+                            {tx.type.replace(/_/g, ' ')}
+                          </Badge>
+                          {tx.category?.name && <span className="text-xs text-muted-foreground">{tx.category.name}</span>}
+                        </div>
+                        {editable ? (
+                          <div className="flex gap-1">
+                            <Link href={`/transactions/${tx.id}/edit`}>
+                              <Button variant="ghost" size="icon" className="h-8 w-8"><Pencil className="h-3.5 w-3.5" /></Button>
+                            </Link>
+                            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleDelete(tx)}><Trash2 className="h-3.5 w-3.5" /></Button>
+                          </div>
+                        ) : (
+                          <span title="Linked record — edit from module page" className="text-muted-foreground">
+                            <Lock className="h-3.5 w-3.5" />
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+              {/* Desktop table view */}
+              <div className="hidden md:block">
               <Table>
                 <TableHeader>
                   <TableRow>
                     <TableHead>Date</TableHead>
                     <TableHead>Description</TableHead>
-                    <TableHead>Category</TableHead>
+                    <TableHead className="hidden lg:table-cell">Category</TableHead>
                     <TableHead>Account</TableHead>
                     <TableHead>Type</TableHead>
                     <TableHead className="text-right">Amount</TableHead>
@@ -219,7 +260,7 @@ export default function TransactionsPage() {
                       <TableRow key={tx.id} className={tx.isHistorical ? 'opacity-50' : ''}>
                         <TableCell className="text-sm whitespace-nowrap">{formatDate(tx.transactionDate)}</TableCell>
                         <TableCell className="text-sm max-w-[200px] truncate">{tx.description || '—'}</TableCell>
-                        <TableCell className="text-sm">{tx.category?.name || '—'}</TableCell>
+                        <TableCell className="text-sm hidden lg:table-cell">{tx.category?.name || '—'}</TableCell>
                         <TableCell className="text-sm">
                           {tx.sourceAccount?.name}
                           {tx.destAccount && <span className="text-muted-foreground"> → {tx.destAccount.name}</span>}
@@ -251,6 +292,7 @@ export default function TransactionsPage() {
                   })}
                 </TableBody>
               </Table>
+              </div>
             </CardContent>
           </Card>
 

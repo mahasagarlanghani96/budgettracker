@@ -52,7 +52,7 @@ export default function ReportsPage() {
 
       <Card>
         <CardContent className="pt-6">
-          <div className="flex flex-wrap gap-4 items-end">
+          <div className="grid gap-4 sm:grid-cols-2 lg:flex lg:flex-wrap lg:items-end">
             <div className="space-y-1">
               <label className="text-sm font-medium">Report Type</label>
               <Select
@@ -73,7 +73,7 @@ export default function ReportsPage() {
               <label className="text-sm font-medium">To</label>
               <Input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} />
             </div>
-            <Button variant="outline" onClick={fetchReport}>Refresh</Button>
+            <Button variant="outline" onClick={fetchReport} className="self-end">Refresh</Button>
             {(reportType !== 'summary' || startDate !== firstDay || endDate !== today) && (
               <Button variant="outline" size="sm" onClick={() => { setReportType('summary'); setStartDate(firstDay); setEndDate(today); }}>
                 <X className="h-3.5 w-3.5 mr-1" /> Reset
@@ -90,23 +90,23 @@ export default function ReportsPage() {
           {/* Summary Report */}
           {reportType === 'summary' && data.type === 'summary' && (
             <div className="space-y-4">
-              <div className="grid gap-4 sm:grid-cols-4">
+              <div className="grid gap-4 grid-cols-2 lg:grid-cols-4">
                 <Card>
                   <CardContent className="pt-6">
                     <p className="text-xs text-muted-foreground">Total Income</p>
-                    <p className="text-xl font-bold tabular-nums text-green-600">{formatCurrency(data.totalIncome || '0')}</p>
+                    <p className="text-xl font-bold tabular-nums text-green-600 dark:text-green-400">{formatCurrency(data.totalIncome || '0')}</p>
                   </CardContent>
                 </Card>
                 <Card>
                   <CardContent className="pt-6">
                     <p className="text-xs text-muted-foreground">Total Expenses</p>
-                    <p className="text-xl font-bold tabular-nums text-red-600">{formatCurrency(data.totalExpense || '0')}</p>
+                    <p className="text-xl font-bold tabular-nums text-red-600 dark:text-red-400">{formatCurrency(data.totalExpense || '0')}</p>
                   </CardContent>
                 </Card>
                 <Card>
                   <CardContent className="pt-6">
                     <p className="text-xs text-muted-foreground">Net Savings</p>
-                    <p className={`text-xl font-bold tabular-nums ${parseFloat(data.netSavings || '0') >= 0 ? 'text-green-600' : 'text-red-600'}`}>{formatCurrency(data.netSavings || '0')}</p>
+                    <p className={`text-xl font-bold tabular-nums ${parseFloat(data.netSavings || '0') >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>{formatCurrency(data.netSavings || '0')}</p>
                   </CardContent>
                 </Card>
                 <Card>
@@ -139,7 +139,7 @@ export default function ReportsPage() {
                         {data.incomeByCategory.map((cat, i) => (
                           <TableRow key={i}>
                             <TableCell className="font-medium">{cat.name}</TableCell>
-                            <TableCell className="text-right tabular-nums text-green-600">{formatCurrency(cat.total)}</TableCell>
+                            <TableCell className="text-right tabular-nums text-green-600 dark:text-green-400">{formatCurrency(cat.total)}</TableCell>
                           </TableRow>
                         ))}
                       </TableBody>
@@ -164,7 +164,7 @@ export default function ReportsPage() {
                         {data.expenseByCategory.map((cat, i) => (
                           <TableRow key={i}>
                             <TableCell className="font-medium">{cat.name}</TableCell>
-                            <TableCell className="text-right tabular-nums text-red-600">{formatCurrency(cat.total)}</TableCell>
+                            <TableCell className="text-right tabular-nums text-red-600 dark:text-red-400">{formatCurrency(cat.total)}</TableCell>
                           </TableRow>
                         ))}
                       </TableBody>
@@ -196,9 +196,9 @@ export default function ReportsPage() {
                       {data.dailyData.map((day, i) => (
                         <TableRow key={i}>
                           <TableCell className="font-medium">{new Date(day.date).toLocaleDateString('en-PK', { weekday: 'short', day: 'numeric', month: 'short' })}</TableCell>
-                          <TableCell className="text-right tabular-nums text-green-600">{formatCurrency(day.income)}</TableCell>
-                          <TableCell className="text-right tabular-nums text-red-600">{formatCurrency(day.expense)}</TableCell>
-                          <TableCell className={`text-right tabular-nums font-medium ${parseFloat(day.net) >= 0 ? 'text-green-600' : 'text-red-600'}`}>{formatCurrency(day.net)}</TableCell>
+                          <TableCell className="text-right tabular-nums text-green-600 dark:text-green-400">{formatCurrency(day.income)}</TableCell>
+                          <TableCell className="text-right tabular-nums text-red-600 dark:text-red-400">{formatCurrency(day.expense)}</TableCell>
+                          <TableCell className={`text-right tabular-nums font-medium ${parseFloat(day.net) >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>{formatCurrency(day.net)}</TableCell>
                         </TableRow>
                       ))}
                     </TableBody>

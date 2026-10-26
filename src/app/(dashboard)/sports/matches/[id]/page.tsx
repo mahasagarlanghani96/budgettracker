@@ -289,7 +289,7 @@ export default function MatchDetailPage() {
         <Card>
           <CardContent className="pt-6">
             <p className="text-xs text-muted-foreground">Collected</p>
-            <p className="text-xl font-bold tabular-nums text-green-600">{formatCurrency(match.collectedFees)}</p>
+            <p className="text-xl font-bold tabular-nums text-green-600 dark:text-green-400">{formatCurrency(match.collectedFees)}</p>
           </CardContent>
         </Card>
         <Card>
@@ -396,7 +396,7 @@ export default function MatchDetailPage() {
                         <div className="flex justify-end gap-1">
                           {!fee.isPaid && (
                             <Button variant="ghost" size="icon" className="h-7 w-7" aria-label="Mark as paid" onClick={() => openMarkPaid(fee)}>
-                              <CheckCircle className="h-3.5 w-3.5 text-green-600" />
+                              <CheckCircle className="h-3.5 w-3.5 text-green-600 dark:text-green-400" />
                             </Button>
                           )}
                           <Button variant="ghost" size="icon" className="h-7 w-7" aria-label="Edit fee" onClick={() => openEditFee(fee)}>

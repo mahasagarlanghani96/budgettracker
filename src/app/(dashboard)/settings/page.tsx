@@ -150,7 +150,7 @@ export default function SettingsPage() {
       <h1 className="text-2xl font-bold">Settings</h1>
 
       {message && (
-        <div className={`p-3 rounded-md text-sm ${isSuccess ? 'bg-green-50 text-green-700 border border-green-200' : 'bg-red-50 text-red-700 border border-red-200'}`}>
+        <div className={`p-3 rounded-md text-sm ${isSuccess ? 'bg-success/10 text-success border border-success/20' : 'bg-destructive/10 text-destructive border border-destructive/20'}`}>
           {message}
         </div>
       )}

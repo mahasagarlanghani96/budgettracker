@@ -82,3 +82,13 @@
 [data-currency] {
   font-variant-numeric: tabular-nums;
 }
+
+/* Smooth scrolling & touch-friendly */
+@media (max-width: 768px) {
+  html {
+    -webkit-text-size-adjust: 100%;
+  }
+  input, select, textarea {
+    font-size: 16px;
+  }
+}
