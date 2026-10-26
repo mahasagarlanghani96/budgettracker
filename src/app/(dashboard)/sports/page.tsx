@@ -47,6 +47,7 @@ export default function SportsPage() {
   const [showCreateTeam, setShowCreateTeam] = useState(false);
   const [editingTeam, setEditingTeam] = useState<SportsTeam | null>(null);
   const [showCreateMatch, setShowCreateMatch] = useState(false);
+  const [editingMatch, setEditingMatch] = useState<SportsMatch | null>(null);
   const { confirm, ConfirmDialog } = useConfirm();
 
   const fetchTeams = useCallback(() => {
@@ -125,6 +126,48 @@ export default function SportsPage() {
       fetchMatches();
     },
   });
+
+  // Edit Match form
+  const editMatchForm = useResourceForm({
+    schema: sportsMatchSchema,
+    initial: { teamId: '', opponent: '', venue: '', matchDate: today, notes: '' },
+    onSubmit: (data) =>
+      fetch(`/api/sports/matches/${editingMatch!.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data),
+      }),
+    onSuccess: () => {
+      setEditingMatch(null);
+      fetchMatches();
+    },
+  });
+
+  function openEditMatch(match: SportsMatch) {
+    setEditingMatch(match);
+    editMatchForm.setForm({
+      teamId: match.team.id,
+      opponent: match.opponent || '',
+      venue: match.venue || '',
+      matchDate: match.matchDate.split('T')[0],
+      notes: match.notes || '',
+    });
+  }
+
+  async function handleDeleteMatch(match: SportsMatch) {
+    if (!(await confirm(`Delete this match? All expenses and fees will be removed. This cannot be undone.`))) return;
+    const res = await fetch(`/api/sports/matches/${match.id}`, { method: 'DELETE' });
+    if (res.ok) {
+      fetchMatches();
+    } else {
+      try {
+        const d = await res.json();
+        alert(d.error || 'Failed to delete match');
+      } catch {
+        alert('Failed to delete match');
+      }
+    }
+  }
 
   function openEditTeam(team: SportsTeam) {
     setEditingTeam(team);
@@ -284,9 +327,17 @@ export default function SportsPage() {
                       <TableCell className="text-right tabular-nums">{formatCurrency(match.totalExpenses)}</TableCell>
                       <TableCell className="text-right tabular-nums">{formatCurrency(match.totalFees)}</TableCell>
                       <TableCell className="text-right">
-                        <Button variant="ghost" size="icon" className="h-7 w-7" aria-label="View match" asChild>
-                          <Link href={`/sports/matches/${match.id}`}><Eye className="h-3.5 w-3.5" /></Link>
-                        </Button>
+                        <div className="flex justify-end gap-1">
+                          <Button variant="ghost" size="icon" className="h-7 w-7" aria-label="View match" asChild>
+                            <Link href={`/sports/matches/${match.id}`}><Eye className="h-3.5 w-3.5" /></Link>
+                          </Button>
+                          <Button variant="ghost" size="icon" className="h-7 w-7" aria-label="Edit match" onClick={() => openEditMatch(match)}>
+                            <Pencil className="h-3.5 w-3.5" />
+                          </Button>
+                          <Button variant="ghost" size="icon" className="h-7 w-7" aria-label="Delete match" onClick={() => handleDeleteMatch(match)}>
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </Button>
+                        </div>
                       </TableCell>
                     </TableRow>
                   ))}
@@ -376,6 +427,40 @@ export default function SportsPage() {
             <DialogFooter>
               <Button type="button" variant="outline" onClick={() => setShowCreateMatch(false)}>Cancel</Button>
               <Button type="submit" disabled={createMatchForm.saving}>{createMatchForm.saving ? 'Creating...' : 'Create'}</Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit Match Modal */}
+      <Dialog open={!!editingMatch} onOpenChange={(open) => !open && setEditingMatch(null)}>
+        <DialogContent>
+          <DialogHeader><DialogTitle>Edit Match</DialogTitle></DialogHeader>
+          <form onSubmit={editMatchForm.handleSubmit} className="space-y-4">
+            <FormField label="Team" required error={editMatchForm.errors.teamId}>
+              <Select
+                options={teamOptions}
+                value={editMatchForm.form.teamId as string}
+                onChange={(e) => editMatchForm.setField('teamId', e.target.value)}
+                placeholder="Select team"
+              />
+            </FormField>
+            <FormField label="Opponent" error={editMatchForm.errors.opponent}>
+              <Input value={editMatchForm.form.opponent as string} onChange={(e) => editMatchForm.setField('opponent', e.target.value)} placeholder="e.g., City XI" />
+            </FormField>
+            <FormField label="Venue" error={editMatchForm.errors.venue}>
+              <Input value={editMatchForm.form.venue as string} onChange={(e) => editMatchForm.setField('venue', e.target.value)} placeholder="e.g., City Ground" />
+            </FormField>
+            <FormField label="Match Date" required error={editMatchForm.errors.matchDate}>
+              <Input type="date" value={editMatchForm.form.matchDate as string} onChange={(e) => editMatchForm.setField('matchDate', e.target.value)} />
+            </FormField>
+            <FormField label="Notes" error={editMatchForm.errors.notes}>
+              <Textarea value={editMatchForm.form.notes as string} onChange={(e) => editMatchForm.setField('notes', e.target.value)} placeholder="Optional" />
+            </FormField>
+            {editMatchForm.serverError && <p className="text-sm text-destructive bg-destructive/10 rounded-md px-3 py-2">{editMatchForm.serverError}</p>}
+            <DialogFooter>
+              <Button type="button" variant="outline" onClick={() => setEditingMatch(null)}>Cancel</Button>
+              <Button type="submit" disabled={editMatchForm.saving}>{editMatchForm.saving ? 'Saving...' : 'Save Changes'}</Button>
             </DialogFooter>
           </form>
         </DialogContent>

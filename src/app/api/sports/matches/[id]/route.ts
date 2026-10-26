@@ -13,13 +13,26 @@ export async function GET(_request: NextRequest, { params }: { params: Promise<{
     const match = await prisma.sportsMatch.findFirst({
       where: { id, userId: (session.user as { id: string }).id },
       include: {
-        team: { select: { id: true, name: true, sport: true } },
+        team: {
+          select: {
+            id: true,
+            name: true,
+            sport: true,
+            players: {
+              where: { isActive: true },
+              select: { id: true, name: true, matchFee: true },
+              orderBy: { name: 'asc' },
+            },
+          },
+        },
         expenses: {
+          include: { account: { select: { name: true } } },
           orderBy: { createdAt: 'desc' },
         },
         fees: {
           include: {
             player: { select: { id: true, name: true, phone: true } },
+            account: { select: { name: true } },
           },
           orderBy: { createdAt: 'desc' },
         },
@@ -44,15 +57,16 @@ export async function GET(_request: NextRequest, { params }: { params: Promise<{
       .reduce((sum: Decimal, f: any) => sum.plus(f.amount.toString()), new Decimal(0));
     const pendingFees = totalFees.minus(collectedFees);
 
+    const { team, ...rest } = match;
     return NextResponse.json({
       data: {
-        ...match,
-        summary: {
-          totalExpenses: totalExpenses.toString(),
-          totalFees: totalFees.toString(),
-          collectedFees: collectedFees.toString(),
-          pendingFees: pendingFees.toString(),
-        },
+        ...rest,
+        team: { id: team.id, name: team.name },
+        players: team.players,
+        totalExpenses: totalExpenses.toString(),
+        totalFees: totalFees.toString(),
+        collectedFees: collectedFees.toString(),
+        pendingFees: pendingFees.toString(),
       },
     });
   } catch (error: unknown) {
