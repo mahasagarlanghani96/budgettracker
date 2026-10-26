@@ -446,7 +446,7 @@ export default function MatchDetailPage() {
                 Mark as paid
               </label>
             </FormField>
-            {addFeeForm.form.isPaid && (
+            {Boolean(addFeeForm.form.isPaid) && (
               <FormField label="Paid Date" error={addFeeForm.errors.paidDate}>
                 <Input type="date" value={addFeeForm.form.paidDate as string} onChange={(e) => addFeeForm.setField('paidDate', e.target.value)} />
               </FormField>
@@ -483,7 +483,7 @@ export default function MatchDetailPage() {
                 Mark as paid
               </label>
             </FormField>
-            {editFeeForm.form.isPaid && (
+            {Boolean(editFeeForm.form.isPaid) && (
               <FormField label="Paid Date" error={editFeeForm.errors.paidDate}>
                 <Input type="date" value={editFeeForm.form.paidDate as string} onChange={(e) => editFeeForm.setField('paidDate', e.target.value)} />
               </FormField>
