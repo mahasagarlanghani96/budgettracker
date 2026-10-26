@@ -22,6 +22,7 @@ import {
   X,
   Contact,
   Tags,
+  Trophy,
 } from 'lucide-react';
 import { signOut, useSession } from 'next-auth/react';
 import { useState } from 'react';
@@ -37,6 +38,7 @@ const navItems = [
   { href: '/savings', label: 'Savings', icon: PiggyBank },
   { href: '/investments', label: 'Investments', icon: TrendingUp },
   { href: '/plots', label: 'Plots', icon: MapPin },
+  { href: '/sports', label: 'Sports', icon: Trophy },
   { href: '/reports', label: 'Reports', icon: BarChart3 },
   { href: '/targets', label: 'Targets', icon: Target },
   { href: '/categories', label: 'Categories', icon: Tags },

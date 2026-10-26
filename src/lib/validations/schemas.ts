@@ -308,3 +308,51 @@ export const savingsGoalUpdateSchema = savingsGoalSchema.extend({
 export const plotUpdateSchema = plotSchema.extend({
   isActive: z.boolean().optional(),
 });
+
+// ─── Sports ─────────────────────────────────────────────────────
+
+export const sportsTeamSchema = z.object({
+  name: z.string().min(1, 'Team name is required'),
+  sport: z.string().min(1, 'Sport is required').default('Cricket'),
+  notes: z.string().max(500).optional(),
+});
+
+export const sportsTeamUpdateSchema = sportsTeamSchema.extend({
+  isActive: z.boolean().optional(),
+});
+
+export const sportsPlayerSchema = z.object({
+  name: z.string().min(1, 'Player name is required'),
+  personId: z.string().optional().nullable(),
+  phone: z.string().optional().nullable(),
+  role: z.string().optional().nullable(),
+  matchFee: z.number().min(0).default(0),
+});
+
+export const sportsPlayerUpdateSchema = sportsPlayerSchema.extend({
+  isActive: z.boolean().optional(),
+});
+
+export const sportsMatchSchema = z.object({
+  teamId: z.string().min(1, 'Team is required'),
+  opponent: z.string().optional().nullable(),
+  venue: z.string().optional().nullable(),
+  matchDate: z.string().min(1, 'Match date is required'),
+  notes: z.string().max(500).optional(),
+});
+
+export const sportsExpenseSchema = z.object({
+  description: z.string().min(1, 'Description is required'),
+  amount: z.number().positive('Amount must be positive'),
+  accountId: z.string().optional().nullable(),
+  notes: z.string().max(500).optional(),
+});
+
+export const sportsMatchFeeSchema = z.object({
+  playerId: z.string().min(1, 'Player is required'),
+  amount: z.number().min(0, 'Amount cannot be negative'),
+  accountId: z.string().optional().nullable(),
+  isPaid: z.boolean().default(false),
+  paidDate: z.string().optional().nullable(),
+  notes: z.string().max(500).optional(),
+});

@@ -35,6 +35,8 @@ model User {
   sharedByMe        SharedAccess[]    @relation("SharedBy")
   sharedWithMe      SharedAccess[]    @relation("SharedWith")
   sessions          UserSession[]
+  sportsTeams       SportsTeam[]
+  sportsMatches     SportsMatch[]
 
   @@map("users")
 }
@@ -121,6 +123,8 @@ model Account {
   savingsTransactions SavingsTransaction[]
   investments         Investment[]
   plotPayments        PlotPayment[]
+  sportsExpenses      SportsExpense[]
+  sportsMatchFees     SportsMatchFee[]
 
   @@index([userId])
   @@map("accounts")
@@ -170,6 +174,7 @@ model Person {
   transactions Transaction[]
   loans        Loan[]
   committeeMembers CommitteeMember[]
+  sportsPlayers SportsPlayer[]
 
   @@index([userId])
   @@map("people")
@@ -613,4 +618,101 @@ model FinancialTarget {
   @@unique([userId, type, categoryId, month, year])
   @@index([userId, month, year])
   @@map("financial_targets")
+}
+
+// ─── SPORTS ──────────────────────────────────────────────────────
+
+model SportsTeam {
+  id        String   @id @default(cuid())
+  userId    String
+  name      String
+  sport     String   @default("Cricket")
+  notes     String?
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user    User              @relation(fields: [userId], references: [id])
+  players SportsPlayer[]
+  matches SportsMatch[]
+
+  @@index([userId])
+  @@map("sports_teams")
+}
+
+model SportsPlayer {
+  id        String   @id @default(cuid())
+  teamId    String
+  personId  String?
+  name      String
+  phone     String?
+  role      String?
+  matchFee  Decimal  @default(0) @db.Decimal(18, 2)
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+
+  team     SportsTeam       @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  person   Person?          @relation(fields: [personId], references: [id])
+  fees     SportsMatchFee[]
+
+  @@index([teamId])
+  @@map("sports_players")
+}
+
+model SportsMatch {
+  id        String   @id @default(cuid())
+  userId    String
+  teamId    String
+  opponent  String?
+  venue     String?
+  matchDate DateTime
+  notes     String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user     User               @relation(fields: [userId], references: [id])
+  team     SportsTeam         @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  expenses SportsExpense[]
+  fees     SportsMatchFee[]
+
+  @@index([userId])
+  @@index([teamId])
+  @@map("sports_matches")
+}
+
+model SportsExpense {
+  id          String   @id @default(cuid())
+  matchId     String
+  accountId   String?
+  description String
+  amount      Decimal  @db.Decimal(18, 2)
+  notes       String?
+  createdAt   DateTime @default(now())
+
+  match   SportsMatch @relation(fields: [matchId], references: [id], onDelete: Cascade)
+  account Account?    @relation(fields: [accountId], references: [id])
+
+  @@index([matchId])
+  @@map("sports_expenses")
+}
+
+model SportsMatchFee {
+  id        String   @id @default(cuid())
+  matchId   String
+  playerId  String
+  accountId String?
+  amount    Decimal  @db.Decimal(18, 2)
+  isPaid    Boolean  @default(false)
+  paidDate  DateTime?
+  notes     String?
+  createdAt DateTime @default(now())
+
+  match   SportsMatch  @relation(fields: [matchId], references: [id], onDelete: Cascade)
+  player  SportsPlayer @relation(fields: [playerId], references: [id], onDelete: Cascade)
+  account Account?     @relation(fields: [accountId], references: [id])
+
+  @@unique([matchId, playerId])
+  @@index([matchId])
+  @@index([playerId])
+  @@map("sports_match_fees")
 }

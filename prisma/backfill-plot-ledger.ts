@@ -82,24 +82,26 @@ async function main() {
   let repayCreated = 0;
   for (const rep of repayments) {
     if (rep.transactions.length > 0) continue;
-    const txType = rep.loan.direction === 'GIVEN' ? 'LOAN_REPAYMENT_RECEIVED' : 'LOAN_REPAYMENT_MADE';
-    const accountField = rep.loan.direction === 'GIVEN'
+    if (!rep.loan) continue;
+    const loan = rep.loan;
+    const txType = loan.direction === 'GIVEN' ? 'LOAN_REPAYMENT_RECEIVED' : 'LOAN_REPAYMENT_MADE';
+    const accountField = loan.direction === 'GIVEN'
       ? { destAccountId: rep.accountId }
       : { sourceAccountId: rep.accountId };
     await prisma.transaction.create({
       data: {
-        userId: rep.loan.userId,
+        userId: loan.userId,
         ...accountField,
         type: txType,
         amount: rep.amount,
-        description: `Loan repayment: ${rep.loan.person?.name || 'Unknown'}`,
+        description: `Loan repayment: ${loan.person?.name || 'Unknown'}`,
         transactionDate: rep.transactionDate,
         loanRepaymentId: rep.id,
         isHistorical: true,
       },
     });
     repayCreated++;
-    console.log(`  ${rep.loan.person?.name} — Rs. ${rep.amount} on ${rep.transactionDate.toISOString().split('T')[0]}`);
+    console.log(`  ${loan.person?.name} — Rs. ${rep.amount} on ${rep.transactionDate.toISOString().split('T')[0]}`);
   }
   console.log(`  Created: ${repayCreated}, Skipped: ${repayments.length - repayCreated}\n`);
 
