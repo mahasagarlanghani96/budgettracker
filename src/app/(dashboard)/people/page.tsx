@@ -12,7 +12,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '
 import { FormField } from '@/components/forms/FormField';
 import { useResourceForm } from '@/hooks/useResourceForm';
 import { personSchema, personUpdateSchema } from '@/lib/validations/schemas';
-import { Contact, Plus, Pencil, Trash2 } from 'lucide-react';
+import { Contact, Plus, Pencil, Trash2, Eye } from 'lucide-react';
+import Link from 'next/link';
 import { useConfirm } from '@/hooks/use-confirm';
 
 interface Person {
@@ -154,7 +155,9 @@ export default function PeoplePage() {
               <TableBody>
                 {persons.map((p) => (
                   <TableRow key={p.id}>
-                    <TableCell className="font-medium">{p.name}</TableCell>
+                    <TableCell className="font-medium">
+                      <Link href={`/people/${p.id}`} className="hover:underline">{p.name}</Link>
+                    </TableCell>
                     <TableCell>{p.relationship || '—'}</TableCell>
                     <TableCell>{p.phone || '—'}</TableCell>
                     <TableCell>{p.email || '—'}</TableCell>
@@ -162,6 +165,9 @@ export default function PeoplePage() {
                     <TableCell><Badge variant={p.isActive ? 'success' : 'secondary'} className="text-xs">{p.isActive ? 'Active' : 'Inactive'}</Badge></TableCell>
                     <TableCell className="text-right">
                       <div className="flex justify-end gap-1">
+                        <Link href={`/people/${p.id}`}>
+                          <Button variant="ghost" size="icon" className="h-7 w-7" aria-label={`View ${p.name}`}><Eye className="h-3.5 w-3.5" /></Button>
+                        </Link>
                         <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => openEdit(p)}><Pencil className="h-3.5 w-3.5" /></Button>
                         <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => handleDelete(p)}><Trash2 className="h-3.5 w-3.5" /></Button>
                       </div>
