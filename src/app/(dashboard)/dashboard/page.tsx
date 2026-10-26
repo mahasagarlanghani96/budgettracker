@@ -115,9 +115,9 @@ function DonutChart({ data }: { data: Array<{ name: string; amount: string }> })
             );
           })}
         </svg>
-        <div className="absolute inset-0 flex flex-col items-center justify-center">
-          <span className="text-[15px] font-display font-bold text-[var(--text-primary)] tabular-nums leading-tight">{formatCurrency(total.toString())}</span>
-          <span className="text-[9px] text-[var(--text-tertiary)] uppercase tracking-wider mt-0.5">this month</span>
+        <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none" style={{ padding: `${strokeW + 4}px` }}>
+          <span className="text-[11px] font-display font-bold text-[var(--text-primary)] tabular-nums leading-tight text-center truncate max-w-full">{formatCurrency(total.toString())}</span>
+          <span className="text-[8px] text-[var(--text-tertiary)] uppercase tracking-wider mt-0.5">this month</span>
         </div>
       </div>
       <div className="space-y-2.5 min-w-0">
