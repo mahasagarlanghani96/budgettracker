@@ -130,28 +130,6 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
         },
       });
 
-      // When totalSlots (memberCount) increases, create new empty entries
-      if (newMemberCount > existing.memberCount) {
-        const currentEntryCount = await tx.committeeEntry.count({ where: { committeeId: id } });
-        const slotsToAdd = newMemberCount - currentEntryCount;
-        if (slotsToAdd > 0) {
-          const last = await tx.committeeEntry.findFirst({
-            where: { committeeId: id },
-            orderBy: { slotNumber: 'desc' },
-          });
-          const nextSlot = (last?.slotNumber || 0) + 1;
-          for (let i = 0; i < slotsToAdd; i++) {
-            await tx.committeeEntry.create({
-              data: {
-                committeeId: id,
-                userId: (session.user as { id: string }).id,
-                slotNumber: nextSlot + i,
-              },
-            });
-          }
-        }
-      }
-
       return updated;
     });
 
