@@ -74,9 +74,20 @@ export default function TransactionsPage() {
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
-  const [filters, setFilters] = useState({ type: '', search: '', from: '', to: '' });
+  const [filters, setFilters] = useState({ type: '', search: '', from: '', to: '', accountId: '' });
   const [searchInput, setSearchInput] = useState('');
   const searchTimer = useRef<ReturnType<typeof setTimeout>>();
+  const [accounts, setAccounts] = useState<Array<{ value: string; label: string }>>([{ value: '', label: 'All Accounts' }]);
+
+  useEffect(() => {
+    fetch('/api/accounts')
+      .then((r) => r.json())
+      .then((res) => {
+        const list = (res.data || []).map((a: { id: string; name: string }) => ({ value: a.id, label: a.name }));
+        setAccounts([{ value: '', label: 'All Accounts' }, ...list]);
+      })
+      .catch(console.error);
+  }, []);
 
   useEffect(() => {
     clearTimeout(searchTimer.current);
@@ -95,6 +106,7 @@ export default function TransactionsPage() {
     if (filters.search) params.set('search', filters.search);
     if (filters.from) params.set('from', filters.from);
     if (filters.to) params.set('to', filters.to);
+    if (filters.accountId) params.set('accountId', filters.accountId);
 
     setLoading(true);
     fetch(`/api/transactions?${params}`)
@@ -137,7 +149,7 @@ export default function TransactionsPage() {
       {/* Filters */}
       <Card>
         <CardContent className="pt-6">
-          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
             <div className="relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-[var(--text-secondary)]" />
               <Input
@@ -157,6 +169,11 @@ export default function TransactionsPage() {
               value={filters.type}
               onChange={(e) => { setFilters({ ...filters, type: e.target.value }); setPage(1); }}
             />
+            <Select
+              options={accounts}
+              value={filters.accountId}
+              onChange={(e) => { setFilters({ ...filters, accountId: e.target.value }); setPage(1); }}
+            />
             <Input
               type="date"
               value={filters.from}
@@ -170,9 +187,9 @@ export default function TransactionsPage() {
               placeholder="To date"
             />
           </div>
-          {(filters.type || filters.search || filters.from || filters.to) && (
+          {(filters.type || filters.search || filters.from || filters.to || filters.accountId) && (
             <div className="mt-3 flex justify-end">
-              <Button variant="outline" size="sm" onClick={() => { setFilters({ type: '', search: '', from: '', to: '' }); setSearchInput(''); setPage(1); }}>
+              <Button variant="outline" size="sm" onClick={() => { setFilters({ type: '', search: '', from: '', to: '', accountId: '' }); setSearchInput(''); setPage(1); }}>
                 <X className="h-3.5 w-3.5 mr-1" /> Clear Filters
               </Button>
             </div>
