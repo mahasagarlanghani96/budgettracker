@@ -53,13 +53,21 @@ export async function GET(request: NextRequest, { params }: Params) {
       _count: true,
     });
 
+    const INFLOW_TYPES = [
+      'INCOME', 'LOAN_REPAYMENT_RECEIVED', 'LOAN_TAKEN',
+      'COMMITTEE_RECEIVING', 'INVESTMENT_RETURN', 'SAVINGS_WITHDRAWAL',
+    ];
+    const OUTFLOW_TYPES = [
+      'EXPENSE', 'LOAN_GIVEN', 'LOAN_REPAYMENT_MADE',
+      'COMMITTEE_CONTRIBUTION', 'INVESTMENT', 'SAVINGS_DEPOSIT', 'PLOT_PAYMENT',
+    ];
     let totalInflow = new Decimal(0);
     let totalOutflow = new Decimal(0);
     for (const g of allTxAmounts) {
       const amt = new Decimal(g._sum.amount?.toString() || '0');
-      if (['INCOME', 'LOAN_REPAYMENT_RECEIVED', 'COMMITTEE_RECEIVING'].includes(g.type)) {
+      if (INFLOW_TYPES.includes(g.type)) {
         totalInflow = totalInflow.plus(amt);
-      } else {
+      } else if (OUTFLOW_TYPES.includes(g.type)) {
         totalOutflow = totalOutflow.plus(amt);
       }
     }

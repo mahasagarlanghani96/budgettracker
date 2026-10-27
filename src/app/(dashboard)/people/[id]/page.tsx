@@ -169,7 +169,7 @@ export default function PersonDetailPage() {
           <CardContent className="pt-6 flex items-center gap-3">
             <ArrowDownRight className="h-5 w-5 text-[var(--emerald)] shrink-0" />
             <div>
-              <p className="text-xs text-[var(--text-secondary)]">Total Inflow</p>
+              <p className="text-xs text-[var(--text-secondary)]">Received from {data.name.split(' ')[0]}</p>
               <p className="text-xl font-bold tabular-nums">{formatCurrency(s.totalInflow)}</p>
             </div>
           </CardContent>
@@ -178,7 +178,7 @@ export default function PersonDetailPage() {
           <CardContent className="pt-6 flex items-center gap-3">
             <ArrowUpRight className="h-5 w-5 text-[var(--coral)] shrink-0" />
             <div>
-              <p className="text-xs text-[var(--text-secondary)]">Total Outflow</p>
+              <p className="text-xs text-[var(--text-secondary)]">Paid to {data.name.split(' ')[0]}</p>
               <p className="text-xl font-bold tabular-nums">{formatCurrency(s.totalOutflow)}</p>
             </div>
           </CardContent>
