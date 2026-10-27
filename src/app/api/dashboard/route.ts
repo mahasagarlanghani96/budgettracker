@@ -4,6 +4,18 @@ import { requireAuth } from '@/lib/auth';
 import { getTotalBalance, getOutstandingReceivables, getOutstandingPayables } from '@/lib/calculations/balance';
 import Decimal from 'decimal.js';
 
+const INFLOW_TYPES: any[] = [
+  'INCOME', 'LOAN_REPAYMENT_RECEIVED', 'COMMITTEE_RECEIVING',
+  'SAVINGS_WITHDRAWAL', 'INVESTMENT_RETURN', 'LOAN_TAKEN', 'SPORTS_FEE_RECEIVED',
+];
+const OUTFLOW_TYPES: any[] = [
+  'EXPENSE', 'LOAN_GIVEN', 'LOAN_REPAYMENT_MADE', 'COMMITTEE_CONTRIBUTION',
+  'SAVINGS_DEPOSIT', 'INVESTMENT', 'SPORTS_EXPENSE', 'PLOT_PAYMENT',
+];
+
+const SPENDING_TYPES: any[] = ['EXPENSE', 'COMMITTEE_CONTRIBUTION', 'SPORTS_EXPENSE', 'PLOT_PAYMENT'];
+const EARNING_TYPES: any[] = ['INCOME', 'SPORTS_FEE_RECEIVED', 'COMMITTEE_RECEIVING'];
+
 export async function GET() {
   try {
     const session = await requireAuth();
@@ -13,7 +25,6 @@ export async function GET() {
     const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
     const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59);
 
-    // Run all queries in parallel
     const [
       totalBalance,
       receivables,
@@ -26,6 +37,7 @@ export async function GET() {
       activeCommittees,
       savingsGoals,
       expenseByCategory,
+      incomeByType,
       allCategories,
       last7DaysTxns,
     ] = await Promise.all([
@@ -38,7 +50,7 @@ export async function GET() {
           userId,
           isDeleted: false,
           transactionDate: { gte: startOfMonth, lte: endOfMonth },
-          type: { in: ['INCOME', 'LOAN_REPAYMENT_RECEIVED', 'COMMITTEE_RECEIVING', 'SAVINGS_WITHDRAWAL', 'INVESTMENT_RETURN', 'LOAN_TAKEN', 'SPORTS_FEE_RECEIVED'] },
+          type: { in: INFLOW_TYPES },
         },
         _sum: { amount: true },
       }),
@@ -48,7 +60,7 @@ export async function GET() {
           userId,
           isDeleted: false,
           transactionDate: { gte: startOfMonth, lte: endOfMonth },
-          type: { in: ['EXPENSE', 'LOAN_GIVEN', 'LOAN_REPAYMENT_MADE', 'COMMITTEE_CONTRIBUTION', 'SAVINGS_DEPOSIT', 'INVESTMENT', 'SPORTS_EXPENSE'] },
+          type: { in: OUTFLOW_TYPES },
         },
         _sum: { amount: true },
       }),
@@ -71,29 +83,41 @@ export async function GET() {
         },
         take: 5,
       }),
-      // Expense by category (current month) for donut chart
+      // Spending breakdown by category (current month)
       prisma.transaction.groupBy({
         by: ['categoryId'],
         where: {
           userId,
           isDeleted: false,
           transactionDate: { gte: startOfMonth, lte: endOfMonth },
-          type: 'EXPENSE',
+          type: { in: SPENDING_TYPES },
           categoryId: { not: null },
         },
         _sum: { amount: true },
         orderBy: { _sum: { amount: 'desc' } },
         take: 6,
       }),
+      // Income breakdown by type (current month)
+      prisma.transaction.groupBy({
+        by: ['type', 'categoryId'],
+        where: {
+          userId,
+          isDeleted: false,
+          transactionDate: { gte: startOfMonth, lte: endOfMonth },
+          type: { in: EARNING_TYPES },
+        },
+        _sum: { amount: true },
+        orderBy: { _sum: { amount: 'desc' } },
+      }),
       // Category names lookup (include system defaults where userId is null)
       prisma.category.findMany({ where: { OR: [{ userId }, { userId: null }] }, select: { id: true, name: true } }),
-      // Last 7 days income vs expense for trend mini-chart
+      // Last 7 days all inflow + outflow for trend chart
       prisma.transaction.findMany({
         where: {
           userId,
           isDeleted: false,
           transactionDate: { gte: new Date(now.getFullYear(), now.getMonth(), now.getDate() - 6) },
-          type: { in: ['INCOME', 'EXPENSE'] },
+          type: { in: [...INFLOW_TYPES, ...OUTFLOW_TYPES] },
         },
         select: { type: true, amount: true, transactionDate: true },
         orderBy: { transactionDate: 'asc' },
@@ -133,7 +157,25 @@ export async function GET() {
       amount: (g._sum.amount || 0).toString(),
     }));
 
-    // Build 7-day trend
+    // Build income breakdown — group by category name or type label
+    const TYPE_LABELS: Record<string, string> = {
+      INCOME: 'Income',
+      SPORTS_FEE_RECEIVED: 'Sports Fees',
+      COMMITTEE_RECEIVING: 'Committee',
+    };
+    const incomeMap = new Map<string, number>();
+    for (const g of incomeByType as Array<{ type: string; categoryId: string | null; _sum: { amount: { toString(): string } | null } }>) {
+      const label = (g.categoryId && catMap.get(g.categoryId)) || TYPE_LABELS[g.type] || g.type.replace(/_/g, ' ');
+      const amt = parseFloat((g._sum.amount || 0).toString());
+      incomeMap.set(label, (incomeMap.get(label) || 0) + amt);
+    }
+    const incomeByCat = Array.from(incomeMap.entries())
+      .map(([name, amount]) => ({ name, amount: amount.toString() }))
+      .sort((a, b) => parseFloat(b.amount) - parseFloat(a.amount))
+      .slice(0, 6);
+
+    // Build 7-day trend with all inflow/outflow types
+    const inflowSet = new Set(INFLOW_TYPES);
     const dayMap = new Map<string, { income: number; expense: number }>();
     for (let i = 6; i >= 0; i--) {
       const d = new Date(now.getFullYear(), now.getMonth(), now.getDate() - i);
@@ -143,8 +185,12 @@ export async function GET() {
       const day = new Date(tx.transactionDate).toISOString().split('T')[0];
       const entry = dayMap.get(day);
       if (entry) {
-        if (tx.type === 'INCOME') entry.income += parseFloat(tx.amount.toString());
-        else entry.expense += parseFloat(tx.amount.toString());
+        const amt = parseFloat(tx.amount.toString());
+        if (inflowSet.has(tx.type)) {
+          entry.income += amt;
+        } else {
+          entry.expense += amt;
+        }
       }
     }
     const weeklyTrend = Array.from(dayMap.entries()).map(([date, vals]) => ({
@@ -166,6 +212,7 @@ export async function GET() {
         recentTransactions,
         savingsGoals: savingsWithProgress,
         expenseByCategory: expenseByCat,
+        incomeByCategory: incomeByCat,
         weeklyTrend,
       },
     });

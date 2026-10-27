@@ -47,11 +47,13 @@ interface DashboardData {
     progress: number;
   }>;
   expenseByCategory: Array<{ name: string; amount: string }>;
+  incomeByCategory: Array<{ name: string; amount: string }>;
   weeklyTrend: Array<{ date: string; income: number; expense: number }>;
 }
 
-const POSITIVE_TYPES = ['INCOME', 'LOAN_REPAYMENT_RECEIVED', 'COMMITTEE_RECEIVING', 'SAVINGS_WITHDRAWAL', 'INVESTMENT_RETURN', 'LOAN_TAKEN'];
-const DONUT_COLORS = ['var(--emerald)', 'var(--blue)', 'var(--coral)', 'var(--amber)', 'var(--violet)', 'var(--teal)'];
+const POSITIVE_TYPES = ['INCOME', 'LOAN_REPAYMENT_RECEIVED', 'COMMITTEE_RECEIVING', 'SAVINGS_WITHDRAWAL', 'INVESTMENT_RETURN', 'LOAN_TAKEN', 'SPORTS_FEE_RECEIVED'];
+const EXPENSE_DONUT_COLORS = ['var(--coral)', 'var(--amber)', 'var(--violet)', 'var(--blue)', 'var(--teal)', '#e879f9'];
+const INCOME_DONUT_COLORS = ['var(--emerald)', 'var(--teal)', 'var(--blue)', 'var(--amber)', 'var(--violet)', '#34d399'];
 
 function getGreeting() {
   const h = new Date().getHours();
@@ -85,7 +87,7 @@ function SavingsRing({ progress, size = 110 }: { progress: number; size?: number
   );
 }
 
-function DonutChart({ data }: { data: Array<{ name: string; amount: string }> }) {
+function DonutChart({ data, colors, centerLabel }: { data: Array<{ name: string; amount: string }>; colors: string[]; centerLabel?: string }) {
   const total = data.reduce((s, d) => s + parseFloat(d.amount), 0);
   if (total === 0) return null;
   const size = 150;
@@ -106,7 +108,7 @@ function DonutChart({ data }: { data: Array<{ name: string; amount: string }> })
               <circle
                 key={i}
                 cx={cx} cy={cy} r={r} fill="none"
-                stroke={DONUT_COLORS[i % DONUT_COLORS.length]}
+                stroke={colors[i % colors.length]}
                 strokeWidth={strokeW}
                 strokeDasharray={`${dashLen} ${circumference - dashLen}`}
                 strokeDashoffset={dashOffset}
@@ -117,7 +119,7 @@ function DonutChart({ data }: { data: Array<{ name: string; amount: string }> })
         </svg>
         <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none" style={{ padding: `${strokeW + 4}px` }}>
           <span className="text-[11px] font-display font-bold text-[var(--text-primary)] tabular-nums leading-tight text-center truncate max-w-full">{formatCurrency(total.toString())}</span>
-          <span className="text-[8px] text-[var(--text-tertiary)] uppercase tracking-wider mt-0.5">this month</span>
+          <span className="text-[8px] text-[var(--text-tertiary)] uppercase tracking-wider mt-0.5">{centerLabel || 'this month'}</span>
         </div>
       </div>
       <div className="space-y-2.5 min-w-0">
@@ -125,7 +127,7 @@ function DonutChart({ data }: { data: Array<{ name: string; amount: string }> })
           const pct = Math.round((parseFloat(d.amount) / total) * 100);
           return (
             <div key={i} className="flex items-center gap-2">
-              <div className="h-2.5 w-2.5 rounded-full shrink-0" style={{ background: DONUT_COLORS[i % DONUT_COLORS.length] }} />
+              <div className="h-2.5 w-2.5 rounded-full shrink-0" style={{ background: colors[i % colors.length] }} />
               <span className="text-xs text-[var(--text-secondary)] truncate flex-1">{d.name}</span>
               <span className="text-[10px] text-[var(--text-tertiary)] tabular-nums">{pct}%</span>
               <span className="text-xs font-semibold tabular-nums text-[var(--text-primary)]">{formatCurrency(d.amount)}</span>
@@ -325,7 +327,7 @@ export default function DashboardPage() {
         })}
       </div>
 
-      {/* Charts row: Donut + Weekly Trend */}
+      {/* Charts row: Spending + Income Breakdown */}
       <div className="grid gap-6 lg:grid-cols-2 animate-in-view stagger-5">
         {/* Spending Breakdown */}
         <div className="glass">
@@ -337,31 +339,46 @@ export default function DashboardPage() {
             {data.expenseByCategory.length === 0 ? (
               <p className="text-sm text-[var(--text-tertiary)] py-8 text-center">No expenses this month</p>
             ) : (
-              <DonutChart data={data.expenseByCategory} />
+              <DonutChart data={data.expenseByCategory} colors={EXPENSE_DONUT_COLORS} centerLabel="spent" />
             )}
           </div>
         </div>
 
-        {/* Weekly Trend */}
+        {/* Income Breakdown */}
         <div className="glass">
           <div className="flex items-center justify-between p-6 pb-4">
-            <h2 className="text-base font-display font-semibold text-[var(--text-primary)]">7-Day Trend</h2>
-            <Link href="/reports" className="text-sm text-[var(--emerald)] hover:underline">Reports</Link>
+            <h2 className="text-base font-display font-semibold text-[var(--text-primary)]">Income Breakdown</h2>
+            <Link href="/reports" className="text-sm text-[var(--emerald)] hover:underline">Details</Link>
           </div>
           <div className="px-6 pb-6">
-            {data.weeklyTrend.every(d => d.income === 0 && d.expense === 0) ? (
-              <p className="text-sm text-[var(--text-tertiary)] py-8 text-center">No activity this week</p>
+            {data.incomeByCategory.length === 0 ? (
+              <p className="text-sm text-[var(--text-tertiary)] py-8 text-center">No income this month</p>
             ) : (
-              <WeeklyTrendChart data={data.weeklyTrend} />
+              <DonutChart data={data.incomeByCategory} colors={INCOME_DONUT_COLORS} centerLabel="earned" />
             )}
           </div>
+        </div>
+      </div>
+
+      {/* Weekly Trend */}
+      <div className="glass animate-in-view stagger-6">
+        <div className="flex items-center justify-between p-6 pb-4">
+          <h2 className="text-base font-display font-semibold text-[var(--text-primary)]">7-Day Trend</h2>
+          <Link href="/reports" className="text-sm text-[var(--emerald)] hover:underline">Reports</Link>
+        </div>
+        <div className="px-6 pb-6">
+          {data.weeklyTrend.every(d => d.income === 0 && d.expense === 0) ? (
+            <p className="text-sm text-[var(--text-tertiary)] py-8 text-center">No activity this week</p>
+          ) : (
+            <WeeklyTrendChart data={data.weeklyTrend} />
+          )}
         </div>
       </div>
 
       {/* Transactions + Savings */}
       <div className="grid gap-6 lg:grid-cols-2">
         {/* Recent Transactions */}
-        <div className="glass animate-in-view stagger-6">
+        <div className="glass animate-in-view stagger-7">
           <div className="flex items-center justify-between p-6 pb-4">
             <h2 className="text-base font-display font-semibold text-[var(--text-primary)]">Recent Transactions</h2>
             <Link href="/transactions" className="text-sm text-[var(--emerald)] hover:underline">View all</Link>
@@ -390,7 +407,7 @@ export default function DashboardPage() {
                         </p>
                       </div>
                       <span className="text-sm font-semibold tabular-nums ml-2 whitespace-nowrap" style={{ color: amountColor }}>
-                        {isPositive ? '+' : '-'}{formatCurrency(tx.amount.toString())}
+                        {isPositive ? '+' : isTransfer ? '' : '-'}{formatCurrency(tx.amount.toString())}
                       </span>
                     </div>
                   );
@@ -401,7 +418,7 @@ export default function DashboardPage() {
         </div>
 
         {/* Savings Goals */}
-        <div className="glass animate-in-view stagger-7">
+        <div className="glass animate-in-view stagger-8">
           <div className="flex items-center justify-between p-6 pb-4">
             <h2 className="text-base font-display font-semibold text-[var(--text-primary)]">Savings Goals</h2>
             <Link href="/savings" className="text-sm text-[var(--emerald)] hover:underline">View all</Link>
