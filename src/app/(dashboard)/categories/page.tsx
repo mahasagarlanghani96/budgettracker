@@ -14,6 +14,7 @@ import { useResourceForm } from '@/hooks/useResourceForm';
 import { categorySchema, categoryUpdateSchema } from '@/lib/validations/schemas';
 import { Tags, Plus, Pencil, Trash2 } from 'lucide-react';
 import { useConfirm } from '@/hooks/use-confirm';
+import { ListPagination, slicePage } from '@/components/shared/list-pagination';
 
 interface Category {
   id: string;
@@ -35,6 +36,8 @@ const emptyEdit = { name: '', group: 'EXPENSE', icon: '', isActive: true };
 export default function CategoriesPage() {
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(20);
   const [showForm, setShowForm] = useState(false);
   const [editing, setEditing] = useState<Category | null>(null);
   const [deleteError, setDeleteError] = useState<string | null>(null);
@@ -104,6 +107,8 @@ export default function CategoriesPage() {
     }
   }
 
+  const paginatedItems = slicePage(categories, page, pageSize);
+
   if (loading) return <PageLoading />;
 
   const sections: Array<{ group: 'INCOME' | 'EXPENSE'; title: string }> = [
@@ -125,9 +130,10 @@ export default function CategoriesPage() {
       {categories.length === 0 ? (
         <EmptyState icon={<Tags className="h-12 w-12" />} title="No categories" description="Create categories to organise your income and expenses" action={<Button onClick={openCreate}>Add Category</Button>} />
       ) : (
+        <>
         <div className="grid gap-4 lg:grid-cols-2">
           {sections.map(({ group, title }) => {
-            const items = categories.filter((c) => c.group === group);
+            const items = paginatedItems.filter((c) => c.group === group);
             return (
               <Card key={group}>
                 <CardHeader><CardTitle className="text-base">{title} ({items.length})</CardTitle></CardHeader>
@@ -176,6 +182,8 @@ export default function CategoriesPage() {
             );
           })}
         </div>
+        <ListPagination page={page} pageSize={pageSize} totalItems={categories.length} onPageChange={setPage} onPageSizeChange={setPageSize} />
+        </>
       )}
 
       {ConfirmDialog}

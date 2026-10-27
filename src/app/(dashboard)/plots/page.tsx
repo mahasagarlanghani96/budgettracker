@@ -15,6 +15,7 @@ import { plotSchema, plotUpdateSchema, plotPaymentInputSchema } from '@/lib/vali
 import { formatCurrency, formatDate } from '@/lib/utils';
 import { useConfirm } from '@/hooks/use-confirm';
 import { MapPin, Plus, Banknote, Pencil, Trash2, History } from 'lucide-react';
+import { ListPagination, slicePage } from '@/components/shared/list-pagination';
 
 interface PlotPayment {
   id: string;
@@ -42,6 +43,8 @@ export default function PlotsPage() {
   const [plots, setPlots] = useState<Plot[]>([]);
   const [accounts, setAccounts] = useState<Array<{ id: string; name: string }>>([]);
   const [loading, setLoading] = useState(true);
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(20);
   const [showCreate, setShowCreate] = useState(false);
   const [showPayment, setShowPayment] = useState<string | null>(null);
   const [editing, setEditing] = useState<Plot | null>(null);
@@ -147,6 +150,8 @@ export default function PlotsPage() {
     }
   }
 
+  const paginatedItems = slicePage(plots, page, pageSize);
+
   if (loading) return <PageLoading />;
 
   const accountOptions = accounts.map((a) => ({ value: a.id, label: a.name }));
@@ -162,8 +167,9 @@ export default function PlotsPage() {
       {plots.length === 0 ? (
         <EmptyState icon={<MapPin className="h-12 w-12" />} title="No plots" description="Track your property plot payments" action={<Button onClick={() => setShowCreate(true)}>Add Plot</Button>} />
       ) : (
+        <>
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {plots.map((plot) => (
+          {paginatedItems.map((plot) => (
             <Card key={plot.id} className="h-full">
               <CardHeader className="pb-2">
                 <div className="flex items-center justify-between">
@@ -204,6 +210,8 @@ export default function PlotsPage() {
             </Card>
           ))}
         </div>
+        <ListPagination page={page} pageSize={pageSize} totalItems={plots.length} onPageChange={setPage} onPageSizeChange={setPageSize} />
+        </>
       )}
 
       {/* Create Plot Modal */}

@@ -15,6 +15,7 @@ import { targetSchema } from '@/lib/validations/schemas';
 import { formatCurrency } from '@/lib/utils';
 import { useConfirm } from '@/hooks/use-confirm';
 import { Target, Plus, Pencil, Trash2 } from 'lucide-react';
+import { ListPagination, slicePage } from '@/components/shared/list-pagination';
 
 interface FinancialTarget {
   id: string;
@@ -57,6 +58,8 @@ export default function TargetsPage() {
   const [targets, setTargets] = useState<FinancialTarget[]>([]);
   const [categories, setCategories] = useState<{ id: string; name: string }[]>([]);
   const [loading, setLoading] = useState(true);
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(20);
   const [showCreate, setShowCreate] = useState(false);
   const [editing, setEditing] = useState<FinancialTarget | null>(null);
   const { confirm, ConfirmDialog } = useConfirm();
@@ -113,6 +116,8 @@ export default function TargetsPage() {
     CUSTOM: 'Custom',
   };
 
+  const paginatedItems = slicePage(targets, page, pageSize);
+
   if (loading) return <PageLoading />;
 
   const categoryOptions = categories.map((c) => ({ value: c.id, label: c.name }));
@@ -128,8 +133,9 @@ export default function TargetsPage() {
       {targets.length === 0 ? (
         <EmptyState icon={<Target className="h-12 w-12" />} title="No targets set" description="Set financial targets to track your spending and saving goals" action={<Button onClick={() => setShowCreate(true)}>Create Target</Button>} />
       ) : (
+        <>
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {targets.map((t) => {
+          {paginatedItems.map((t) => {
             const isMax = t.type.startsWith('MAX');
             const progressColor = t.onTrack
               ? 'bg-[var(--emerald)]'
@@ -168,6 +174,8 @@ export default function TargetsPage() {
             );
           })}
         </div>
+        <ListPagination page={page} pageSize={pageSize} totalItems={targets.length} onPageChange={setPage} onPageSizeChange={setPageSize} />
+        </>
       )}
 
       {/* Create Target Modal */}

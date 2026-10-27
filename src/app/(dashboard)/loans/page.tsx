@@ -16,6 +16,7 @@ import { loanSchema } from '@/lib/validations/schemas';
 import { formatCurrency, formatDate } from '@/lib/utils';
 import { HandCoins, Plus, ArrowUpRight, ArrowDownRight, X } from 'lucide-react';
 import Link from 'next/link';
+import { ListPagination, slicePage } from '@/components/shared/list-pagination';
 
 interface Loan {
   id: string;
@@ -50,6 +51,8 @@ export default function LoansPage() {
   const [loans, setLoans] = useState<Loan[]>([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState({ direction: '', status: '' });
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(20);
   const [showCreate, setShowCreate] = useState(false);
   const [persons, setPersons] = useState<Array<{ id: string; name: string }>>([]);
   const [accounts, setAccounts] = useState<Array<{ id: string; name: string }>>([]);
@@ -96,6 +99,7 @@ export default function LoansPage() {
 
   const totalReceivable = loans.filter((l) => l.direction === 'GIVEN' && l.status === 'ACTIVE').reduce((s, l) => s + parseFloat(l.remainingAmount), 0);
   const totalPayable = loans.filter((l) => l.direction === 'TAKEN' && l.status === 'ACTIVE').reduce((s, l) => s + parseFloat(l.remainingAmount), 0);
+  const paginatedLoans = slicePage(loans, page, pageSize);
 
   if (loading && loans.length === 0) return <PageLoading />;
 
@@ -155,8 +159,9 @@ export default function LoansPage() {
           action={<Button onClick={() => { reset(getInitialForm()); setShowCreate(true); }}>Add Loan</Button>}
         />
       ) : (
+        <>
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {loans.map((loan) => (
+          {paginatedLoans.map((loan) => (
             <Link key={loan.id} href={`/loans/${loan.id}`}>
               <Card className="hover:shadow-md transition-shadow cursor-pointer h-full">
                 <CardHeader className="pb-2">
@@ -193,6 +198,8 @@ export default function LoansPage() {
             </Link>
           ))}
         </div>
+        <ListPagination page={page} pageSize={pageSize} totalItems={loans.length} onPageChange={setPage} onPageSizeChange={setPageSize} />
+        </>
       )}
 
       {/* Create Loan Modal */}

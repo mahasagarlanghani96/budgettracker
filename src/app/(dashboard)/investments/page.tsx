@@ -16,6 +16,7 @@ import { investmentSchema, investmentUpdateSchema, investmentProfitSchema, inves
 import { formatCurrency, formatDate } from '@/lib/utils';
 import { useConfirm } from '@/hooks/use-confirm';
 import { TrendingUp, Plus, ArrowUp, ArrowDown, Pencil, Trash2, DollarSign, History, XCircle } from 'lucide-react';
+import { ListPagination, slicePage } from '@/components/shared/list-pagination';
 
 interface Investment {
   id: string;
@@ -64,6 +65,8 @@ export default function InvestmentsPage() {
   const [profitHistory, setProfitHistory] = useState<ProfitEntry[]>([]);
   const [historyLoading, setHistoryLoading] = useState(false);
   const [closing, setClosing] = useState<Investment | null>(null);
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(20);
   const { confirm, ConfirmDialog } = useConfirm();
 
   const fetchInvestments = useCallback(() => {
@@ -201,6 +204,7 @@ export default function InvestmentsPage() {
   const totalCurrent = activeInvestments.reduce((s, i) => s + parseFloat(i.currentValue.toString()), 0);
   const totalPL = totalCurrent - totalInvested;
   const accountOptions = accounts.map((a) => ({ value: a.id, label: a.name }));
+  const paginatedInvestments = slicePage(investments, page, pageSize);
 
   return (
     <div className="space-y-6">
@@ -222,7 +226,7 @@ export default function InvestmentsPage() {
         <>
         {/* Mobile card view */}
         <div className="space-y-3 md:hidden">
-          {investments.map((inv) => {
+          {paginatedInvestments.map((inv) => {
             const pl = parseFloat(inv.profitLoss);
             return (
               <Card key={inv.id}>
@@ -267,7 +271,7 @@ export default function InvestmentsPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {investments.map((inv) => {
+                {paginatedInvestments.map((inv) => {
                   const pl = parseFloat(inv.profitLoss);
                   return (
                     <TableRow key={inv.id}>
@@ -303,6 +307,7 @@ export default function InvestmentsPage() {
             </Table>
           </CardContent>
         </Card>
+        <ListPagination page={page} pageSize={pageSize} totalItems={investments.length} onPageChange={setPage} onPageSizeChange={setPageSize} />
         </>
       )}
 

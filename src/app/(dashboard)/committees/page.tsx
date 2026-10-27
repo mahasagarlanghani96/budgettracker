@@ -8,6 +8,7 @@ import { PageLoading, EmptyState } from '@/components/ui/loading';
 import { formatCurrency, formatDate } from '@/lib/utils';
 import { Users, Plus } from 'lucide-react';
 import Link from 'next/link';
+import { ListPagination, slicePage } from '@/components/shared/list-pagination';
 
 interface Committee {
   id: string;
@@ -24,6 +25,8 @@ interface Committee {
 export default function CommitteesPage() {
   const [committees, setCommittees] = useState<Committee[]>([]);
   const [loading, setLoading] = useState(true);
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(20);
 
   useEffect(() => {
     fetch('/api/committees')
@@ -32,6 +35,8 @@ export default function CommitteesPage() {
       .catch(console.error)
       .finally(() => setLoading(false));
   }, []);
+
+  const paginatedCommittees = slicePage(committees, page, pageSize);
 
   if (loading) return <PageLoading />;
 
@@ -52,8 +57,9 @@ export default function CommitteesPage() {
           action={<Link href="/committees/new"><Button>Create Committee</Button></Link>}
         />
       ) : (
+        <>
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {committees.map((c) => (
+          {paginatedCommittees.map((c) => (
             <Link key={c.id} href={`/committees/${c.id}`}>
               <Card className="hover:shadow-md transition-shadow cursor-pointer h-full">
                 <CardHeader className="pb-2">
@@ -88,6 +94,8 @@ export default function CommitteesPage() {
             </Link>
           ))}
         </div>
+        <ListPagination page={page} pageSize={pageSize} totalItems={committees.length} onPageChange={setPage} onPageSizeChange={setPageSize} />
+        </>
       )}
     </div>
   );

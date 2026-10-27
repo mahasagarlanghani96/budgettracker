@@ -15,6 +15,7 @@ import { personSchema, personUpdateSchema } from '@/lib/validations/schemas';
 import { Contact, Plus, Pencil, Trash2, Eye } from 'lucide-react';
 import Link from 'next/link';
 import { useConfirm } from '@/hooks/use-confirm';
+import { ListPagination, slicePage } from '@/components/shared/list-pagination';
 
 interface Person {
   id: string;
@@ -46,6 +47,8 @@ function usageText(p: Person) {
 export default function PeoplePage() {
   const [persons, setPersons] = useState<Person[]>([]);
   const [loading, setLoading] = useState(true);
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(20);
   const [showForm, setShowForm] = useState(false);
   const [editing, setEditing] = useState<Person | null>(null);
   const [deleteError, setDeleteError] = useState<string | null>(null);
@@ -122,6 +125,8 @@ export default function PeoplePage() {
     }
   }
 
+  const paginatedItems = slicePage(persons, page, pageSize);
+
   if (loading) return <PageLoading />;
 
   return (
@@ -141,7 +146,7 @@ export default function PeoplePage() {
         <>
         {/* Mobile card view */}
         <div className="space-y-3 md:hidden">
-          {persons.map((p) => (
+          {paginatedItems.map((p) => (
             <Link key={p.id} href={`/people/${p.id}`}>
               <Card className="hover:shadow-md transition-shadow cursor-pointer">
                 <CardContent className="pt-4 pb-3">
@@ -176,7 +181,7 @@ export default function PeoplePage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {persons.map((p) => (
+                {paginatedItems.map((p) => (
                   <TableRow key={p.id}>
                     <TableCell className="font-medium">
                       <Link href={`/people/${p.id}`} className="hover:underline">{p.name}</Link>
@@ -201,6 +206,7 @@ export default function PeoplePage() {
             </Table>
           </CardContent>
         </Card>
+        <ListPagination page={page} pageSize={pageSize} totalItems={persons.length} onPageChange={setPage} onPageSizeChange={setPageSize} />
         </>
       )}
 

@@ -17,6 +17,7 @@ import { formatCurrency, formatDate } from '@/lib/utils';
 import { useConfirm } from '@/hooks/use-confirm';
 import { Trophy, Plus, Pencil, Trash2, Eye, Users, Swords, CheckCircle } from 'lucide-react';
 import Link from 'next/link';
+import { ListPagination, slicePage } from '@/components/shared/list-pagination';
 
 interface SportsTeam {
   id: string;
@@ -55,6 +56,8 @@ export default function SportsPage() {
   const [teams, setTeams] = useState<SportsTeam[]>([]);
   const [matches, setMatches] = useState<SportsMatch[]>([]);
   const [loading, setLoading] = useState(true);
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(20);
   const [activeTab, setActiveTab] = useState<'teams' | 'matches'>('teams');
   const [showCreateTeam, setShowCreateTeam] = useState(false);
   const [editingTeam, setEditingTeam] = useState<SportsTeam | null>(null);
@@ -249,6 +252,9 @@ export default function SportsPage() {
     }
   }
 
+  const paginatedTeams = slicePage(teams, page, pageSize);
+  const paginatedMatches = slicePage(matches, page, pageSize);
+
   if (loading) return <PageLoading />;
 
   const teamOptions = teams.map((t) => ({ value: t.id, label: t.name }));
@@ -276,14 +282,14 @@ export default function SportsPage() {
       <div className="flex gap-2 border-b">
         <button
           className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${activeTab === 'teams' ? 'border-primary text-primary' : 'border-transparent text-[var(--text-secondary)] hover:text-foreground'}`}
-          onClick={() => setActiveTab('teams')}
+          onClick={() => { setActiveTab('teams'); setPage(1); }}
         >
           <Users className="h-4 w-4 inline mr-1.5" />
           Teams
         </button>
         <button
           className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${activeTab === 'matches' ? 'border-primary text-primary' : 'border-transparent text-[var(--text-secondary)] hover:text-foreground'}`}
-          onClick={() => setActiveTab('matches')}
+          onClick={() => { setActiveTab('matches'); setPage(1); }}
         >
           <Swords className="h-4 w-4 inline mr-1.5" />
           Matches
@@ -301,8 +307,9 @@ export default function SportsPage() {
               action={<Button onClick={() => { createTeamForm.reset(); setShowCreateTeam(true); }}>Create Team</Button>}
             />
           ) : (
+            <>
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-              {teams.map((team) => (
+              {paginatedTeams.map((team) => (
                 <Card key={team.id} className={`h-full ${!team.isActive ? 'opacity-50' : ''}`}>
                   <CardHeader className="pb-2">
                     <div className="flex items-center justify-between">
@@ -337,6 +344,8 @@ export default function SportsPage() {
                 </Card>
               ))}
             </div>
+            <ListPagination page={page} pageSize={pageSize} totalItems={teams.length} onPageChange={setPage} onPageSizeChange={setPageSize} />
+            </>
           )}
         </>
       )}
@@ -358,6 +367,7 @@ export default function SportsPage() {
               }
             />
           ) : (
+            <>
             <div className="overflow-x-auto">
               <Table>
                 <TableHeader>
@@ -373,7 +383,7 @@ export default function SportsPage() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {matches.map((match) => {
+                  {paginatedMatches.map((match) => {
                     const total = match.totalFeeCount ?? 0;
                     const paid = match.paidFeeCount ?? 0;
                     const allPaid = total > 0 && paid === total;
@@ -418,6 +428,8 @@ export default function SportsPage() {
                 </TableBody>
               </Table>
             </div>
+            <ListPagination page={page} pageSize={pageSize} totalItems={matches.length} onPageChange={setPage} onPageSizeChange={setPageSize} />
+            </>
           )}
         </>
       )}

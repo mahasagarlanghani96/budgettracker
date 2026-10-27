@@ -12,6 +12,7 @@ import { formatCurrency, formatDate } from '@/lib/utils';
 import { Plus, Search, ArrowLeftRight, Pencil, Trash2, Lock, AlertCircle, X } from 'lucide-react';
 import Link from 'next/link';
 import { useConfirm } from '@/hooks/use-confirm';
+import { ListPagination } from '@/components/shared/list-pagination';
 
 // Editable types: plain ledger entries + committee/plot types (the API now
 // syncs the linked module record on edit/delete).  Loan/Savings/Investment
@@ -73,7 +74,8 @@ export default function TransactionsPage() {
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(1);
-  const [totalPages, setTotalPages] = useState(1);
+  const [pageSize, setPageSize] = useState(20);
+  const [totalItems, setTotalItems] = useState(0);
   const [filters, setFilters] = useState({ type: '', search: '', from: '', to: '', accountId: '' });
   const [searchInput, setSearchInput] = useState('');
   const searchTimer = useRef<ReturnType<typeof setTimeout>>();
@@ -101,7 +103,11 @@ export default function TransactionsPage() {
   const fetchTransactions = useCallback(() => {
     const params = new URLSearchParams();
     params.set('page', page.toString());
-    params.set('limit', '25');
+    if (pageSize === 0) {
+      params.set('limit', '10000');
+    } else {
+      params.set('limit', pageSize.toString());
+    }
     if (filters.type) params.set('type', filters.type);
     if (filters.search) params.set('search', filters.search);
     if (filters.from) params.set('from', filters.from);
@@ -113,11 +119,11 @@ export default function TransactionsPage() {
       .then((r) => r.json())
       .then((res) => {
         setTransactions(res.data || []);
-        setTotalPages(res.pagination?.totalPages || 1);
+        setTotalItems(res.pagination?.total || res.data?.length || 0);
       })
       .catch(console.error)
       .finally(() => setLoading(false));
-  }, [page, filters]);
+  }, [page, pageSize, filters]);
 
   useEffect(() => { fetchTransactions(); }, [fetchTransactions]);
 
@@ -313,18 +319,13 @@ export default function TransactionsPage() {
             </CardContent>
           </Card>
 
-          {/* Pagination */}
-          {totalPages > 1 && (
-            <div className="flex items-center justify-center gap-2">
-              <Button variant="outline" size="sm" onClick={() => setPage(page - 1)} disabled={page <= 1}>
-                Previous
-              </Button>
-              <span className="text-sm text-[var(--text-secondary)]">Page {page} of {totalPages}</span>
-              <Button variant="outline" size="sm" onClick={() => setPage(page + 1)} disabled={page >= totalPages}>
-                Next
-              </Button>
-            </div>
-          )}
+          <ListPagination
+            page={page}
+            pageSize={pageSize}
+            totalItems={totalItems}
+            onPageChange={setPage}
+            onPageSizeChange={setPageSize}
+          />
         </>
       )}
     </div>

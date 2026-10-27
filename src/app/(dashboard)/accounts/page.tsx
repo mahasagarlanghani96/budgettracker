@@ -16,6 +16,7 @@ import { accountSchema } from '@/lib/validations/schemas';
 import { formatCurrency } from '@/lib/utils';
 import { Plus, Wallet, Landmark, CreditCard, PiggyBank } from 'lucide-react';
 import Link from 'next/link';
+import { ListPagination, slicePage } from '@/components/shared/list-pagination';
 
 const accountTypeOptions = [
   { value: 'CASH', label: 'Cash' },
@@ -62,6 +63,8 @@ export default function AccountsPage() {
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [loading, setLoading] = useState(true);
   const [showCreate, setShowCreate] = useState(false);
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(20);
 
   const fetchAccounts = useCallback(() => {
     fetch('/api/accounts')
@@ -92,6 +95,7 @@ export default function AccountsPage() {
   if (loading) return <PageLoading />;
 
   const totalBalance = accounts.reduce((sum, a) => sum + parseFloat(a.currentBalance || '0'), 0);
+  const paginatedAccounts = slicePage(accounts, page, pageSize);
 
   return (
     <div className="space-y-6">
@@ -113,8 +117,9 @@ export default function AccountsPage() {
           action={<Button onClick={() => setShowCreate(true)}>Create Account</Button>}
         />
       ) : (
+        <>
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {accounts.map((account) => (
+          {paginatedAccounts.map((account) => (
             <Link key={account.id} href={`/accounts/${account.id}`}>
               <Card className="hover:shadow-md transition-shadow cursor-pointer h-full">
                 <CardHeader className="pb-2">
@@ -147,6 +152,8 @@ export default function AccountsPage() {
             </Link>
           ))}
         </div>
+        <ListPagination page={page} pageSize={pageSize} totalItems={accounts.length} onPageChange={setPage} onPageSizeChange={setPageSize} />
+        </>
       )}
 
       {/* Create Account Modal */}

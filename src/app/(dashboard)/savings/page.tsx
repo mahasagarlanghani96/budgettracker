@@ -15,6 +15,7 @@ import { savingsGoalSchema, savingsGoalUpdateSchema, savingsTransactionInputSche
 import { formatCurrency, formatDate } from '@/lib/utils';
 import { useConfirm } from '@/hooks/use-confirm';
 import { PiggyBank, Plus, ArrowDownToLine, ArrowUpFromLine, Pencil, Trash2, History } from 'lucide-react';
+import { ListPagination, slicePage } from '@/components/shared/list-pagination';
 
 interface SavingsTx {
   id: string;
@@ -51,6 +52,8 @@ export default function SavingsPage() {
   const [transactions, setTransactions] = useState<SavingsTx[]>([]);
   const [historyLoading, setHistoryLoading] = useState(false);
   const [editingTx, setEditingTx] = useState<SavingsTx | null>(null);
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(20);
   const { confirm, ConfirmDialog } = useConfirm();
 
   function fetchGoals() {
@@ -153,6 +156,7 @@ export default function SavingsPage() {
   if (loading) return <PageLoading />;
 
   const accountOptions = accounts.map((a) => ({ value: a.id, label: a.name }));
+  const paginatedGoals = slicePage(goals, page, pageSize);
 
   return (
     <div className="space-y-6">
@@ -165,8 +169,9 @@ export default function SavingsPage() {
       {goals.length === 0 ? (
         <EmptyState icon={<PiggyBank className="h-12 w-12" />} title="No savings goals" description="Set a target and start saving" action={<Button onClick={() => setShowCreate(true)}>Create Goal</Button>} />
       ) : (
+        <>
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {goals.map((goal) => (
+          {paginatedGoals.map((goal) => (
             <Card key={goal.id} className="h-full">
               <CardHeader className="pb-2">
                 <div className="flex items-center justify-between">
@@ -206,6 +211,8 @@ export default function SavingsPage() {
             </Card>
           ))}
         </div>
+        <ListPagination page={page} pageSize={pageSize} totalItems={goals.length} onPageChange={setPage} onPageSizeChange={setPageSize} />
+        </>
       )}
 
       {/* Create Goal Modal */}
