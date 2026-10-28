@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { useSession } from 'next-auth/react';
 import { PageLoading } from '@/components/ui/loading';
 import { formatCurrency } from '@/lib/utils';
 import {
@@ -55,11 +56,12 @@ const POSITIVE_TYPES = ['INCOME', 'LOAN_REPAYMENT_RECEIVED', 'COMMITTEE_RECEIVIN
 const EXPENSE_DONUT_COLORS = ['var(--coral)', 'var(--amber)', 'var(--violet)', 'var(--blue)', 'var(--teal)', '#e879f9'];
 const INCOME_DONUT_COLORS = ['var(--emerald)', 'var(--teal)', 'var(--blue)', 'var(--amber)', 'var(--violet)', '#34d399'];
 
-function getGreeting() {
+function getGreeting(firstName?: string) {
   const h = new Date().getHours();
-  if (h < 12) return 'Good morning';
-  if (h < 17) return 'Good afternoon';
-  return 'Good evening';
+  let greeting = 'Good evening';
+  if (h < 12) greeting = 'Good morning';
+  else if (h < 17) greeting = 'Good afternoon';
+  return firstName ? `${greeting}, ${firstName}` : greeting;
 }
 
 /* ─── SVG Charts ─── */
@@ -203,8 +205,10 @@ const quickActions = [
 /* ─── Main Component ─── */
 
 export default function DashboardPage() {
+  const { data: session } = useSession();
   const [data, setData] = useState<DashboardData | null>(null);
   const [loading, setLoading] = useState(true);
+  const firstName = session?.user?.name?.split(' ')[0];
 
   useEffect(() => {
     fetch('/api/dashboard')
@@ -250,7 +254,7 @@ export default function DashboardPage() {
       {/* Greeting + net flow badge */}
       <div className="flex items-end justify-between animate-in-view stagger-1">
         <div>
-          <h1 className="text-[26px] font-display font-bold text-[var(--text-primary)] tracking-[-0.02em]">{getGreeting()}</h1>
+          <h1 className="text-[26px] font-display font-bold text-[var(--text-primary)] tracking-[-0.02em]">{getGreeting(firstName)}</h1>
           <p className="text-[var(--text-secondary)] text-sm mt-0.5">Your financial overview at a glance</p>
         </div>
         {(income > 0 || expense > 0) && (
