@@ -108,13 +108,17 @@ export default function CategoriesPage() {
     }
   }
 
-  const paginatedItems = slicePage(categories, page, pageSize);
-
   if (loading) return <PageLoading />;
 
-  const sections: Array<{ group: 'INCOME' | 'EXPENSE'; title: string }> = [
-    { group: 'INCOME', title: 'Income' },
-    { group: 'EXPENSE', title: 'Expense' },
+  const incomeCategories = categories.filter((c) => c.group === 'INCOME');
+  const expenseCategories = categories.filter((c) => c.group === 'EXPENSE');
+
+  const paginatedIncome = slicePage(incomeCategories, page, pageSize);
+  const paginatedExpense = slicePage(expenseCategories, page, pageSize);
+
+  const sections: Array<{ group: 'INCOME' | 'EXPENSE'; title: string; items: Category[]; total: number }> = [
+    { group: 'INCOME', title: 'Income', items: paginatedIncome, total: incomeCategories.length },
+    { group: 'EXPENSE', title: 'Expense', items: paginatedExpense, total: expenseCategories.length },
   ];
 
   return (
@@ -133,11 +137,10 @@ export default function CategoriesPage() {
       ) : (
         <>
         <div className="grid gap-4 lg:grid-cols-2">
-          {sections.map(({ group, title }) => {
-            const items = paginatedItems.filter((c) => c.group === group);
+          {sections.map(({ group, title, items, total }) => {
             return (
               <Card key={group}>
-                <CardHeader><CardTitle className="text-base">{title} ({items.length})</CardTitle></CardHeader>
+                <CardHeader><CardTitle className="text-base">{title} ({total})</CardTitle></CardHeader>
                 <CardContent>
                   {items.length === 0 ? (
                     <p className="text-sm text-[var(--text-secondary)] text-center py-4">No {title.toLowerCase()} categories</p>
@@ -185,7 +188,7 @@ export default function CategoriesPage() {
             );
           })}
         </div>
-        <ListPagination page={page} pageSize={pageSize} totalItems={categories.length} onPageChange={setPage} onPageSizeChange={setPageSize} />
+        <ListPagination page={page} pageSize={pageSize} totalItems={Math.max(incomeCategories.length, expenseCategories.length)} onPageChange={setPage} onPageSizeChange={setPageSize} />
         </>
       )}
 

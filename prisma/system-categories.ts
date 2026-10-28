@@ -7,6 +7,7 @@ export const SYSTEM_INCOME_CATEGORIES = [
   { name: 'Gifts', icon: '🎁' },
   { name: 'Refunds', icon: '🔄' },
   { name: 'Other Income', icon: '💰' },
+  { name: 'Miscellaneous', icon: '📦' },
 ];
 
 export const SYSTEM_EXPENSE_CATEGORIES = [
@@ -27,4 +28,6 @@ export const SYSTEM_EXPENSE_CATEGORIES = [
   { name: 'Sports', icon: '⚽' },
   { name: 'Charity', icon: '🤲' },
   { name: 'Other Expense', icon: '💸' },
+  { name: 'Miscellaneous', icon: '📦' },
+  { name: 'Lost', icon: '❌' },
 ];
