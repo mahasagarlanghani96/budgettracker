@@ -5,6 +5,65 @@ import { categoryUpdateSchema } from '@/lib/validations/schemas';
 
 type Params = { params: Promise<{ id: string }> };
 
+// GET /api/categories/:id — category detail with transactions
+export async function GET(request: NextRequest, { params }: Params) {
+  try {
+    const session = await requireAuth();
+    const { id } = await params;
+    const userId = (session.user as { id: string }).id;
+    const { searchParams } = new URL(request.url);
+
+    const page = Math.max(1, parseInt(searchParams.get('page') || '1'));
+    const limit = Math.min(100, Math.max(1, parseInt(searchParams.get('limit') || '25')));
+    const skip = (page - 1) * limit;
+
+    const category = await prisma.category.findFirst({
+      where: { id, OR: [{ userId }, { isSystem: true }] },
+    });
+    if (!category) {
+      return NextResponse.json({ error: 'Category not found' }, { status: 404 });
+    }
+
+    const txWhere = { categoryId: id, userId, isDeleted: false };
+
+    const [transactions, totalTransactions, totals] = await Promise.all([
+      prisma.transaction.findMany({
+        where: txWhere,
+        include: { sourceAccount: true, destAccount: true, person: true },
+        orderBy: [{ transactionDate: 'desc' }, { createdAt: 'desc' }],
+        skip,
+        take: limit,
+      }),
+      prisma.transaction.count({ where: txWhere }),
+      prisma.transaction.aggregate({
+        where: txWhere,
+        _sum: { amount: true },
+      }),
+    ]);
+
+    return NextResponse.json({
+      data: {
+        ...category,
+        transactions,
+        totalTransactions,
+        totalAmount: totals._sum.amount ?? 0,
+        pagination: {
+          page,
+          limit,
+          total: totalTransactions,
+          totalPages: Math.ceil(totalTransactions / limit),
+        },
+      },
+    });
+  } catch (error: unknown) {
+    if (error instanceof Error && error.message === 'Unauthorized') {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+    console.error('GET /api/categories/[id] error:', error);
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+  }
+}
+
 // PUT /api/categories/:id
 export async function PUT(request: NextRequest, { params }: Params) {
   try {

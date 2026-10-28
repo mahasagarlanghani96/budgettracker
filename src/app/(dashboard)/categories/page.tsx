@@ -15,6 +15,7 @@ import { categorySchema, categoryUpdateSchema } from '@/lib/validations/schemas'
 import { Tags, Plus, Pencil, Trash2 } from 'lucide-react';
 import { useConfirm } from '@/hooks/use-confirm';
 import { ListPagination, slicePage } from '@/components/shared/list-pagination';
+import Link from 'next/link';
 
 interface Category {
   id: string;
@@ -153,8 +154,10 @@ export default function CategoriesPage() {
                         {items.map((cat) => (
                           <TableRow key={cat.id}>
                             <TableCell className="font-medium">
-                              {cat.icon ? <span className="mr-1.5">{cat.icon}</span> : null}
-                              {cat.name}
+                              <Link href={`/categories/${cat.id}`} className="hover:text-[var(--emerald)] transition-colors">
+                                {cat.icon ? <span className="mr-1.5">{cat.icon}</span> : null}
+                                {cat.name}
+                              </Link>
                             </TableCell>
                             <TableCell>
                               <div className="flex flex-wrap gap-1">
