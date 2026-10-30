@@ -43,7 +43,7 @@ function getInitialForm() {
   interestRate: null as number | null,
   notes: '',
   isPrivate: true,
-  isHistorical: true,
+  isHistorical: false,
   };
 }
 

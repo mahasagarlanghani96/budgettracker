@@ -3,16 +3,12 @@ import { PrismaClient } from '@prisma/client';
 const prisma = new PrismaClient();
 
 async function main() {
-  // 1. Mark all LOAN_GIVEN and LOAN_TAKEN transactions as historical
-  const historicalResult = await prisma.transaction.updateMany({
-    where: {
-      type: { in: ['LOAN_GIVEN', 'LOAN_TAKEN'] },
-      isDeleted: false,
-      isHistorical: false,
-    },
-    data: { isHistorical: true },
+  // 1. Fix specific Naresh Kumar loan transaction — mark as non-historical so it deducts from Wallet
+  const fixResult = await prisma.transaction.update({
+    where: { id: 'cmvtkluja0001i7075cb4tti9' },
+    data: { isHistorical: false },
   });
-  console.log(`Marked ${historicalResult.count} loan creation transactions as historical`);
+  console.log(`Fixed transaction ${fixResult.id}: isHistorical set to false`);
 
   // 2. Fix LOAN_TAKEN transactions: move sourceAccountId → destAccountId
   const takenTxns = await prisma.transaction.findMany({

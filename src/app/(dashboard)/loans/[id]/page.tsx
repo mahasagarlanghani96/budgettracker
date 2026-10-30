@@ -59,7 +59,7 @@ export default function LoanDetailPage() {
   // Edit loan form
   const editForm = useResourceForm({
     schema: loanUpdateSchema,
-    initial: { status: 'ACTIVE', amount: 0, personId: '', direction: 'GIVEN', accountId: '', transactionDate: '', dueDate: '', interestRate: null as number | null, notes: '', isPrivate: true, isHistorical: true },
+    initial: { status: 'ACTIVE', amount: 0, personId: '', direction: 'GIVEN', accountId: '', transactionDate: '', dueDate: '', interestRate: null as number | null, notes: '', isPrivate: true, isHistorical: false },
     onSubmit: (data) =>
       fetch(`/api/loans/${id}`, {
         method: 'PUT',
@@ -112,7 +112,7 @@ export default function LoanDetailPage() {
       interestRate: loan.interestRate != null ? parseFloat((loan.interestRate as { toString(): string }).toString()) : null,
       notes: (loan.notes as string) || '',
       isPrivate: (loan.isPrivate as boolean) ?? true,
-      isHistorical: true,
+      isHistorical: false,
     });
     setSettleError(null);
     setDeleteError(null);

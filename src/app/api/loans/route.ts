@@ -109,7 +109,7 @@ export async function POST(request: NextRequest) {
           transactionDate: loanDate,
           personId: validated.personId,
           loanId: loan.id,
-          isHistorical: validated.isHistorical ?? true,
+          isHistorical: validated.isHistorical ?? false,
         },
       });
 
