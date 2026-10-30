@@ -47,6 +47,11 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="en" suppressHydrationWarning>
       <head>
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `(function(){try{var t=localStorage.getItem('theme')||'dark';document.documentElement.classList.add(t)}catch(e){}})()`,
+          }}
+        />
         <link rel="apple-touch-icon" href="/icons/icon-192x192.png" />
         <meta name="mobile-web-app-capable" content="yes" />
       </head>
@@ -66,7 +71,19 @@ function ServiceWorkerRegistration() {
           if ('serviceWorker' in navigator) {
             window.addEventListener('load', function() {
               navigator.serviceWorker.register('/sw.js')
-                .then(function(reg) { console.log('SW registered:', reg.scope); })
+                .then(function(reg) {
+                  console.log('SW registered:', reg.scope);
+                  reg.addEventListener('updatefound', function() {
+                    var newSW = reg.installing;
+                    if (!newSW) return;
+                    newSW.addEventListener('statechange', function() {
+                      if (newSW.state === 'activated' && navigator.serviceWorker.controller) {
+                        console.log('New version available — reloading for fresh content.');
+                        window.location.reload();
+                      }
+                    });
+                  });
+                })
                 .catch(function(err) { console.log('SW registration failed:', err); });
             });
           }

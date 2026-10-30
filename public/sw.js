@@ -1,11 +1,13 @@
-const CACHE_NAME = 'finkeep-v1';
+importScripts('./sw-version.js');
+
+const CACHE_NAME = 'finkeep-' + (self.__SW_VERSION || 'v1');
 const STATIC_ASSETS = [
   '/manifest.json',
   '/icons/icon-192x192.png',
   '/icons/icon-512x512.png',
 ];
 
-// Install — cache static assets
+// Install — cache static assets, activate immediately
 self.addEventListener('install', (event) => {
   event.waitUntil(
     caches.open(CACHE_NAME).then((cache) => cache.addAll(STATIC_ASSETS))
@@ -13,7 +15,7 @@ self.addEventListener('install', (event) => {
   self.skipWaiting();
 });
 
-// Activate — clean old caches
+// Activate — purge ALL old caches, claim clients
 self.addEventListener('activate', (event) => {
   event.waitUntil(
     caches.keys().then((keys) =>
@@ -23,38 +25,45 @@ self.addEventListener('activate', (event) => {
   self.clients.claim();
 });
 
-// Fetch — network-first for API/pages, cache-first for static assets
+// Fetch — network-first for pages, stale-while-revalidate for static assets
 self.addEventListener('fetch', (event) => {
   const { request } = event;
   const url = new URL(request.url);
 
-  // Skip non-GET requests
   if (request.method !== 'GET') return;
 
-  // Skip auth-related requests (never cache these)
-  if (url.pathname.startsWith('/api/auth')) return;
-
-  // API requests — network only (financial data must be fresh)
+  // Never cache auth or API requests
   if (url.pathname.startsWith('/api/')) return;
 
-  // Static assets & pages — stale-while-revalidate
+  // HTML pages — network first, fall back to cache
+  if (request.mode === 'navigate' || request.headers.get('accept')?.includes('text/html')) {
+    event.respondWith(
+      fetch(request)
+        .then((response) => {
+          if (response.ok) {
+            const clone = response.clone();
+            caches.open(CACHE_NAME).then((cache) => cache.put(request, clone));
+          }
+          return response;
+        })
+        .catch(() => caches.match(request).then((cached) => cached || caches.match('/dashboard')))
+    );
+    return;
+  }
+
+  // Static assets — stale-while-revalidate
   event.respondWith(
     caches.open(CACHE_NAME).then(async (cache) => {
       const cachedResponse = await cache.match(request);
       const fetchPromise = fetch(request)
         .then((networkResponse) => {
-          // Only cache successful responses
           if (networkResponse.ok) {
             cache.put(request, networkResponse.clone());
           }
           return networkResponse;
         })
-        .catch(() => {
-          // Network failed — return cached version if available
-          return cachedResponse;
-        });
+        .catch(() => cachedResponse);
 
-      // Return cached version immediately, update in background
       return cachedResponse || fetchPromise;
     })
   );
