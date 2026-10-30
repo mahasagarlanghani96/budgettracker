@@ -69,16 +69,38 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
       }
     }
 
-    const fee = await prisma.sportsMatchFee.create({
-      data: {
-        matchId,
-        playerId: validated.playerId,
-        amount: validated.amount,
-        accountId: validated.accountId || null,
-        isPaid: validated.isPaid,
-        paidDate: validated.paidDate ? new Date(validated.paidDate) : null,
-        notes: validated.notes,
-      },
+    const isHistorical = body.isHistorical === true;
+    const txDate = validated.paidDate ? new Date(validated.paidDate) : new Date();
+
+    const fee = await prisma.$transaction(async (tx: any) => {
+      const created = await tx.sportsMatchFee.create({
+        data: {
+          matchId,
+          playerId: validated.playerId,
+          amount: validated.amount,
+          accountId: validated.accountId || null,
+          isPaid: validated.isPaid,
+          paidDate: validated.paidDate ? new Date(validated.paidDate) : null,
+          notes: validated.notes,
+        },
+      });
+
+      if (validated.isPaid && validated.accountId) {
+        await tx.transaction.create({
+          data: {
+            userId,
+            destAccountId: validated.accountId,
+            type: 'SPORTS_FEE_RECEIVED',
+            amount: validated.amount,
+            description: `Match fee: ${player.name} — ${match.team.name}${match.opponent ? ` vs ${match.opponent}` : ''}`,
+            transactionDate: txDate,
+            sportsMatchFeeId: created.id,
+            isHistorical,
+          },
+        });
+      }
+
+      return created;
     });
 
     return NextResponse.json({ data: fee }, { status: 201 });
