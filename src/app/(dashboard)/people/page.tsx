@@ -145,20 +145,18 @@ export default function PeoplePage() {
       ) : (
         <>
         {/* Mobile card view */}
-        <div className="space-y-3 md:hidden">
+        <div className="space-y-2.5 md:hidden">
           {paginatedItems.map((p) => (
             <Link key={p.id} href={`/people/${p.id}`}>
               <Card className="hover:shadow-md transition-shadow cursor-pointer">
-                <CardContent className="pt-4 pb-3">
-                  <div className="flex items-start justify-between gap-2">
+                <CardContent className="p-4">
+                  <div className="flex items-start justify-between gap-3">
                     <div className="min-w-0 flex-1">
-                      <p className="font-medium">{p.name}</p>
-                      <p className="text-xs text-[var(--text-secondary)]">{p.relationship || 'No relationship'}{p.phone ? ` · ${p.phone}` : ''}</p>
-                      <p className="text-xs text-[var(--text-secondary)] mt-0.5">{usageText(p)}</p>
+                      <p className="font-medium text-[15px]">{p.name}</p>
+                      <p className="text-xs text-[var(--text-secondary)] mt-1">{p.relationship || 'No relationship'}{p.phone ? ` · ${p.phone}` : ''}</p>
+                      <p className="text-xs text-[var(--text-tertiary)] mt-0.5">{usageText(p)}</p>
                     </div>
-                    <div className="flex items-center gap-2">
-                      <Badge variant={p.isActive ? 'success' : 'secondary'} className="text-xs">{p.isActive ? 'Active' : 'Inactive'}</Badge>
-                    </div>
+                    <Badge variant={p.isActive ? 'success' : 'secondary'} className="text-xs shrink-0">{p.isActive ? 'Active' : 'Inactive'}</Badge>
                   </div>
                 </CardContent>
               </Card>

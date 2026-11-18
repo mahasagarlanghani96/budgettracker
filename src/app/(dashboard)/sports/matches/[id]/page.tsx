@@ -314,7 +314,27 @@ export default function MatchDetailPage() {
           {match.expenses.length === 0 ? (
             <p className="text-sm text-[var(--text-secondary)] text-center py-4">No expenses recorded</p>
           ) : (
-            <div className="overflow-x-auto">
+            <>
+            {/* Mobile card view */}
+            <div className="divide-y divide-[var(--glass-border)] md:hidden">
+              {match.expenses.map((expense) => (
+                <div key={expense.id} className="py-3 first:pt-0">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0 flex-1">
+                      <p className="text-sm font-medium">{expense.description}</p>
+                      <p className="text-sm font-medium tabular-nums mt-0.5">{formatCurrency(expense.amount.toString())}</p>
+                      {expense.account?.name && <p className="text-xs text-[var(--text-secondary)] mt-0.5">{expense.account.name}</p>}
+                    </div>
+                    <div className="flex gap-1 shrink-0">
+                      <Button variant="ghost" size="icon" className="h-7 w-7" aria-label="Edit expense" onClick={() => openEditExpense(expense)}><Pencil className="h-3.5 w-3.5" /></Button>
+                      <Button variant="ghost" size="icon" className="h-7 w-7" aria-label="Delete expense" onClick={() => handleDeleteExpense(expense)}><Trash2 className="h-3.5 w-3.5" /></Button>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+            {/* Desktop table view */}
+            <div className="hidden md:block overflow-x-auto">
               <Table>
                 <TableHeader>
                   <TableRow>
@@ -345,6 +365,7 @@ export default function MatchDetailPage() {
                 </TableBody>
               </Table>
             </div>
+            </>
           )}
         </CardContent>
       </Card>
@@ -352,14 +373,14 @@ export default function MatchDetailPage() {
       {/* Match Fees Section */}
       <Card>
         <CardHeader>
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
             <CardTitle className="text-base">Match Fees ({match.fees.length})</CardTitle>
-            <div className="flex gap-2">
+            <div className="flex flex-wrap gap-2">
               <Button size="sm" variant="outline" onClick={handleGenerateFees} disabled={generating}>
-                <Zap className="h-4 w-4 mr-1" /> {generating ? 'Generating...' : 'Generate Fees'}
+                <Zap className="h-4 w-4 sm:mr-1" /> <span className="hidden sm:inline">{generating ? 'Generating...' : 'Generate Fees'}</span><span className="sm:hidden">{generating ? '...' : 'Generate'}</span>
               </Button>
               <Button size="sm" onClick={() => { addFeeForm.reset(); setAddFeeIsHistorical(false); setShowAddFee(true); }}>
-                <Plus className="h-4 w-4 mr-1" /> Add Fee
+                <Plus className="h-4 w-4 sm:mr-1" /> <span className="hidden sm:inline">Add Fee</span><span className="sm:hidden">Add</span>
               </Button>
             </div>
           </div>
@@ -368,7 +389,36 @@ export default function MatchDetailPage() {
           {match.fees.length === 0 ? (
             <p className="text-sm text-[var(--text-secondary)] text-center py-4">No fees recorded. Use &quot;Generate Fees&quot; to create fees for all players.</p>
           ) : (
-            <div className="overflow-x-auto">
+            <>
+            {/* Mobile card view */}
+            <div className="divide-y divide-[var(--glass-border)] md:hidden">
+              {match.fees.map((fee) => (
+                <div key={fee.id} className="py-3 first:pt-0">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0 flex-1">
+                      <p className="text-sm font-medium">{fee.player.name}</p>
+                      <div className="flex items-center gap-2 mt-0.5">
+                        <span className="text-sm font-medium tabular-nums">{formatCurrency(fee.amount.toString())}</span>
+                        <Badge variant={fee.isPaid ? 'success' : 'warning'} className="text-[10px]">{fee.isPaid ? 'Paid' : 'Pending'}</Badge>
+                      </div>
+                      {fee.account?.name && <p className="text-xs text-[var(--text-secondary)] mt-0.5">{fee.account.name}</p>}
+                      {fee.paidDate && <p className="text-xs text-[var(--text-secondary)]">Paid {formatDate(fee.paidDate)}</p>}
+                    </div>
+                    <div className="flex gap-1 shrink-0">
+                      {!fee.isPaid && (
+                        <Button variant="ghost" size="icon" className="h-7 w-7" aria-label="Mark as paid" onClick={() => openMarkPaid(fee)}>
+                          <CheckCircle className="h-3.5 w-3.5 text-[var(--emerald)]" />
+                        </Button>
+                      )}
+                      <Button variant="ghost" size="icon" className="h-7 w-7" aria-label="Edit fee" onClick={() => openEditFee(fee)}><Pencil className="h-3.5 w-3.5" /></Button>
+                      <Button variant="ghost" size="icon" className="h-7 w-7" aria-label="Delete fee" onClick={() => handleDeleteFee(fee)}><Trash2 className="h-3.5 w-3.5" /></Button>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+            {/* Desktop table view */}
+            <div className="hidden md:block overflow-x-auto">
               <Table>
                 <TableHeader>
                   <TableRow>
@@ -412,6 +462,7 @@ export default function MatchDetailPage() {
                 </TableBody>
               </Table>
             </div>
+            </>
           )}
         </CardContent>
       </Card>

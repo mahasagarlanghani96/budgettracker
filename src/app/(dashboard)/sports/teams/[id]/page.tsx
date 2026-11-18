@@ -133,22 +133,26 @@ export default function TeamDetailPage() {
     <div className="space-y-6">
       {ConfirmDialog}
       {/* Header */}
-      <div className="flex items-center gap-4">
-        <Link href="/sports">
-          <Button variant="ghost" size="icon" aria-label="Back to sports">
-            <ArrowLeft className="h-4 w-4" />
-          </Button>
-        </Link>
-        <div className="flex-1">
-          <h1 className="text-2xl font-display font-bold text-[var(--text-primary)]">{team.name}</h1>
-          <div className="flex gap-2 mt-1">
-            <Badge variant="secondary">{team.sport}</Badge>
-            <Badge variant={team.isActive ? 'success' : 'outline'}>{team.isActive ? 'Active' : 'Inactive'}</Badge>
+      <div className="space-y-3">
+        <div className="flex items-center gap-3 min-w-0">
+          <Link href="/sports">
+            <Button variant="ghost" size="icon" aria-label="Back to sports">
+              <ArrowLeft className="h-4 w-4" />
+            </Button>
+          </Link>
+          <div className="min-w-0 flex-1">
+            <h1 className="text-xl sm:text-2xl font-display font-bold text-[var(--text-primary)] truncate">{team.name}</h1>
+            <div className="flex gap-2 mt-1">
+              <Badge variant="secondary">{team.sport}</Badge>
+              <Badge variant={team.isActive ? 'success' : 'outline'}>{team.isActive ? 'Active' : 'Inactive'}</Badge>
+            </div>
           </div>
         </div>
-        <Button onClick={() => { addPlayerForm.reset(); setShowAddPlayer(true); }}>
-          <Plus className="h-4 w-4 mr-2" /> Add Player
-        </Button>
+        <div className="flex flex-wrap gap-2 pl-12 sm:pl-0">
+          <Button size="sm" onClick={() => { addPlayerForm.reset(); setShowAddPlayer(true); }}>
+            <Plus className="h-4 w-4 mr-2" /> Add Player
+          </Button>
+        </div>
       </div>
 
       {/* Players Section */}
@@ -160,7 +164,33 @@ export default function TeamDetailPage() {
           {team.players.length === 0 ? (
             <p className="text-sm text-[var(--text-secondary)] text-center py-4">No players added yet</p>
           ) : (
-            <div className="overflow-x-auto">
+            <>
+            {/* Mobile card view */}
+            <div className="divide-y divide-[var(--glass-border)] md:hidden">
+              {team.players.map((player) => (
+                <div key={player.id} className={`py-3 first:pt-0 ${!player.isActive ? 'opacity-50' : ''}`}>
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0 flex-1">
+                      <p className="text-sm font-medium truncate">{player.name}</p>
+                      <div className="flex items-center gap-2 mt-0.5">
+                        <span className="text-xs text-[var(--text-secondary)]">{player.role || 'No role'}</span>
+                        <Badge variant={player.isActive ? 'success' : 'secondary'} className="text-[10px]">{player.isActive ? 'Active' : 'Inactive'}</Badge>
+                      </div>
+                      <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5 mt-1 text-xs text-[var(--text-secondary)]">
+                        <span className="tabular-nums">Fee: {formatCurrency(player.matchFee.toString())}</span>
+                        {player.phone && <span>{player.phone}</span>}
+                      </div>
+                    </div>
+                    <div className="flex gap-1 shrink-0">
+                      <Button variant="ghost" size="icon" className="h-7 w-7" aria-label={`Edit ${player.name}`} onClick={() => openEditPlayer(player)}><Pencil className="h-3.5 w-3.5" /></Button>
+                      <Button variant="ghost" size="icon" className="h-7 w-7" aria-label={`Delete ${player.name}`} onClick={() => handleDeletePlayer(player)}><Trash2 className="h-3.5 w-3.5" /></Button>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+            {/* Desktop table view */}
+            <div className="hidden md:block overflow-x-auto">
               <Table>
                 <TableHeader>
                   <TableRow>
@@ -199,6 +229,7 @@ export default function TeamDetailPage() {
                 </TableBody>
               </Table>
             </div>
+            </>
           )}
         </CardContent>
       </Card>
@@ -212,7 +243,29 @@ export default function TeamDetailPage() {
           {team.matches.length === 0 ? (
             <p className="text-sm text-[var(--text-secondary)] text-center py-4">No matches recorded yet</p>
           ) : (
-            <div className="overflow-x-auto">
+            <>
+            {/* Mobile card view */}
+            <div className="divide-y divide-[var(--glass-border)] md:hidden">
+              {team.matches.map((match) => (
+                <div key={match.id} className="py-3 first:pt-0">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0 flex-1">
+                      <p className="text-sm font-medium truncate">{match.opponent || 'No opponent'}</p>
+                      <p className="text-xs text-[var(--text-secondary)] mt-0.5">{formatDate(match.matchDate)}{match.venue ? ` · ${match.venue}` : ''}</p>
+                      <div className="flex gap-3 mt-1 text-xs">
+                        <span className="text-[var(--text-secondary)]">Expenses: <span className="tabular-nums text-[var(--text-primary)]">{formatCurrency(match.totalExpenses)}</span></span>
+                        <span className="text-[var(--text-secondary)]">Fees: <span className="tabular-nums text-[var(--text-primary)]">{formatCurrency(match.totalFees)}</span></span>
+                      </div>
+                    </div>
+                    <Button variant="ghost" size="icon" className="h-7 w-7 shrink-0" aria-label="View match" asChild>
+                      <Link href={`/sports/matches/${match.id}`}><Eye className="h-3.5 w-3.5" /></Link>
+                    </Button>
+                  </div>
+                </div>
+              ))}
+            </div>
+            {/* Desktop table view */}
+            <div className="hidden md:block overflow-x-auto">
               <Table>
                 <TableHeader>
                   <TableRow>
@@ -242,6 +295,7 @@ export default function TeamDetailPage() {
                 </TableBody>
               </Table>
             </div>
+            </>
           )}
         </CardContent>
       </Card>

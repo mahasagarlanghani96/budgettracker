@@ -309,6 +309,12 @@ select option {
   input, select, textarea {
     font-size: 16px;
   }
+  /* Prevent content from hiding behind system bars on PWA */
+  body {
+    padding-top: env(safe-area-inset-top);
+    padding-left: env(safe-area-inset-left);
+    padding-right: env(safe-area-inset-right);
+  }
 }
 
 /* Backdrop-filter fallback for weak GPUs */

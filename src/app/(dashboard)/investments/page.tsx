@@ -548,26 +548,44 @@ export default function InvestmentsPage() {
             <p className="text-sm text-[var(--text-secondary)] py-4">No profit entries recorded yet.</p>
           ) : (
             <div className="max-h-80 overflow-y-auto">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Date</TableHead>
-                    <TableHead className="text-right">Gross</TableHead>
-                    <TableHead className="text-right">Tax</TableHead>
-                    <TableHead className="text-right">Net</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {profitHistory.map((entry) => (
-                    <TableRow key={entry.id}>
-                      <TableCell className="text-sm">{formatDate(entry.transactionDate)}</TableCell>
-                      <TableCell className="text-right tabular-nums text-sm">{entry.expectedAmount ? formatCurrency(entry.expectedAmount.toString()) : '—'}</TableCell>
-                      <TableCell className="text-right tabular-nums text-sm text-destructive">{entry.taxAmount ? `-${formatCurrency(entry.taxAmount.toString())}` : '—'}</TableCell>
-                      <TableCell className="text-right tabular-nums text-sm font-medium text-[var(--emerald)]">{formatCurrency(entry.amount.toString())}</TableCell>
+              {/* Mobile list view */}
+              <div className="divide-y divide-[var(--glass-border)] md:hidden">
+                {profitHistory.map((entry) => (
+                  <div key={entry.id} className="py-3 first:pt-0 space-y-1">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs text-[var(--text-secondary)]">{formatDate(entry.transactionDate)}</span>
+                      <span className="text-sm font-medium tabular-nums text-[var(--emerald)]">{formatCurrency(entry.amount.toString())}</span>
+                    </div>
+                    <div className="flex gap-4 text-xs text-[var(--text-secondary)]">
+                      <span>Gross: {entry.expectedAmount ? formatCurrency(entry.expectedAmount.toString()) : '—'}</span>
+                      <span className="text-destructive">Tax: {entry.taxAmount ? `-${formatCurrency(entry.taxAmount.toString())}` : '—'}</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+              {/* Desktop table view */}
+              <div className="hidden md:block">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Date</TableHead>
+                      <TableHead className="text-right">Gross</TableHead>
+                      <TableHead className="text-right">Tax</TableHead>
+                      <TableHead className="text-right">Net</TableHead>
                     </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
+                  </TableHeader>
+                  <TableBody>
+                    {profitHistory.map((entry) => (
+                      <TableRow key={entry.id}>
+                        <TableCell className="text-sm">{formatDate(entry.transactionDate)}</TableCell>
+                        <TableCell className="text-right tabular-nums text-sm">{entry.expectedAmount ? formatCurrency(entry.expectedAmount.toString()) : '—'}</TableCell>
+                        <TableCell className="text-right tabular-nums text-sm text-destructive">{entry.taxAmount ? `-${formatCurrency(entry.taxAmount.toString())}` : '—'}</TableCell>
+                        <TableCell className="text-right tabular-nums text-sm font-medium text-[var(--emerald)]">{formatCurrency(entry.amount.toString())}</TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
               <div className="border-t pt-2 mt-2 px-4 pb-2">
                 <div className="flex justify-between text-sm font-medium">
                   <span>Total Net Profit</span>

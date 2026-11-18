@@ -145,43 +145,75 @@ export default function CategoriesPage() {
                   {items.length === 0 ? (
                     <p className="text-sm text-[var(--text-secondary)] text-center py-4">No {title.toLowerCase()} categories</p>
                   ) : (
-                    <Table>
-                      <TableHeader>
-                        <TableRow>
-                          <TableHead>Name</TableHead>
-                          <TableHead>Status</TableHead>
-                          <TableHead className="text-right">Actions</TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {items.map((cat) => (
-                          <TableRow key={cat.id}>
-                            <TableCell className="font-medium">
+                    <>
+                    {/* Mobile card view */}
+                    <div className="divide-y divide-[var(--glass-border)] md:hidden">
+                      {items.map((cat) => (
+                        <div key={cat.id} className="py-3 first:pt-0">
+                          <div className="flex items-center justify-between gap-3">
+                            <div className="min-w-0 flex-1">
                               <Link href={`/categories/${cat.id}`} className="hover:text-[var(--emerald)] transition-colors">
-                                {cat.icon ? <span className="mr-1.5">{cat.icon}</span> : null}
-                                {cat.name}
+                                <p className="text-sm font-medium truncate">
+                                  {cat.icon ? <span className="mr-1.5">{cat.icon}</span> : null}
+                                  {cat.name}
+                                </p>
                               </Link>
-                            </TableCell>
-                            <TableCell>
-                              <div className="flex flex-wrap gap-1">
-                                <Badge variant={cat.group === 'INCOME' ? 'success' : 'warning'} className="text-xs">{cat.group === 'INCOME' ? 'Income' : 'Expense'}</Badge>
-                                <Badge variant={cat.isActive ? 'success' : 'secondary'} className="text-xs">{cat.isActive ? 'Active' : 'Inactive'}</Badge>
+                              <div className="flex gap-1.5 mt-1">
+                                <Badge variant={cat.isActive ? 'success' : 'secondary'} className="text-[10px]">{cat.isActive ? 'Active' : 'Inactive'}</Badge>
+                                {cat.isSystem && <Badge variant="secondary" className="text-[10px]">System</Badge>}
                               </div>
-                            </TableCell>
-                            <TableCell className="text-right">
-                              {!cat.isSystem ? (
-                                <div className="flex justify-end gap-1">
-                                  <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => openEdit(cat)}><Pencil className="h-3.5 w-3.5" /></Button>
-                                  <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => handleDelete(cat)}><Trash2 className="h-3.5 w-3.5" /></Button>
-                                </div>
-                              ) : (
-                                <Badge variant="secondary" className="text-xs">System</Badge>
-                              )}
-                            </TableCell>
+                            </div>
+                            {!cat.isSystem && (
+                              <div className="flex gap-1 shrink-0">
+                                <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => openEdit(cat)}><Pencil className="h-3.5 w-3.5" /></Button>
+                                <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => handleDelete(cat)}><Trash2 className="h-3.5 w-3.5" /></Button>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                    {/* Desktop table view */}
+                    <div className="hidden md:block">
+                      <Table>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead>Name</TableHead>
+                            <TableHead>Status</TableHead>
+                            <TableHead className="text-right">Actions</TableHead>
                           </TableRow>
-                        ))}
-                      </TableBody>
-                    </Table>
+                        </TableHeader>
+                        <TableBody>
+                          {items.map((cat) => (
+                            <TableRow key={cat.id}>
+                              <TableCell className="font-medium">
+                                <Link href={`/categories/${cat.id}`} className="hover:text-[var(--emerald)] transition-colors">
+                                  {cat.icon ? <span className="mr-1.5">{cat.icon}</span> : null}
+                                  {cat.name}
+                                </Link>
+                              </TableCell>
+                              <TableCell>
+                                <div className="flex flex-wrap gap-1">
+                                  <Badge variant={cat.group === 'INCOME' ? 'success' : 'warning'} className="text-xs">{cat.group === 'INCOME' ? 'Income' : 'Expense'}</Badge>
+                                  <Badge variant={cat.isActive ? 'success' : 'secondary'} className="text-xs">{cat.isActive ? 'Active' : 'Inactive'}</Badge>
+                                </div>
+                              </TableCell>
+                              <TableCell className="text-right">
+                                {!cat.isSystem ? (
+                                  <div className="flex justify-end gap-1">
+                                    <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => openEdit(cat)}><Pencil className="h-3.5 w-3.5" /></Button>
+                                    <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => handleDelete(cat)}><Trash2 className="h-3.5 w-3.5" /></Button>
+                                  </div>
+                                ) : (
+                                  <Badge variant="secondary" className="text-xs">System</Badge>
+                                )}
+                              </TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    </div>
+                    </>
                   )}
                 </CardContent>
               </Card>

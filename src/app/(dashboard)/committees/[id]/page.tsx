@@ -269,16 +269,18 @@ export default function CommitteeDetailPage() {
   return (
     <div className="space-y-6">
       {ConfirmDialog}
-      <div className="flex items-center gap-4">
-        <Link href="/committees"><Button variant="ghost" size="icon" aria-label="Back to committees"><ArrowLeft className="h-4 w-4" /></Button></Link>
-        <div className="flex-1">
-          <h1 className="text-2xl font-display font-bold text-[var(--text-primary)]">{committee.name as string}</h1>
-          <div className="flex gap-2 mt-1">
-            <Badge variant={isWaiyk ? 'warning' : 'secondary'}>{committee.type as string}</Badge>
-            <Badge variant={committee.status === 'ACTIVE' ? 'success' : 'outline'}>{committee.status as string}</Badge>
+      <div className="space-y-3">
+        <div className="flex items-center gap-4">
+          <Link href="/committees"><Button variant="ghost" size="icon" aria-label="Back to committees"><ArrowLeft className="h-4 w-4" /></Button></Link>
+          <div className="flex-1 min-w-0">
+            <h1 className="text-xl sm:text-2xl font-display font-bold text-[var(--text-primary)] truncate">{committee.name as string}</h1>
+            <div className="flex gap-2 mt-1">
+              <Badge variant={isWaiyk ? 'warning' : 'secondary'}>{committee.type as string}</Badge>
+              <Badge variant={committee.status === 'ACTIVE' ? 'success' : 'outline'}>{committee.status as string}</Badge>
+            </div>
           </div>
         </div>
-        <div className="flex flex-wrap gap-2">
+        <div className="flex flex-wrap gap-2 pl-12 sm:pl-0">
           <Button variant="outline" size="sm" onClick={openEdit}><Pencil className="h-4 w-4 sm:mr-1" /> <span className="hidden sm:inline">Edit</span></Button>
           <Button variant="outline" size="sm" onClick={handleDelete}><Trash2 className="h-4 w-4 sm:mr-1" /> <span className="hidden sm:inline">Delete</span></Button>
           {committee.status === 'ACTIVE' && (
@@ -376,7 +378,28 @@ export default function CommitteeDetailPage() {
       <Card>
         <CardHeader><CardTitle className="text-base">Members ({members.length})</CardTitle></CardHeader>
         <CardContent>
-          <div className="overflow-x-auto">
+          {/* Mobile card view */}
+          <div className="divide-y divide-[var(--glass-border)] md:hidden">
+            {members.map((m) => (
+              <div key={m.id as string} className="py-3 first:pt-0">
+                <div className="flex items-center justify-between gap-3">
+                  <div className="min-w-0 flex-1">
+                    <p className="text-sm font-medium">{m.name as string}</p>
+                    <p className="text-xs text-[var(--text-secondary)] mt-0.5">
+                      {m.slots as number} {(m.slots as number) === 1 ? 'slot' : 'slots'}
+                      {(m.isUser as boolean) && <Badge variant="default" className="text-[10px] ml-2">You</Badge>}
+                    </p>
+                  </div>
+                  <div className="flex gap-1 shrink-0">
+                    <Button variant="ghost" size="icon" className="h-7 w-7" aria-label={`Edit ${m.name as string}`} onClick={() => openEditMember(m)}><Pencil className="h-3.5 w-3.5" /></Button>
+                    <Button variant="ghost" size="icon" className="h-7 w-7" aria-label={`Delete ${m.name as string}`} onClick={() => handleDeleteMember(m)}><Trash2 className="h-3.5 w-3.5" /></Button>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+          {/* Desktop table view */}
+          <div className="hidden md:block overflow-x-auto">
             <Table>
               <TableHeader>
                 <TableRow>
@@ -416,7 +439,31 @@ export default function CommitteeDetailPage() {
           {rounds.length === 0 ? (
             <p className="text-sm text-[var(--text-secondary)] text-center py-4">No rounds recorded yet</p>
           ) : (
-            <div className="overflow-x-auto">
+            <>
+            {/* Mobile card view */}
+            <div className="divide-y divide-[var(--glass-border)] md:hidden">
+              {rounds.map((r) => (
+                <div key={r.id as string} className="py-3 first:pt-0">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0 flex-1">
+                      <p className="text-sm font-medium">Round {r.roundNumber as number}</p>
+                      <p className="text-xs text-[var(--text-secondary)] mt-0.5">{formatDate(r.roundDate as string)}</p>
+                      <p className="text-sm font-medium tabular-nums mt-1">{formatCurrency((r.payoutAmount ?? 0).toString())}</p>
+                      {(r.winningMember as string) && <p className="text-xs text-[var(--text-secondary)] mt-0.5">Winner: {r.winningMember as string}</p>}
+                      {isWaiyk && Boolean(r.winningBid) && <p className="text-xs text-[var(--text-secondary)]">Bid: {formatCurrency((r.winningBid as { toString(): string }).toString())}</p>}
+                    </div>
+                    <div className="flex gap-1 shrink-0">
+                      <Button variant="ghost" size="icon" className="h-7 w-7" aria-label={`Edit round ${r.roundNumber as number}`} onClick={() => openEditRound(r)}><Pencil className="h-3.5 w-3.5" /></Button>
+                      {(r.roundNumber as number) === latestRoundNumber && (
+                        <Button variant="ghost" size="icon" className="h-7 w-7" aria-label={`Delete round ${r.roundNumber as number}`} onClick={() => handleDeleteRound(r)}><Trash2 className="h-3.5 w-3.5" /></Button>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+            {/* Desktop table view */}
+            <div className="hidden md:block overflow-x-auto">
               <Table>
                 <TableHeader>
                   <TableRow>
@@ -451,6 +498,7 @@ export default function CommitteeDetailPage() {
                 </TableBody>
               </Table>
             </div>
+            </>
           )}
         </CardContent>
       </Card>

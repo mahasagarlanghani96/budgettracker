@@ -84,7 +84,7 @@ export default function SearchPage() {
             {results.accounts.map((a) => (
               <Link key={a.id} href={`/accounts/${a.id}`} className="flex items-center justify-between p-2 rounded-md hover:bg-[var(--glass-bg)] transition-colors">
                 <span className="font-medium">{a.name}</span>
-                <Badge variant="secondary" className="text-xs">{a.accountType}</Badge>
+                <Badge variant="secondary" className="text-xs">{a.accountType.replace(/_/g, ' ')}</Badge>
               </Link>
             ))}
           </CardContent>
@@ -125,18 +125,21 @@ export default function SearchPage() {
       {results && results.transactions.length > 0 && (
         <Card>
           <CardHeader className="pb-2"><CardTitle className="text-sm text-[var(--text-secondary)]">Transactions ({results.transactions.length})</CardTitle></CardHeader>
-          <CardContent className="space-y-2">
+          <CardContent className="space-y-1">
             {results.transactions.map((t) => (
-              <Link key={t.id} href={`/transactions/${t.id}/edit`} className="flex items-center justify-between p-2 rounded-md hover:bg-[var(--glass-bg)] transition-colors">
-                <div>
-                  <p className="font-medium text-sm">{t.description || 'No description'}</p>
-                  <p className="text-xs text-[var(--text-secondary)]">
-                    {formatDate(t.transactionDate)} · {t.type}
-                    {t.category && ` · ${t.category.name}`}
-                    {t.person && ` · ${t.person.name}`}
+              <Link key={t.id} href={`/transactions/${t.id}/edit`} className="flex items-start justify-between gap-3 p-2.5 rounded-lg hover:bg-[var(--glass-bg)] transition-colors">
+                <div className="min-w-0 flex-1">
+                  <p className="font-medium text-sm truncate">{t.description || 'No description'}</p>
+                  <p className="text-xs text-[var(--text-secondary)] mt-0.5">
+                    {formatDate(t.transactionDate)} · {t.type.replace(/_/g, ' ')}
                   </p>
+                  {(t.category || t.person) && (
+                    <p className="text-xs text-[var(--text-tertiary)] mt-0.5">
+                      {[t.category?.name, t.person?.name].filter(Boolean).join(' · ')}
+                    </p>
+                  )}
                 </div>
-                <span className="font-medium tabular-nums">{formatCurrency(t.amount.toString())}</span>
+                <span className="text-sm font-medium tabular-nums whitespace-nowrap shrink-0 mt-0.5">{formatCurrency(t.amount.toString())}</span>
               </Link>
             ))}
           </CardContent>
@@ -148,14 +151,14 @@ export default function SearchPage() {
           <CardHeader className="pb-2"><CardTitle className="text-sm text-[var(--text-secondary)]">Investments ({results.investments.length})</CardTitle></CardHeader>
           <CardContent className="space-y-2">
             {results.investments.map((inv) => (
-              <Link key={inv.id} href="/investments" className="flex items-center justify-between p-2 rounded-md hover:bg-[var(--glass-bg)] transition-colors">
-                <div>
-                  <p className="font-medium text-sm">{inv.name}</p>
-                  <p className="text-xs text-[var(--text-secondary)]">{inv.investmentType}</p>
+              <Link key={inv.id} href="/investments" className="flex items-start justify-between gap-3 p-2.5 rounded-lg hover:bg-[var(--glass-bg)] transition-colors">
+                <div className="min-w-0 flex-1">
+                  <p className="font-medium text-sm truncate">{inv.name}</p>
+                  <p className="text-xs text-[var(--text-secondary)]">{inv.investmentType.replace(/_/g, ' ')}</p>
                 </div>
-                <div className="text-right">
-                  <span className="font-medium tabular-nums">{formatCurrency(inv.amountInvested.toString())}</span>
-                  <Badge variant={inv.isActive ? 'success' : 'secondary'} className="text-xs ml-2">{inv.isActive ? 'Active' : 'Closed'}</Badge>
+                <div className="text-right shrink-0">
+                  <span className="text-sm font-medium tabular-nums">{formatCurrency(inv.amountInvested.toString())}</span>
+                  <div className="mt-0.5"><Badge variant={inv.isActive ? 'success' : 'secondary'} className="text-[10px]">{inv.isActive ? 'Active' : 'Closed'}</Badge></div>
                 </div>
               </Link>
             ))}
@@ -168,14 +171,14 @@ export default function SearchPage() {
           <CardHeader className="pb-2"><CardTitle className="text-sm text-[var(--text-secondary)]">Loans ({results.loans.length})</CardTitle></CardHeader>
           <CardContent className="space-y-2">
             {results.loans.map((l) => (
-              <Link key={l.id} href={`/loans/${l.id}`} className="flex items-center justify-between p-2 rounded-md hover:bg-[var(--glass-bg)] transition-colors">
-                <div>
-                  <p className="font-medium text-sm">{l.person.name}</p>
-                  <p className="text-xs text-[var(--text-secondary)]">{l.direction}</p>
+              <Link key={l.id} href={`/loans/${l.id}`} className="flex items-start justify-between gap-3 p-2.5 rounded-lg hover:bg-[var(--glass-bg)] transition-colors">
+                <div className="min-w-0 flex-1">
+                  <p className="font-medium text-sm truncate">{l.person.name}</p>
+                  <p className="text-xs text-[var(--text-secondary)]">{l.direction.replace(/_/g, ' ')}</p>
                 </div>
-                <div className="text-right">
-                  <span className="font-medium tabular-nums">{formatCurrency(l.amount.toString())}</span>
-                  <Badge variant={l.status === 'ACTIVE' ? 'success' : 'secondary'} className="text-xs ml-2">{l.status}</Badge>
+                <div className="text-right shrink-0">
+                  <span className="text-sm font-medium tabular-nums">{formatCurrency(l.amount.toString())}</span>
+                  <div className="mt-0.5"><Badge variant={l.status === 'ACTIVE' ? 'success' : 'secondary'} className="text-[10px]">{l.status}</Badge></div>
                 </div>
               </Link>
             ))}

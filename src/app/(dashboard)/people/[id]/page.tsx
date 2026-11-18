@@ -134,21 +134,21 @@ export default function PersonDetailPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center gap-4">
+      <div className="flex items-center gap-3 min-w-0">
         <Link href="/people">
           <Button variant="ghost" size="icon"><ArrowLeft className="h-4 w-4" /></Button>
         </Link>
-        <div className="flex-1">
-          <div className="flex items-center gap-2">
-            <h1 className="text-2xl font-display font-bold text-[var(--text-primary)]">{data.name}</h1>
-            <Badge variant={data.isActive ? 'success' : 'secondary'} className="text-xs">
+        <div className="min-w-0 flex-1">
+          <div className="flex items-center gap-2 min-w-0">
+            <h1 className="text-xl sm:text-2xl font-display font-bold text-[var(--text-primary)] truncate">{data.name}</h1>
+            <Badge variant={data.isActive ? 'success' : 'secondary'} className="text-xs shrink-0">
               {data.isActive ? 'Active' : 'Inactive'}
             </Badge>
           </div>
           <div className="flex flex-wrap gap-x-4 text-sm text-[var(--text-secondary)] mt-1">
             {data.relationship && <span>{data.relationship}</span>}
             {data.phone && <span>{data.phone}</span>}
-            {data.email && <span>{data.email}</span>}
+            {data.email && <span className="truncate">{data.email}</span>}
           </div>
         </div>
       </div>
@@ -241,42 +241,66 @@ export default function PersonDetailPage() {
                 )}
               </div>
             </div>
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Direction</TableHead>
-                  <TableHead>Date</TableHead>
-                  <TableHead>Account</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Repayments</TableHead>
-                  <TableHead className="text-right">Amount</TableHead>
-                  <TableHead className="text-right">Remaining</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {data.loans.map((loan) => (
-                  <TableRow key={loan.id}>
-                    <TableCell>
-                      <Link href={`/loans/${loan.id}`}>
-                        <Badge variant={loan.direction === 'GIVEN' ? 'success' : 'warning'} className="text-xs cursor-pointer">
-                          {loan.direction}
-                        </Badge>
-                      </Link>
-                    </TableCell>
-                    <TableCell className="text-sm">{formatDate(loan.transactionDate)}</TableCell>
-                    <TableCell className="text-sm">{loan.account.name}</TableCell>
-                    <TableCell>
-                      <Badge variant={loan.status === 'ACTIVE' ? 'default' : 'secondary'} className="text-xs">
-                        {loan.status}
-                      </Badge>
-                    </TableCell>
-                    <TableCell className="text-sm tabular-nums">{loan._count.repayments}</TableCell>
-                    <TableCell className="text-right font-medium tabular-nums">{formatCurrency(loan.amount.toString())}</TableCell>
-                    <TableCell className="text-right font-medium tabular-nums">{formatCurrency(loan.remainingAmount.toString())}</TableCell>
+            {/* Mobile card view */}
+            <div className="divide-y divide-[var(--glass-border)] md:hidden">
+              {data.loans.map((loan) => (
+                <Link key={loan.id} href={`/loans/${loan.id}`} className="block py-3 first:pt-0">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-2">
+                        <Badge variant={loan.direction === 'GIVEN' ? 'success' : 'warning'} className="text-[10px]">{loan.direction}</Badge>
+                        <Badge variant={loan.status === 'ACTIVE' ? 'default' : 'secondary'} className="text-[10px]">{loan.status}</Badge>
+                      </div>
+                      <p className="text-xs text-[var(--text-secondary)] mt-1">{formatDate(loan.transactionDate)} · {loan.account.name}</p>
+                      <p className="text-xs text-[var(--text-secondary)]">{loan._count.repayments} repayment{loan._count.repayments !== 1 ? 's' : ''}</p>
+                    </div>
+                    <div className="text-right shrink-0">
+                      <p className="text-sm font-medium tabular-nums">{formatCurrency(loan.amount.toString())}</p>
+                      <p className="text-xs text-[var(--text-secondary)] tabular-nums">Rem: {formatCurrency(loan.remainingAmount.toString())}</p>
+                    </div>
+                  </div>
+                </Link>
+              ))}
+            </div>
+            {/* Desktop table view */}
+            <div className="hidden md:block overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Direction</TableHead>
+                    <TableHead>Date</TableHead>
+                    <TableHead>Account</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead>Repayments</TableHead>
+                    <TableHead className="text-right">Amount</TableHead>
+                    <TableHead className="text-right">Remaining</TableHead>
                   </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+                </TableHeader>
+                <TableBody>
+                  {data.loans.map((loan) => (
+                    <TableRow key={loan.id}>
+                      <TableCell>
+                        <Link href={`/loans/${loan.id}`}>
+                          <Badge variant={loan.direction === 'GIVEN' ? 'success' : 'warning'} className="text-xs cursor-pointer">
+                            {loan.direction}
+                          </Badge>
+                        </Link>
+                      </TableCell>
+                      <TableCell className="text-sm">{formatDate(loan.transactionDate)}</TableCell>
+                      <TableCell className="text-sm">{loan.account.name}</TableCell>
+                      <TableCell>
+                        <Badge variant={loan.status === 'ACTIVE' ? 'default' : 'secondary'} className="text-xs">
+                          {loan.status}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="text-sm tabular-nums">{loan._count.repayments}</TableCell>
+                      <TableCell className="text-right font-medium tabular-nums">{formatCurrency(loan.amount.toString())}</TableCell>
+                      <TableCell className="text-right font-medium tabular-nums">{formatCurrency(loan.remainingAmount.toString())}</TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
           </CardContent>
         </Card>
       )}
@@ -291,38 +315,59 @@ export default function PersonDetailPage() {
             </div>
           </CardHeader>
           <CardContent>
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Name</TableHead>
-                  <TableHead>Type</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Slots</TableHead>
-                  <TableHead className="text-right">Monthly</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {data.committeeMemberships.map((m) => (
-                  <TableRow key={m.id}>
-                    <TableCell className="font-medium">
-                      <Link href={`/committees/${m.committee.id}`} className="hover:underline">
-                        {m.committee.name}
-                      </Link>
-                    </TableCell>
-                    <TableCell className="text-sm">{m.committee.type}</TableCell>
-                    <TableCell>
-                      <Badge variant={m.committee.status === 'ACTIVE' ? 'success' : 'secondary'} className="text-xs">
-                        {m.committee.status}
-                      </Badge>
-                    </TableCell>
-                    <TableCell className="text-sm tabular-nums">{m.slots}</TableCell>
-                    <TableCell className="text-right font-medium tabular-nums">
-                      {formatCurrency(m.committee.monthlyContribution.toString())}
-                    </TableCell>
+            {/* Mobile card view */}
+            <div className="divide-y divide-[var(--glass-border)] md:hidden">
+              {data.committeeMemberships.map((m) => (
+                <Link key={m.id} href={`/committees/${m.committee.id}`} className="block py-3 first:pt-0">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0 flex-1">
+                      <p className="text-sm font-medium truncate">{m.committee.name}</p>
+                      <div className="flex items-center gap-2 mt-0.5">
+                        <span className="text-xs text-[var(--text-secondary)]">{m.committee.type}</span>
+                        <Badge variant={m.committee.status === 'ACTIVE' ? 'success' : 'secondary'} className="text-[10px]">{m.committee.status}</Badge>
+                      </div>
+                      <p className="text-xs text-[var(--text-secondary)] mt-0.5">{m.slots} slot{m.slots !== 1 ? 's' : ''}</p>
+                    </div>
+                    <span className="text-sm font-medium tabular-nums shrink-0">{formatCurrency(m.committee.monthlyContribution.toString())}/mo</span>
+                  </div>
+                </Link>
+              ))}
+            </div>
+            {/* Desktop table view */}
+            <div className="hidden md:block overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Name</TableHead>
+                    <TableHead>Type</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead>Slots</TableHead>
+                    <TableHead className="text-right">Monthly</TableHead>
                   </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+                </TableHeader>
+                <TableBody>
+                  {data.committeeMemberships.map((m) => (
+                    <TableRow key={m.id}>
+                      <TableCell className="font-medium">
+                        <Link href={`/committees/${m.committee.id}`} className="hover:underline">
+                          {m.committee.name}
+                        </Link>
+                      </TableCell>
+                      <TableCell className="text-sm">{m.committee.type}</TableCell>
+                      <TableCell>
+                        <Badge variant={m.committee.status === 'ACTIVE' ? 'success' : 'secondary'} className="text-xs">
+                          {m.committee.status}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="text-sm tabular-nums">{m.slots}</TableCell>
+                      <TableCell className="text-right font-medium tabular-nums">
+                        {formatCurrency(m.committee.monthlyContribution.toString())}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
           </CardContent>
         </Card>
       )}
@@ -344,36 +389,58 @@ export default function PersonDetailPage() {
             <p className="text-sm text-[var(--text-secondary)] text-center py-4">No transactions with this person</p>
           ) : (
             <>
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Date</TableHead>
-                    <TableHead>Description</TableHead>
-                    <TableHead>Type</TableHead>
-                    <TableHead>Account</TableHead>
-                    <TableHead className="text-right">Amount</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {transactions.map((tx) => (
-                    <TableRow key={tx.id} className={tx.isHistorical ? 'opacity-50' : ''}>
-                      <TableCell className="text-sm">{formatDate(tx.transactionDate)}</TableCell>
-                      <TableCell className="text-sm">{tx.description || tx.type}</TableCell>
-                      <TableCell>
-                        <Badge variant={typeBadgeVariant[tx.type] || 'outline'} className="text-xs">
-                          {tx.type.replace(/_/g, ' ')}
-                        </Badge>
-                      </TableCell>
-                      <TableCell className="text-sm text-[var(--text-secondary)]">
-                        {tx.sourceAccount?.name || tx.destAccount?.name || '—'}
-                      </TableCell>
-                      <TableCell className="text-right font-medium tabular-nums">
-                        {formatCurrency(tx.amount.toString())}
-                      </TableCell>
+              {/* Mobile card view */}
+              <div className="divide-y divide-[var(--glass-border)] md:hidden">
+                {transactions.map((tx) => (
+                  <div key={tx.id} className={`py-3 first:pt-0 ${tx.isHistorical ? 'opacity-50' : ''}`}>
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0 flex-1">
+                        <p className="text-sm font-medium truncate">{tx.description || tx.type.replace(/_/g, ' ')}</p>
+                        <div className="flex items-center gap-2 mt-0.5">
+                          <Badge variant={typeBadgeVariant[tx.type] || 'outline'} className="text-[10px]">{tx.type.replace(/_/g, ' ')}</Badge>
+                        </div>
+                        <p className="text-xs text-[var(--text-secondary)] mt-0.5">
+                          {formatDate(tx.transactionDate)} · {tx.sourceAccount?.name || tx.destAccount?.name || '—'}
+                        </p>
+                      </div>
+                      <span className="text-sm font-medium tabular-nums shrink-0">{formatCurrency(tx.amount.toString())}</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+              {/* Desktop table view */}
+              <div className="hidden md:block overflow-x-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Date</TableHead>
+                      <TableHead>Description</TableHead>
+                      <TableHead>Type</TableHead>
+                      <TableHead>Account</TableHead>
+                      <TableHead className="text-right">Amount</TableHead>
                     </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
+                  </TableHeader>
+                  <TableBody>
+                    {transactions.map((tx) => (
+                      <TableRow key={tx.id} className={tx.isHistorical ? 'opacity-50' : ''}>
+                        <TableCell className="text-sm">{formatDate(tx.transactionDate)}</TableCell>
+                        <TableCell className="text-sm">{tx.description || tx.type}</TableCell>
+                        <TableCell>
+                          <Badge variant={typeBadgeVariant[tx.type] || 'outline'} className="text-xs">
+                            {tx.type.replace(/_/g, ' ')}
+                          </Badge>
+                        </TableCell>
+                        <TableCell className="text-sm text-[var(--text-secondary)]">
+                          {tx.sourceAccount?.name || tx.destAccount?.name || '—'}
+                        </TableCell>
+                        <TableCell className="text-right font-medium tabular-nums">
+                          {formatCurrency(tx.amount.toString())}
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
               {hasMore && (
                 <div className="flex justify-center pt-4">
                   <Button variant="outline" size="sm" onClick={loadMoreTransactions} disabled={loadingMore}>

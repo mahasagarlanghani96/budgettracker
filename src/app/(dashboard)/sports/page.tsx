@@ -368,7 +368,47 @@ export default function SportsPage() {
             />
           ) : (
             <>
-            <div className="overflow-x-auto">
+            {/* Mobile card view */}
+            <div className="space-y-2.5 md:hidden">
+              {paginatedMatches.map((match) => {
+                const total = match.totalFeeCount ?? 0;
+                const paid = match.paidFeeCount ?? 0;
+                const allPaid = total > 0 && paid === total;
+                return (
+                  <Card key={match.id}>
+                    <CardContent className="p-4 space-y-2">
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="min-w-0 flex-1">
+                          <p className="font-medium text-sm">{match.team.name}</p>
+                          <p className="text-xs text-[var(--text-secondary)]">{formatDate(match.matchDate)}{match.opponent ? ` vs ${match.opponent}` : ''}</p>
+                          {match.venue && <p className="text-xs text-[var(--text-tertiary)]">{match.venue}</p>}
+                        </div>
+                        {total === 0 ? (
+                          <span className="text-xs text-[var(--text-secondary)] shrink-0">No fees</span>
+                        ) : allPaid ? (
+                          <Badge variant="success" className="text-xs shrink-0"><CheckCircle className="h-3 w-3 mr-1" />All Paid</Badge>
+                        ) : (
+                          <Badge variant="warning" className="text-xs shrink-0">{paid}/{total} Paid</Badge>
+                        )}
+                      </div>
+                      <div className="flex gap-4 text-xs text-[var(--text-secondary)]">
+                        <span>Expenses: <span className="font-medium tabular-nums text-[var(--text-primary)]">{formatCurrency(match.totalExpenses)}</span></span>
+                        <span>Fees: <span className="font-medium tabular-nums text-[var(--text-primary)]">{formatCurrency(match.totalFees)}</span></span>
+                      </div>
+                      <div className="flex justify-end gap-1 pt-1 border-t border-[var(--glass-border)]">
+                        <Button variant="ghost" size="icon" className="h-7 w-7" aria-label="View match" asChild>
+                          <Link href={`/sports/matches/${match.id}`}><Eye className="h-3.5 w-3.5" /></Link>
+                        </Button>
+                        <Button variant="ghost" size="icon" className="h-7 w-7" aria-label="Edit match" onClick={() => openEditMatch(match)}><Pencil className="h-3.5 w-3.5" /></Button>
+                        <Button variant="ghost" size="icon" className="h-7 w-7" aria-label="Delete match" onClick={() => handleDeleteMatch(match)}><Trash2 className="h-3.5 w-3.5" /></Button>
+                      </div>
+                    </CardContent>
+                  </Card>
+                );
+              })}
+            </div>
+            {/* Desktop table view */}
+            <div className="hidden md:block overflow-x-auto">
               <Table>
                 <TableHeader>
                   <TableRow>

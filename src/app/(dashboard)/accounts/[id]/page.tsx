@@ -133,20 +133,24 @@ export default function AccountDetailPage() {
   return (
     <div className="space-y-6">
       {ConfirmDialog}
-      <div className="flex items-center gap-4">
-        <Link href="/accounts">
-          <Button variant="ghost" size="icon"><ArrowLeft className="h-4 w-4" /></Button>
-        </Link>
-        <div className="flex-1">
-          <h1 className="text-2xl font-display font-bold text-[var(--text-primary)]">{account.name as string}</h1>
-          <p className="text-[var(--text-secondary)]">{(account.accountType as string).replace('_', ' ')}</p>
+      <div className="space-y-3">
+        <div className="flex items-center gap-3">
+          <Link href="/accounts">
+            <Button variant="ghost" size="icon" className="shrink-0"><ArrowLeft className="h-4 w-4" /></Button>
+          </Link>
+          <div className="min-w-0 flex-1">
+            <h1 className="text-xl sm:text-2xl font-display font-bold text-[var(--text-primary)] truncate">{account.name as string}</h1>
+            <p className="text-sm text-[var(--text-secondary)]">{(account.accountType as string).replace('_', ' ')}</p>
+          </div>
         </div>
-        <Button variant="outline" size="sm" onClick={openEdit}>
-          <Pencil className="h-4 w-4 mr-1" /> Edit
-        </Button>
-        <Button variant="destructive" size="sm" onClick={handleDelete}>
-          <Trash2 className="h-4 w-4 mr-1" /> Delete
-        </Button>
+        <div className="flex gap-2 pl-12 sm:pl-0">
+          <Button variant="outline" size="sm" onClick={openEdit}>
+            <Pencil className="h-4 w-4 mr-1" /> Edit
+          </Button>
+          <Button variant="destructive" size="sm" onClick={handleDelete}>
+            <Trash2 className="h-4 w-4 mr-1" /> Delete
+          </Button>
+        </div>
       </div>
 
       {deleteError && (
@@ -188,30 +192,55 @@ export default function AccountDetailPage() {
             <p className="text-sm text-[var(--text-secondary)] text-center py-4">No transactions for this account</p>
           ) : (
             <>
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Date</TableHead>
-                    <TableHead>Description</TableHead>
-                    <TableHead>Type</TableHead>
-                    <TableHead className="text-right">Amount</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {transactions.map((tx) => (
-                    <TableRow key={tx.id as string}>
-                      <TableCell className="text-sm">{formatDate(tx.transactionDate as string)}</TableCell>
-                      <TableCell className="text-sm">{(tx.description as string) || (tx.type as string)}</TableCell>
-                      <TableCell>
-                        <Badge variant="outline" className="text-xs">{tx.type as string}</Badge>
-                      </TableCell>
-                      <TableCell className="text-right font-medium tabular-nums">
-                        {formatCurrency((tx.amount as { toString(): string }).toString())}
-                      </TableCell>
+              {/* Mobile card view */}
+              <div className="divide-y divide-[var(--glass-border)] md:hidden">
+                {transactions.map((tx) => {
+                  const typeName = (tx.type as string).replace(/_/g, ' ');
+                  return (
+                    <div key={tx.id as string} className="py-3 first:pt-0">
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="min-w-0 flex-1">
+                          <p className="text-sm font-medium truncate">{(tx.description as string) || typeName}</p>
+                          <p className="text-xs text-[var(--text-secondary)] mt-0.5">
+                            {formatDate(tx.transactionDate as string)}
+                          </p>
+                        </div>
+                        <span className="text-sm font-medium tabular-nums whitespace-nowrap">
+                          {formatCurrency((tx.amount as { toString(): string }).toString())}
+                        </span>
+                      </div>
+                      <Badge variant="outline" className="text-[10px] mt-1.5">{typeName}</Badge>
+                    </div>
+                  );
+                })}
+              </div>
+              {/* Desktop table view */}
+              <div className="hidden md:block">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Date</TableHead>
+                      <TableHead>Description</TableHead>
+                      <TableHead>Type</TableHead>
+                      <TableHead className="text-right">Amount</TableHead>
                     </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
+                  </TableHeader>
+                  <TableBody>
+                    {transactions.map((tx) => (
+                      <TableRow key={tx.id as string}>
+                        <TableCell className="text-sm whitespace-nowrap">{formatDate(tx.transactionDate as string)}</TableCell>
+                        <TableCell className="text-sm">{(tx.description as string) || (tx.type as string).replace(/_/g, ' ')}</TableCell>
+                        <TableCell>
+                          <Badge variant="outline" className="text-xs whitespace-nowrap">{(tx.type as string).replace(/_/g, ' ')}</Badge>
+                        </TableCell>
+                        <TableCell className="text-right font-medium tabular-nums whitespace-nowrap">
+                          {formatCurrency((tx.amount as { toString(): string }).toString())}
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
               {hasMore && (
                 <div className="flex justify-center pt-4">
                   <Button variant="outline" size="sm" onClick={loadMoreTransactions} disabled={loadingMore}>

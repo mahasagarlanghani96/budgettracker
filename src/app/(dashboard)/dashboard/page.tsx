@@ -98,7 +98,7 @@ function DonutChart({ data, colors, centerLabel, centerValue }: { data: Array<{ 
   const circumference = 2 * Math.PI * r;
 
   return (
-    <div className="flex items-center gap-6">
+    <div className="flex flex-col sm:flex-row items-center gap-5 sm:gap-6">
       <div className="relative shrink-0">
         <svg width={size} height={size} className="transform -rotate-90">
           <circle cx={cx} cy={cy} r={r} fill="none" stroke="var(--glass-border)" strokeWidth={strokeW} opacity={0.3} />
@@ -128,7 +128,7 @@ function DonutChart({ data, colors, centerLabel, centerValue }: { data: Array<{ 
           <span className="text-[9px] text-[var(--text-tertiary)] uppercase tracking-wider mt-0.5">{centerLabel || 'this month'}</span>
         </div>
       </div>
-      <div className="space-y-3 min-w-0 flex-1">
+      <div className="space-y-3 min-w-0 w-full sm:flex-1">
         {data.map((d, i) => {
           const pct = Math.round((parseFloat(d.amount) / total) * 100);
           return (
@@ -159,7 +159,7 @@ function WeeklyTrendChart({ data }: { data: Array<{ date: string; income: number
 
   return (
     <div className="overflow-x-auto">
-      <svg width={w} height={h + 32} className="mx-auto">
+      <svg viewBox={`0 0 ${w} ${h + 32}`} className="w-full max-w-[320px] mx-auto" preserveAspectRatio="xMidYMid meet">
         {data.map((d, i) => {
           const x = gap + i * (barW * 2 + gap);
           const incH = (d.income / maxVal) * h;
