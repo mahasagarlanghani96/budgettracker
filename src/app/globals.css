@@ -13,10 +13,10 @@
     --bg-sidebar: #0b1018;
 
     /* Glass surfaces */
-    --glass-bg: rgba(255,255,255,0.04);
-    --glass-bg-hover: rgba(255,255,255,0.07);
-    --glass-border: rgba(255,255,255,0.08);
-    --glass-border-hover: rgba(255,255,255,0.12);
+    --glass-bg: rgba(255,255,255,0.05);
+    --glass-bg-hover: rgba(255,255,255,0.08);
+    --glass-border: rgba(255,255,255,0.10);
+    --glass-border-hover: rgba(255,255,255,0.18);
 
     /* Accent colors */
     --emerald: #00d68f;
@@ -156,16 +156,16 @@
 :root body::before {
   top: -20%;
   left: -10%;
-  width: 60%;
-  height: 60%;
-  background: radial-gradient(ellipse, rgba(0,214,143,0.03), transparent 70%);
+  width: 65%;
+  height: 65%;
+  background: radial-gradient(ellipse, rgba(0,214,143,0.06), transparent 70%);
 }
 :root body::after {
   bottom: -20%;
   right: -10%;
-  width: 55%;
-  height: 55%;
-  background: radial-gradient(ellipse, rgba(59,130,246,0.025), transparent 70%);
+  width: 60%;
+  height: 60%;
+  background: radial-gradient(ellipse, rgba(59,130,246,0.04), transparent 70%);
 }
 /* Hide glow pseudo-elements in light mode */
 .light body::before,
@@ -181,8 +181,8 @@
     background: var(--glass-bg);
     border: 1px solid var(--glass-border);
     border-radius: var(--radius-card);
-    backdrop-filter: blur(12px);
-    -webkit-backdrop-filter: blur(12px);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
     transition: transform 0.25s var(--ease-out),
                 box-shadow 0.25s ease,
                 border-color 0.25s ease;
@@ -191,15 +191,27 @@
     border-color: var(--glass-border-hover);
   }
   .glass-interactive:hover {
-    transform: translateY(-1px);
+    transform: translateY(-2px);
     border-color: var(--glass-border-hover);
   }
+}
+
+/* Dark mode: subtle ambient shadow on glass */
+:root .glass {
+  box-shadow: 0 2px 12px rgba(0,0,0,0.3), 0 0 1px rgba(255,255,255,0.05);
+}
+:root .glass-interactive:hover {
+  box-shadow: 0 8px 32px rgba(0,214,143,0.08), 0 2px 8px rgba(0,0,0,0.4), 0 0 1px rgba(0,214,143,0.2);
 }
 
 /* Light mode glass gets a subtle shadow instead of glow */
 .light .glass,
 [data-theme="light"] .glass {
-  box-shadow: 0 1px 3px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04);
+  box-shadow: 0 1px 4px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04);
+}
+.light .glass-interactive:hover,
+[data-theme="light"] .glass-interactive:hover {
+  box-shadow: 0 4px 16px rgba(0,0,0,0.08), 0 1px 3px rgba(0,0,0,0.06);
 }
 
 /* Accent utilities */
@@ -218,6 +230,10 @@
   .bg-blue-dim { background: var(--blue-dim); }
   .bg-violet-dim { background: var(--violet-dim); }
   .glow-emerald { text-shadow: 0 0 20px var(--emerald-glow); }
+  .glow-coral { text-shadow: 0 0 20px rgba(255,92,92,0.3); }
+  .glow-amber { text-shadow: 0 0 20px rgba(255,170,44,0.3); }
+  .glow-blue { text-shadow: 0 0 20px rgba(59,130,246,0.3); }
+  .glow-violet { text-shadow: 0 0 20px rgba(167,139,250,0.3); }
 }
 
 /* DM Sans for headings/numbers */
