@@ -35,8 +35,8 @@ export async function GET(request: NextRequest) {
     if (type) where.type = type;
     if (from || to) {
       where.transactionDate = {};
-      if (from) (where.transactionDate as Record<string, unknown>).gte = new Date(from);
-      if (to) (where.transactionDate as Record<string, unknown>).lte = new Date(to);
+      if (from) (where.transactionDate as Record<string, unknown>).gte = new Date(from + 'T00:00:00.000Z');
+      if (to) (where.transactionDate as Record<string, unknown>).lte = new Date(to + 'T23:59:59.999Z');
     }
     if (search) {
       // Merge with any existing OR
