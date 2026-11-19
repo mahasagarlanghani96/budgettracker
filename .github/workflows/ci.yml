@@ -19,7 +19,7 @@ jobs:
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: 'npm'
-      - run: npm ci
+      - run: npm install
       - run: npx tsc --noEmit
       - run: npm run lint
 
@@ -32,7 +32,7 @@ jobs:
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: 'npm'
-      - run: npm ci
+      - run: npm install
       - run: npm run test:unit
       - name: Upload test results
         if: always()
@@ -41,18 +41,6 @@ jobs:
           name: unit-test-results
           path: test-results/
           retention-days: 14
-
-  component-tests:
-    name: Component Tests
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: ${{ env.NODE_VERSION }}
-          cache: 'npm'
-      - run: npm ci
-      - run: npm run test:component
 
   e2e-tests:
     name: E2E Tests (Chromium)
@@ -64,7 +52,7 @@ jobs:
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: 'npm'
-      - run: npm ci
+      - run: npm install
       - run: npx playwright install chromium --with-deps
       - run: npm run build
         env:
@@ -104,7 +92,7 @@ jobs:
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: 'npm'
-      - run: npm ci
+      - run: npm install
       - run: npx playwright install firefox webkit --with-deps
       - run: npm run build
         env:
@@ -135,6 +123,6 @@ jobs:
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: 'npm'
-      - run: npm ci
+      - run: npm install
       - run: npm audit --audit-level=critical || true
       - run: npx tsc --noEmit

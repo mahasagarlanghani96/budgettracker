@@ -35,7 +35,7 @@ interface LedgerLookup {
   personId?: string | null;
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
+
 export async function findLedgerEntry(tx: any, lookup: LedgerLookup) {
   const { link, userId, type } = lookup;
 
@@ -63,7 +63,7 @@ export async function findLedgerEntry(tx: any, lookup: LedgerLookup) {
   });
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
+
 export async function softDeleteLedgerEntry(tx: any, lookup: LedgerLookup) {
   const entry = await findLedgerEntry(tx, lookup);
   if (!entry) return;
@@ -76,7 +76,7 @@ export async function softDeleteLedgerEntry(tx: any, lookup: LedgerLookup) {
 // Recompute a loan's remaining amount from its repayments. A loan that was
 // auto-settled by reaching zero reopens if a repayment is reduced or removed;
 // a loan settled manually (with a balance left) or written off keeps its status.
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
+
 export async function recalculateLoan(tx: any, loanId: string) {
   const loan = await tx.loan.findUnique({ where: { id: loanId }, include: { repayments: true } });
   if (!loan) return;
