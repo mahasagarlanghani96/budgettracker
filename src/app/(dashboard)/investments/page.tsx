@@ -673,7 +673,7 @@ export default function InvestmentsPage() {
           )}
           <DialogFooter>
             <Button variant="outline" onClick={() => setViewingHistory(null)}>Close</Button>
-            {viewingHistory && (
+            {viewingHistory?.isActive && (
               <Button onClick={() => { setViewingHistory(null); openProfitRecord(viewingHistory); }}>Record New Profit</Button>
             )}
           </DialogFooter>
