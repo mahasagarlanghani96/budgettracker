@@ -603,6 +603,20 @@ export default function InvestmentsPage() {
       <Dialog open={!!viewingHistory} onOpenChange={(open) => !open && setViewingHistory(null)}>
         <DialogContent>
           <DialogHeader><DialogTitle>Profit History — {viewingHistory?.name}</DialogTitle></DialogHeader>
+          {viewingHistory && (() => {
+            const inv = viewingHistory;
+            const invested = parseFloat(inv.amountInvested.toString());
+            const returned = parseFloat(inv.totalReturned);
+            const pl = parseFloat(inv.profitLoss);
+            return (
+              <div className="rounded-md bg-[var(--glass-bg)] px-3 py-2 text-sm space-y-1">
+                <div className="flex justify-between"><span className="text-[var(--text-secondary)]">Invested</span><span className="font-medium tabular-nums">{formatCurrency(invested.toString())}</span></div>
+                {inv.isActive && <div className="flex justify-between"><span className="text-[var(--text-secondary)]">Current Value</span><span className="font-medium tabular-nums">{formatCurrency(inv.currentValue.toString())}</span></div>}
+                <div className="flex justify-between"><span className="text-[var(--text-secondary)]">Total Returned</span><span className="font-medium tabular-nums">{formatCurrency(returned.toString())}</span></div>
+                <div className="flex justify-between border-t pt-1"><span className="text-[var(--text-secondary)]">Net P/L</span><span className={`font-bold tabular-nums ${pl >= 0 ? 'text-[var(--emerald)]' : 'text-[var(--coral)]'}`}>{pl >= 0 ? '+' : ''}{formatCurrency(pl.toString())} ({pl >= 0 ? '+' : ''}{inv.profitLossPercent}%)</span></div>
+              </div>
+            );
+          })()}
           {historyLoading ? (
             <p className="text-sm text-[var(--text-secondary)] py-4">Loading...</p>
           ) : profitHistory.length === 0 ? (
