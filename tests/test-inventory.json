@@ -1,0 +1,130 @@
+{
+  "version": "1.0.0",
+  "generated": "2026-11-19",
+  "summary": {
+    "totalTests": 302,
+    "unitTests": 234,
+    "e2eTests": 68,
+    "componentTests": 0,
+    "coverageDimensions": ["unit", "property-based", "schema-validation", "ledger-logic", "e2e-auth", "e2e-pwa", "e2e-a11y", "e2e-security"]
+  },
+  "suites": [
+    {
+      "file": "tests/unit/utils.test.ts",
+      "type": "unit",
+      "count": 24,
+      "features": ["formatCurrency", "formatCurrencyShort", "formatEnum", "formatDate", "getDateRange"]
+    },
+    {
+      "file": "tests/unit/utils-extended.test.ts",
+      "type": "unit",
+      "count": 28,
+      "features": ["formatCurrency-edge-cases", "formatCurrencyShort-boundaries", "formatEnum-edge", "formatDateTime", "cn", "generateId", "getDateRange-extended"],
+      "ids": ["FIN-QA-0040", "FIN-QA-0043", "FIN-QA-0046", "FIN-QA-0048", "FIN-QA-0050", "FIN-QA-0052", "FIN-QA-0054"]
+    },
+    {
+      "file": "tests/unit/schemas.test.ts",
+      "type": "unit",
+      "count": 25,
+      "features": ["registerSchema", "loginSchema", "accountSchema", "transactionSchema", "loanSchema"]
+    },
+    {
+      "file": "tests/unit/schemas-extended.test.ts",
+      "type": "unit",
+      "count": 90,
+      "features": ["all-zod-schemas-boundary-testing"],
+      "ids": ["FIN-QA-0010", "FIN-QA-0011", "FIN-QA-0012", "FIN-QA-0013", "FIN-QA-0014", "FIN-QA-0015", "FIN-QA-0016", "FIN-QA-0017", "FIN-QA-0018", "FIN-QA-0019", "FIN-QA-0020", "FIN-QA-0021", "FIN-QA-0022", "FIN-QA-0023"]
+    },
+    {
+      "file": "tests/unit/rate-limit.test.ts",
+      "type": "unit",
+      "count": 4,
+      "features": ["rateLimit"]
+    },
+    {
+      "file": "tests/unit/financial-invariants.test.ts",
+      "type": "unit",
+      "count": 16,
+      "features": ["balance-invariants", "waiyk-profit-invariants", "loan-remaining-invariants", "decimal-precision", "cross-verification"],
+      "ids": ["FIN-QA-0001", "FIN-QA-0002", "FIN-QA-0003", "FIN-QA-0004", "FIN-QA-0005", "FIN-QA-0006"],
+      "priority": "P0"
+    },
+    {
+      "file": "tests/unit/ledger.test.ts",
+      "type": "unit",
+      "count": 11,
+      "features": ["findLedgerEntry", "softDeleteLedgerEntry", "recalculateLoan"],
+      "ids": ["FIN-QA-0030", "FIN-QA-0031", "FIN-QA-0032"],
+      "priority": "P0"
+    },
+    {
+      "file": "src/lib/calculations/__tests__/balance.test.ts",
+      "type": "unit",
+      "count": 20,
+      "features": ["transaction-type-classification", "calculateAccountBalance", "getOutstandingReceivables", "getOutstandingPayables"],
+      "priority": "P0"
+    },
+    {
+      "file": "src/lib/calculations/__tests__/waiyk.test.ts",
+      "type": "unit",
+      "count": 16,
+      "features": ["calculateProfitShare", "calculateAdjustedPaymentPerSlot", "calculateMemberProfit", "calculateMemberPayment", "calculateRoundSummary", "eligibility", "calculateRemainingDues"],
+      "priority": "P0"
+    },
+    {
+      "file": "tests/e2e/auth.spec.ts",
+      "type": "e2e",
+      "count": 30,
+      "features": ["login-form", "registration-form", "route-protection"],
+      "ids": ["FIN-QA-0100", "FIN-QA-0105", "FIN-QA-0110"],
+      "priority": "P0"
+    },
+    {
+      "file": "tests/e2e/pwa.spec.ts",
+      "type": "e2e",
+      "count": 10,
+      "features": ["manifest-validation", "service-worker", "offline-page", "meta-tags"],
+      "ids": ["FIN-QA-0200", "FIN-QA-0205", "FIN-QA-0210", "FIN-QA-0213"]
+    },
+    {
+      "file": "tests/e2e/accessibility.spec.ts",
+      "type": "e2e",
+      "count": 8,
+      "features": ["axe-wcag-scan", "label-association", "keyboard-navigation"],
+      "ids": ["FIN-QA-0300", "FIN-QA-0305", "FIN-QA-0310"]
+    },
+    {
+      "file": "tests/e2e/security-headers.spec.ts",
+      "type": "e2e",
+      "count": 20,
+      "features": ["api-auth-enforcement", "auth-endpoints", "security-headers"],
+      "ids": ["FIN-QA-0400", "FIN-QA-0405", "FIN-QA-0410"],
+      "priority": "P0"
+    }
+  ],
+  "knownDefects": [
+    {
+      "id": "FIN-BUG-0001",
+      "severity": "low",
+      "title": "formatCurrency(Infinity) produces corrupted output",
+      "file": "src/lib/utils.ts",
+      "line": 13,
+      "status": "OPEN"
+    },
+    {
+      "id": "FIN-BUG-0002",
+      "severity": "serious",
+      "title": "Password toggle button has no aria-label (a11y violation)",
+      "file": "src/components/ui/password-input.tsx",
+      "line": 21,
+      "status": "OPEN"
+    },
+    {
+      "id": "FIN-BUG-0003",
+      "severity": "minor",
+      "title": "Offline page has color-contrast issue",
+      "file": "public/offline.html",
+      "status": "OPEN"
+    }
+  ]
+}

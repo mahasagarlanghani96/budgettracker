@@ -12,7 +12,7 @@ export function cn(...inputs: ClassValue[]) {
  */
 export function formatCurrency(amount: number | string | { toString(): string }, currency = 'PKR'): string {
   const num = typeof amount === 'number' ? amount : parseFloat(amount.toString());
-  if (isNaN(num)) return 'Rs. 0';
+  if (isNaN(num) || !isFinite(num)) return 'Rs. 0';
 
   const isNegative = num < 0;
   const abs = Math.abs(num);
@@ -36,7 +36,7 @@ export function formatCurrency(amount: number | string | { toString(): string },
 /** Short format without decimals for dashboard cards */
 export function formatCurrencyShort(amount: number | string | { toString(): string }, currency = 'PKR'): string {
   const num = typeof amount === 'number' ? amount : parseFloat(amount.toString());
-  if (isNaN(num)) return 'Rs. 0';
+  if (isNaN(num) || !isFinite(num)) return 'Rs. 0';
 
   const isNegative = num < 0;
   const abs = Math.abs(num);
@@ -75,7 +75,7 @@ export function formatDateTime(date: Date | string): string {
 }
 
 export function formatEnum(val: string): string {
-  return val.split('_').map(w => w.charAt(0) + w.slice(1).toLowerCase()).join(' ');
+  return val.split('_').map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()).join(' ');
 }
 
 export type DateFilterType = 'today' | 'week' | 'month' | 'year' | 'custom' | 'all';

@@ -146,32 +146,40 @@ describe('calculateAccountBalance', () => {
 });
 
 describe('getOutstandingReceivables / getOutstandingPayables', () => {
-  it('sums unpaid amounts (loan amount minus repayments) for GIVEN loans', async () => {
+  it('sums remainingAmount for GIVEN loans', async () => {
     mockPrisma.loan.findMany.mockResolvedValue([
-      { amount: '50000', repayments: [{ amount: '20000' }] },
-      { amount: '10000', repayments: [] },
+      { remainingAmount: '30000' },
+      { remainingAmount: '10000' },
     ]);
 
     const total = await getOutstandingReceivables('user-1');
 
-    // (50000 - 20000) + (10000 - 0) = 40000
     expect(total.toString()).toBe('40000');
     expect(mockPrisma.loan.findMany).toHaveBeenCalledWith(
       expect.objectContaining({ where: { userId: 'user-1', direction: 'GIVEN', status: 'ACTIVE' } })
     );
   });
 
-  it('sums unpaid amounts for TAKEN loans', async () => {
+  it('sums remainingAmount for TAKEN loans', async () => {
     mockPrisma.loan.findMany.mockResolvedValue([
-      { amount: '30000', repayments: [{ amount: '5000' }, { amount: '5000' }] },
+      { remainingAmount: '20000' },
     ]);
 
     const total = await getOutstandingPayables('user-1');
 
-    // 30000 - (5000 + 5000) = 20000
     expect(total.toString()).toBe('20000');
     expect(mockPrisma.loan.findMany).toHaveBeenCalledWith(
       expect.objectContaining({ where: { userId: 'user-1', direction: 'TAKEN', status: 'ACTIVE' } })
     );
+  });
+
+  it('returns zero when no active loans exist', async () => {
+    mockPrisma.loan.findMany.mockResolvedValue([]);
+
+    const receivables = await getOutstandingReceivables('user-1');
+    const payables = await getOutstandingPayables('user-1');
+
+    expect(receivables.toString()).toBe('0');
+    expect(payables.toString()).toBe('0');
   });
 });
