@@ -19,7 +19,7 @@ jobs:
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: 'npm'
-      - run: npm install
+      - run: rm -rf node_modules && npm install
       - run: npx tsc --noEmit
       - run: npm run lint
 
@@ -32,7 +32,7 @@ jobs:
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: 'npm'
-      - run: npm install
+      - run: rm -rf node_modules && npm install
       - run: npm run test:unit
       - name: Upload test results
         if: always()
@@ -52,7 +52,7 @@ jobs:
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: 'npm'
-      - run: npm install
+      - run: rm -rf node_modules && npm install
       - run: npx playwright install chromium --with-deps
       - run: npm run build
         env:
@@ -92,7 +92,7 @@ jobs:
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: 'npm'
-      - run: npm install
+      - run: rm -rf node_modules && npm install
       - run: npx playwright install firefox webkit --with-deps
       - run: npm run build
         env:
@@ -123,6 +123,6 @@ jobs:
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: 'npm'
-      - run: npm install
+      - run: rm -rf node_modules && npm install
       - run: npm audit --audit-level=critical || true
       - run: npx tsc --noEmit

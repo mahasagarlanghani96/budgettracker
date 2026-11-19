@@ -30,22 +30,42 @@ export default defineConfig({
     {
       name: 'chromium',
       use: { ...devices['Desktop Chrome'] },
+      testIgnore: /authenticated\//,
     },
     {
       name: 'firefox',
       use: { ...devices['Desktop Firefox'] },
+      testIgnore: /authenticated\//,
     },
     {
       name: 'webkit',
       use: { ...devices['Desktop Safari'] },
+      testIgnore: /authenticated\//,
     },
     {
       name: 'mobile-chrome',
       use: { ...devices['Pixel 5'] },
+      testIgnore: /authenticated\//,
     },
     {
       name: 'mobile-safari',
       use: { ...devices['iPhone 13'] },
+      testIgnore: /authenticated\//,
+    },
+    // Authenticated tests — require DATABASE_URL
+    {
+      name: 'auth-setup',
+      testMatch: /auth\.setup\.ts/,
+      use: { ...devices['Desktop Chrome'] },
+    },
+    {
+      name: 'authenticated',
+      testDir: './tests/e2e/authenticated',
+      dependencies: ['auth-setup'],
+      use: {
+        ...devices['Desktop Chrome'],
+        storageState: './tests/.auth/user.json',
+      },
     },
   ],
 

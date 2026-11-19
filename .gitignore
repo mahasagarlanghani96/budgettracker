@@ -8,6 +8,7 @@ public/sw-version.js
 # Test artifacts
 test-results/
 playwright-report/
+tests/.auth/
 blob-report/
 coverage/
 .nyc_output/
