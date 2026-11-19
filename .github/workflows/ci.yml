@@ -18,8 +18,7 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: ${{ env.NODE_VERSION }}
-          cache: 'npm'
-      - run: rm -rf node_modules && npm install
+      - run: rm -rf node_modules package-lock.json && npm install
       - run: npx tsc --noEmit
       - run: npm run lint
 
@@ -31,8 +30,7 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: ${{ env.NODE_VERSION }}
-          cache: 'npm'
-      - run: rm -rf node_modules && npm install
+      - run: rm -rf node_modules package-lock.json && npm install
       - run: npm run test:unit
       - name: Upload test results
         if: always()
@@ -51,8 +49,7 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: ${{ env.NODE_VERSION }}
-          cache: 'npm'
-      - run: rm -rf node_modules && npm install
+      - run: rm -rf node_modules package-lock.json && npm install
       - run: npx playwright install chromium --with-deps
       - run: npm run build
         env:
@@ -91,8 +88,7 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: ${{ env.NODE_VERSION }}
-          cache: 'npm'
-      - run: rm -rf node_modules && npm install
+      - run: rm -rf node_modules package-lock.json && npm install
       - run: npx playwright install firefox webkit --with-deps
       - run: npm run build
         env:
@@ -122,7 +118,6 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: ${{ env.NODE_VERSION }}
-          cache: 'npm'
-      - run: rm -rf node_modules && npm install
+      - run: rm -rf node_modules package-lock.json && npm install
       - run: npm audit --audit-level=critical || true
       - run: npx tsc --noEmit
