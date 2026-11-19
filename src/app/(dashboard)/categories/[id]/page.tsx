@@ -8,7 +8,7 @@ import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { PageLoading, EmptyState } from '@/components/ui/loading';
 import { ListPagination } from '@/components/shared/list-pagination';
-import { formatCurrency, formatDate } from '@/lib/utils';
+import { formatCurrency, formatDate, formatEnum } from '@/lib/utils';
 import { ArrowLeft, Tags } from 'lucide-react';
 import Link from 'next/link';
 
@@ -71,7 +71,7 @@ export default function CategoryDetailPage() {
     <div className="space-y-6">
       <div className="flex items-center gap-3 min-w-0">
         <Link href="/categories">
-          <Button variant="ghost" size="icon"><ArrowLeft className="h-4 w-4" /></Button>
+          <Button variant="ghost" size="icon" aria-label="Back to categories"><ArrowLeft className="h-4 w-4" /></Button>
         </Link>
         <div className="min-w-0 flex-1">
           <h1 className="text-xl sm:text-2xl font-display font-bold text-[var(--text-primary)] truncate">
@@ -142,7 +142,7 @@ export default function CategoryDetailPage() {
                         <TableCell className="text-sm">{tx.description || tx.type}</TableCell>
                         <TableCell className="text-sm">{accountName(tx)}</TableCell>
                         <TableCell>
-                          <Badge variant="outline" className="text-xs">{tx.type.replace(/_/g, ' ')}</Badge>
+                          <Badge variant="outline" className="text-xs">{formatEnum(tx.type)}</Badge>
                         </TableCell>
                         <TableCell className="text-right font-medium tabular-nums">
                           {formatCurrency(tx.amount)}

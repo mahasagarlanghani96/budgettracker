@@ -14,7 +14,7 @@ import { PageLoading } from '@/components/ui/loading';
 import { FormField } from '@/components/forms/FormField';
 import { useResourceForm } from '@/hooks/useResourceForm';
 import { loanUpdateSchema, loanRepaymentInputSchema } from '@/lib/validations/schemas';
-import { formatCurrency, formatDate } from '@/lib/utils';
+import { formatCurrency, formatDate, formatEnum } from '@/lib/utils';
 import { ArrowLeft, Plus, Pencil, Trash2 } from 'lucide-react';
 import { useConfirm } from '@/hooks/use-confirm';
 import Link from 'next/link';
@@ -176,12 +176,12 @@ export default function LoanDetailPage() {
       {ConfirmDialog}
       <div className="space-y-3">
         <div className="flex items-center gap-4">
-          <Link href="/loans"><Button variant="ghost" size="icon"><ArrowLeft className="h-4 w-4" /></Button></Link>
+          <Link href="/loans"><Button variant="ghost" size="icon" aria-label="Back to loans"><ArrowLeft className="h-4 w-4" /></Button></Link>
           <div className="flex-1 min-w-0">
             <h1 className="text-xl sm:text-2xl font-display font-bold text-[var(--text-primary)] truncate">Loan — {person.name}</h1>
             <div className="flex gap-2 mt-1">
-              <Badge variant={loan.direction === 'GIVEN' ? 'success' : 'warning'}>{loan.direction as string}</Badge>
-              <Badge variant={loan.status === 'ACTIVE' ? 'default' : 'secondary'}>{loan.status as string}</Badge>
+              <Badge variant={loan.direction === 'GIVEN' ? 'success' : 'warning'}>{formatEnum(loan.direction as string)}</Badge>
+              <Badge variant={loan.status === 'ACTIVE' ? 'default' : 'secondary'}>{formatEnum(loan.status as string)}</Badge>
             </div>
           </div>
         </div>
@@ -239,8 +239,8 @@ export default function LoanDetailPage() {
                       {(r.notes as string) && <p className="text-xs text-[var(--text-secondary)] mt-0.5 truncate">{r.notes as string}</p>}
                     </div>
                     <div className="flex gap-1 shrink-0">
-                      <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => openEditRepayment(r)}><Pencil className="h-3.5 w-3.5" /></Button>
-                      <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => handleDeleteRepayment(r.id as string)}><Trash2 className="h-3.5 w-3.5" /></Button>
+                      <Button variant="ghost" size="icon" className="h-7 w-7" aria-label="Edit repayment" onClick={() => openEditRepayment(r)}><Pencil className="h-3.5 w-3.5" /></Button>
+                      <Button variant="ghost" size="icon" className="h-7 w-7" aria-label="Delete repayment" onClick={() => handleDeleteRepayment(r.id as string)}><Trash2 className="h-3.5 w-3.5" /></Button>
                     </div>
                   </div>
                 </div>
@@ -265,8 +265,8 @@ export default function LoanDetailPage() {
                     <TableCell>{(r.notes as string) || '—'}</TableCell>
                     <TableCell className="text-right">
                       <div className="flex justify-end gap-1">
-                        <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => openEditRepayment(r)}><Pencil className="h-3.5 w-3.5" /></Button>
-                        <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => handleDeleteRepayment(r.id as string)}><Trash2 className="h-3.5 w-3.5" /></Button>
+                        <Button variant="ghost" size="icon" className="h-7 w-7" aria-label="Edit repayment" onClick={() => openEditRepayment(r)}><Pencil className="h-3.5 w-3.5" /></Button>
+                        <Button variant="ghost" size="icon" className="h-7 w-7" aria-label="Delete repayment" onClick={() => handleDeleteRepayment(r.id as string)}><Trash2 className="h-3.5 w-3.5" /></Button>
                       </div>
                     </TableCell>
                   </TableRow>

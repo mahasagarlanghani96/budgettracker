@@ -60,7 +60,7 @@ export default function NewCommitteePage() {
   return (
     <div className="max-w-2xl mx-auto space-y-6">
       <div className="flex items-center gap-4">
-        <Link href="/committees"><Button variant="ghost" size="icon"><ArrowLeft className="h-4 w-4" /></Button></Link>
+        <Link href="/committees"><Button variant="ghost" size="icon" aria-label="Back to committees"><ArrowLeft className="h-4 w-4" /></Button></Link>
         <h1 className="text-2xl font-display font-bold text-[var(--text-primary)]">New Committee</h1>
       </div>
       <Card>

@@ -8,7 +8,7 @@ import { Select } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { PageLoading, EmptyState } from '@/components/ui/loading';
-import { formatCurrency, formatDate } from '@/lib/utils';
+import { formatCurrency, formatDate, formatEnum } from '@/lib/utils';
 import { Plus, Search, ArrowLeftRight, Pencil, Trash2, Lock, AlertCircle, X } from 'lucide-react';
 import Link from 'next/link';
 import { useConfirm } from '@/hooks/use-confirm';
@@ -241,7 +241,7 @@ export default function TransactionsPage() {
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-2">
                           <Badge variant={typeBadgeVariant[tx.type] || 'outline'} className="text-xs">
-                            {tx.type.replace(/_/g, ' ')}
+                            {formatEnum(tx.type)}
                           </Badge>
                           {tx.category?.name && <span className="text-xs text-[var(--text-secondary)]">{tx.category.name}</span>}
                         </div>
@@ -290,7 +290,7 @@ export default function TransactionsPage() {
                         </TableCell>
                         <TableCell>
                           <Badge variant={typeBadgeVariant[tx.type] || 'outline'} className="text-xs">
-                            {tx.type.replace(/_/g, ' ')}
+                            {formatEnum(tx.type)}
                           </Badge>
                         </TableCell>
                         <TableCell className="text-right font-medium tabular-nums whitespace-nowrap">
@@ -300,9 +300,9 @@ export default function TransactionsPage() {
                           {editable ? (
                             <div className="flex justify-end gap-1">
                               <Link href={`/transactions/${tx.id}/edit`}>
-                                <Button variant="ghost" size="icon"><Pencil className="h-4 w-4" /></Button>
+                                <Button variant="ghost" size="icon" aria-label="Edit transaction"><Pencil className="h-4 w-4" /></Button>
                               </Link>
-                              <Button variant="ghost" size="icon" onClick={() => handleDelete(tx)}><Trash2 className="h-4 w-4" /></Button>
+                              <Button variant="ghost" size="icon" aria-label="Delete transaction" onClick={() => handleDelete(tx)}><Trash2 className="h-4 w-4" /></Button>
                             </div>
                           ) : (
                             <span title="Linked to a Loan/Savings/Investment record — edit from there" className="inline-flex justify-end text-[var(--text-secondary)]">

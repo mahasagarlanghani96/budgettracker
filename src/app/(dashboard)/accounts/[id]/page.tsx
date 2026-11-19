@@ -16,7 +16,7 @@ import { AdvancedSection } from '@/components/forms/AdvancedSection';
 import { useResourceForm } from '@/hooks/useResourceForm';
 import { accountUpdateSchema } from '@/lib/validations/schemas';
 import { SharedAccessSection } from '@/components/shared-access/SharedAccessSection';
-import { formatCurrency, formatDate } from '@/lib/utils';
+import { formatCurrency, formatDate, formatEnum } from '@/lib/utils';
 import { ArrowLeft, Pencil, Trash2 } from 'lucide-react';
 import Link from 'next/link';
 import { useConfirm } from '@/hooks/use-confirm';
@@ -136,7 +136,7 @@ export default function AccountDetailPage() {
       <div className="space-y-3">
         <div className="flex items-center gap-3">
           <Link href="/accounts">
-            <Button variant="ghost" size="icon" className="shrink-0"><ArrowLeft className="h-4 w-4" /></Button>
+            <Button variant="ghost" size="icon" className="shrink-0" aria-label="Back to accounts"><ArrowLeft className="h-4 w-4" /></Button>
           </Link>
           <div className="min-w-0 flex-1">
             <h1 className="text-xl sm:text-2xl font-display font-bold text-[var(--text-primary)] truncate">{account.name as string}</h1>
@@ -195,7 +195,7 @@ export default function AccountDetailPage() {
               {/* Mobile card view */}
               <div className="divide-y divide-[var(--glass-border)] md:hidden">
                 {transactions.map((tx) => {
-                  const typeName = (tx.type as string).replace(/_/g, ' ');
+                  const typeName = formatEnum(tx.type as string);
                   return (
                     <div key={tx.id as string} className="py-3 first:pt-0">
                       <div className="flex items-start justify-between gap-3">
@@ -229,9 +229,9 @@ export default function AccountDetailPage() {
                     {transactions.map((tx) => (
                       <TableRow key={tx.id as string}>
                         <TableCell className="text-sm whitespace-nowrap">{formatDate(tx.transactionDate as string)}</TableCell>
-                        <TableCell className="text-sm">{(tx.description as string) || (tx.type as string).replace(/_/g, ' ')}</TableCell>
+                        <TableCell className="text-sm">{(tx.description as string) || formatEnum(tx.type as string)}</TableCell>
                         <TableCell>
-                          <Badge variant="outline" className="text-xs whitespace-nowrap">{(tx.type as string).replace(/_/g, ' ')}</Badge>
+                          <Badge variant="outline" className="text-xs whitespace-nowrap">{formatEnum(tx.type as string)}</Badge>
                         </TableCell>
                         <TableCell className="text-right font-medium tabular-nums whitespace-nowrap">
                           {formatCurrency((tx.amount as { toString(): string }).toString())}

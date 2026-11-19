@@ -13,7 +13,7 @@ import { FormField } from '@/components/forms/FormField';
 import { AdvancedSection } from '@/components/forms/AdvancedSection';
 import { useResourceForm } from '@/hooks/useResourceForm';
 import { loanSchema } from '@/lib/validations/schemas';
-import { formatCurrency, formatDate } from '@/lib/utils';
+import { formatCurrency, formatDate, formatEnum } from '@/lib/utils';
 import { HandCoins, Plus, ArrowUpRight, ArrowDownRight, X } from 'lucide-react';
 import Link from 'next/link';
 import { ListPagination, slicePage } from '@/components/shared/list-pagination';
@@ -169,10 +169,10 @@ export default function LoansPage() {
                     <CardTitle className="text-base">{loan.person.name}</CardTitle>
                     <div className="flex gap-1">
                       <Badge variant={loan.direction === 'GIVEN' ? 'success' : 'warning'} className="text-xs">
-                        {loan.direction}
+                        {formatEnum(loan.direction)}
                       </Badge>
                       <Badge variant={loan.status === 'ACTIVE' ? 'default' : 'secondary'} className="text-xs">
-                        {loan.status}
+                        {formatEnum(loan.status)}
                       </Badge>
                     </div>
                   </div>

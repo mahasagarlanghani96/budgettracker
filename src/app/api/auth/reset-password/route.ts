@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import bcrypt from 'bcryptjs';
 import { prisma } from '@/lib/prisma';
 import crypto from 'crypto';
+import { rateLimit } from '@/lib/rate-limit';
 
 interface ResetToken {
   email: string;
@@ -23,6 +24,12 @@ function cleanExpired() {
 // POST /api/auth/reset-password — request a reset token
 export async function POST(request: NextRequest) {
   try {
+    const ip = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || 'unknown';
+    const { allowed } = rateLimit(`reset-password:${ip}`, 5, 60_000);
+    if (!allowed) {
+      return NextResponse.json({ error: 'Too many requests. Try again later.' }, { status: 429 });
+    }
+
     const { email } = await request.json();
     if (!email || typeof email !== 'string') {
       return NextResponse.json({ error: 'Email is required' }, { status: 400 });
@@ -33,7 +40,7 @@ export async function POST(request: NextRequest) {
 
     // Always return success to prevent email enumeration
     if (!user) {
-      return NextResponse.json({ message: 'If the email exists, a reset token has been generated.' });
+      return NextResponse.json({ message: 'If the email exists, a reset link has been sent.' });
     }
 
     cleanExpired();
@@ -45,12 +52,9 @@ export async function POST(request: NextRequest) {
       expiresAt: Date.now() + TOKEN_EXPIRY_MS,
     });
 
-    // In production, this token would be emailed. Since there's no email service,
-    // return it directly for admin/dev use.
+    // In production, send this token via email
     return NextResponse.json({
-      message: 'If the email exists, a reset token has been generated.',
-      resetToken: token,
-      expiresIn: '1 hour',
+      message: 'If the email exists, a reset link has been sent.',
     });
   } catch {
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
@@ -60,6 +64,12 @@ export async function POST(request: NextRequest) {
 // PUT /api/auth/reset-password — use the token to set a new password
 export async function PUT(request: NextRequest) {
   try {
+    const ip = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || 'unknown';
+    const { allowed } = rateLimit(`reset-use:${ip}`, 10, 60_000);
+    if (!allowed) {
+      return NextResponse.json({ error: 'Too many requests. Try again later.' }, { status: 429 });
+    }
+
     const { token, password } = await request.json();
 
     if (!token || typeof token !== 'string') {

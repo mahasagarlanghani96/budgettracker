@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useSession } from 'next-auth/react';
 import { PageLoading } from '@/components/ui/loading';
-import { formatCurrency } from '@/lib/utils';
+import { formatCurrency, formatEnum } from '@/lib/utils';
 import {
   Wallet,
   TrendingUp,
@@ -311,13 +311,13 @@ export default function DashboardPage() {
   return (
     <div className="space-y-6">
       {/* Greeting + net flow badge */}
-      <div className="flex items-end justify-between animate-in-view stagger-1">
-        <div>
-          <h1 className="text-[28px] font-display font-bold text-[var(--text-primary)] tracking-[-0.02em]">{getGreeting(firstName)}</h1>
+      <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-3 animate-in-view stagger-1">
+        <div className="min-w-0">
+          <h1 className="text-[28px] font-display font-bold text-[var(--text-primary)] tracking-[-0.02em] truncate">{getGreeting(firstName)}</h1>
           <p className="text-[var(--text-secondary)] text-sm mt-0.5">Your financial overview at a glance</p>
         </div>
         {(income > 0 || expense > 0) && (
-          <div className={`glass flex items-center gap-2 px-4 py-2 text-sm font-bold tabular-nums ${netFlow >= 0 ? 'text-[var(--emerald)]' : 'text-[var(--coral)]'}`}
+          <div className={`glass flex items-center gap-2 px-4 py-2 text-sm font-bold tabular-nums shrink-0 self-start sm:self-auto ${netFlow >= 0 ? 'text-[var(--emerald)]' : 'text-[var(--coral)]'}`}
             style={{ boxShadow: netFlow >= 0 ? '0 0 20px rgba(0,214,143,0.1)' : '0 0 20px rgba(255,92,92,0.1)' }}
           >
             <Zap className="h-4 w-4" />
@@ -401,7 +401,7 @@ export default function DashboardPage() {
 
       {/* Charts row: Spending + Income Breakdown */}
       <div className="grid gap-6 lg:grid-cols-2 animate-in-view stagger-5">
-        <div className="glass">
+        <div className="glass min-w-0 overflow-hidden">
           <SectionHeader title="Spending Breakdown" href="/reports" linkLabel="Details" />
           <div className="px-6 pb-6">
             {data.expenseByCategory.length === 0 ? (
@@ -412,7 +412,7 @@ export default function DashboardPage() {
           </div>
         </div>
 
-        <div className="glass">
+        <div className="glass min-w-0 overflow-hidden">
           <SectionHeader title="Income Breakdown" href="/reports" linkLabel="Details" />
           <div className="px-6 pb-6">
             {data.incomeByCategory.length === 0 ? (
@@ -439,7 +439,7 @@ export default function DashboardPage() {
       {/* Transactions + Savings */}
       <div className="grid gap-6 lg:grid-cols-2">
         {/* Recent Transactions */}
-        <div className="glass animate-in-view stagger-7">
+        <div className="glass animate-in-view stagger-7 min-w-0 overflow-hidden">
           <SectionHeader title="Recent Transactions" href="/transactions" linkLabel="View all" />
           <div className="px-6 pb-6">
             {data.recentTransactions.length === 0 ? (
@@ -459,9 +459,9 @@ export default function DashboardPage() {
                         <Icon className="h-4 w-4" style={{ color: iconColor }} />
                       </div>
                       <div className="min-w-0 flex-1">
-                        <p className="text-sm font-medium text-[var(--text-primary)] truncate">{tx.description || tx.type.replace(/_/g, ' ')}</p>
+                        <p className="text-sm font-medium text-[var(--text-primary)] truncate">{tx.description || formatEnum(tx.type)}</p>
                         <p className="text-[11px] text-[var(--text-tertiary)]">
-                          {tx.category?.name || tx.type.replace(/_/g, ' ')} · {tx.sourceAccount?.name}
+                          {tx.category?.name || formatEnum(tx.type)} · {tx.sourceAccount?.name}
                         </p>
                       </div>
                       <span className="text-sm font-semibold tabular-nums ml-2 whitespace-nowrap" style={{ color: amountColor }}>
@@ -476,7 +476,7 @@ export default function DashboardPage() {
         </div>
 
         {/* Savings Goals */}
-        <div className="glass animate-in-view stagger-8">
+        <div className="glass animate-in-view stagger-8 min-w-0 overflow-hidden">
           <SectionHeader title="Savings Goals" href="/savings" linkLabel="View all" />
           <div className="px-6 pb-6">
             {data.savingsGoals.length === 0 ? (

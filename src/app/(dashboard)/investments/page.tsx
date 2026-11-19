@@ -13,7 +13,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '
 import { FormField } from '@/components/forms/FormField';
 import { useResourceForm } from '@/hooks/useResourceForm';
 import { investmentSchema, investmentUpdateSchema, investmentProfitSchema, investmentCloseSchema } from '@/lib/validations/schemas';
-import { formatCurrency, formatDate } from '@/lib/utils';
+import { formatCurrency, formatDate, formatEnum } from '@/lib/utils';
 import { useConfirm } from '@/hooks/use-confirm';
 import { TrendingUp, Plus, ArrowUp, ArrowDown, Pencil, Trash2, DollarSign, History, XCircle } from 'lucide-react';
 import { ListPagination, slicePage } from '@/components/shared/list-pagination';
@@ -234,7 +234,7 @@ export default function InvestmentsPage() {
                   <div className="flex items-start justify-between gap-2">
                     <div>
                       <p className="font-medium">{inv.name}</p>
-                      <p className="text-xs text-[var(--text-secondary)]">{inv.investmentType}</p>
+                      <p className="text-xs text-[var(--text-secondary)]">{formatEnum(inv.investmentType)}</p>
                     </div>
                     <Badge variant={inv.isActive ? 'success' : 'secondary'} className="text-xs">{inv.isActive ? 'Active' : 'Inactive'}</Badge>
                   </div>
@@ -281,7 +281,7 @@ export default function InvestmentsPage() {
                           {inv.isHistorical && <Badge variant="outline" className="ml-2 text-[10px]">Historical</Badge>}
                         </div>
                       </TableCell>
-                      <TableCell>{inv.investmentType}</TableCell>
+                      <TableCell>{formatEnum(inv.investmentType)}</TableCell>
                       <TableCell className="text-right tabular-nums">{formatCurrency(inv.amountInvested.toString())}</TableCell>
                       <TableCell className="text-right tabular-nums">{formatCurrency(inv.currentValue.toString())}</TableCell>
                       <TableCell className="text-right">

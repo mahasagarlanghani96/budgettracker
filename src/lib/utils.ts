@@ -74,6 +74,10 @@ export function formatDateTime(date: Date | string): string {
   return format(d, 'dd MMM yyyy, hh:mm a');
 }
 
+export function formatEnum(val: string): string {
+  return val.split('_').map(w => w.charAt(0) + w.slice(1).toLowerCase()).join(' ');
+}
+
 export type DateFilterType = 'today' | 'week' | 'month' | 'year' | 'custom' | 'all';
 
 export function getDateRange(

@@ -4,7 +4,7 @@ import { useEffect, useState, useCallback } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
-import { formatCurrency, formatDate } from '@/lib/utils';
+import { formatCurrency, formatDate, formatEnum } from '@/lib/utils';
 import { Search as SearchIcon, X } from 'lucide-react';
 import Link from 'next/link';
 
@@ -65,7 +65,7 @@ export default function SearchPage() {
           autoFocus
         />
         {query && (
-          <button type="button" className="absolute right-3 top-1/2 -translate-y-1/2 p-1 rounded-full bg-[var(--glass-bg)] hover:bg-[var(--glass-bg)]-foreground/20" onClick={() => setQuery('')}>
+          <button type="button" aria-label="Clear search" className="absolute right-3 top-1/2 -translate-y-1/2 p-1 rounded-full bg-[var(--glass-bg)] hover:opacity-80" onClick={() => setQuery('')}>
             <X className="h-4 w-4" />
           </button>
         )}
@@ -84,7 +84,7 @@ export default function SearchPage() {
             {results.accounts.map((a) => (
               <Link key={a.id} href={`/accounts/${a.id}`} className="flex items-center justify-between p-2 rounded-md hover:bg-[var(--glass-bg)] transition-colors">
                 <span className="font-medium">{a.name}</span>
-                <Badge variant="secondary" className="text-xs">{a.accountType.replace(/_/g, ' ')}</Badge>
+                <Badge variant="secondary" className="text-xs">{formatEnum(a.accountType)}</Badge>
               </Link>
             ))}
           </CardContent>
@@ -131,7 +131,7 @@ export default function SearchPage() {
                 <div className="min-w-0 flex-1">
                   <p className="font-medium text-sm truncate">{t.description || 'No description'}</p>
                   <p className="text-xs text-[var(--text-secondary)] mt-0.5">
-                    {formatDate(t.transactionDate)} · {t.type.replace(/_/g, ' ')}
+                    {formatDate(t.transactionDate)} · {formatEnum(t.type)}
                   </p>
                   {(t.category || t.person) && (
                     <p className="text-xs text-[var(--text-tertiary)] mt-0.5">
@@ -154,7 +154,7 @@ export default function SearchPage() {
               <Link key={inv.id} href="/investments" className="flex items-start justify-between gap-3 p-2.5 rounded-lg hover:bg-[var(--glass-bg)] transition-colors">
                 <div className="min-w-0 flex-1">
                   <p className="font-medium text-sm truncate">{inv.name}</p>
-                  <p className="text-xs text-[var(--text-secondary)]">{inv.investmentType.replace(/_/g, ' ')}</p>
+                  <p className="text-xs text-[var(--text-secondary)]">{formatEnum(inv.investmentType)}</p>
                 </div>
                 <div className="text-right shrink-0">
                   <span className="text-sm font-medium tabular-nums">{formatCurrency(inv.amountInvested.toString())}</span>
@@ -174,11 +174,11 @@ export default function SearchPage() {
               <Link key={l.id} href={`/loans/${l.id}`} className="flex items-start justify-between gap-3 p-2.5 rounded-lg hover:bg-[var(--glass-bg)] transition-colors">
                 <div className="min-w-0 flex-1">
                   <p className="font-medium text-sm truncate">{l.person.name}</p>
-                  <p className="text-xs text-[var(--text-secondary)]">{l.direction.replace(/_/g, ' ')}</p>
+                  <p className="text-xs text-[var(--text-secondary)]">{formatEnum(l.direction)}</p>
                 </div>
                 <div className="text-right shrink-0">
                   <span className="text-sm font-medium tabular-nums">{formatCurrency(l.amount.toString())}</span>
-                  <div className="mt-0.5"><Badge variant={l.status === 'ACTIVE' ? 'success' : 'secondary'} className="text-[10px]">{l.status}</Badge></div>
+                  <div className="mt-0.5"><Badge variant={l.status === 'ACTIVE' ? 'success' : 'secondary'} className="text-[10px]">{formatEnum(l.status)}</Badge></div>
                 </div>
               </Link>
             ))}
@@ -194,9 +194,9 @@ export default function SearchPage() {
               <Link key={c.id} href={`/committees/${c.id}`} className="flex items-center justify-between p-2 rounded-md hover:bg-[var(--glass-bg)] transition-colors">
                 <div>
                   <p className="font-medium text-sm">{c.name}</p>
-                  <p className="text-xs text-[var(--text-secondary)]">{c.type} · {formatCurrency(c.monthlyContribution.toString())}/mo</p>
+                  <p className="text-xs text-[var(--text-secondary)]">{c.type === 'WAIYK' ? 'WAIYK' : formatEnum(c.type)} · {formatCurrency(c.monthlyContribution.toString())}/mo</p>
                 </div>
-                <Badge variant={c.status === 'ACTIVE' ? 'success' : 'secondary'} className="text-xs">{c.status}</Badge>
+                <Badge variant={c.status === 'ACTIVE' ? 'success' : 'secondary'} className="text-xs">{formatEnum(c.status)}</Badge>
               </Link>
             ))}
           </CardContent>

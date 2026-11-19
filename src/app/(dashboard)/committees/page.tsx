@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { PageLoading, EmptyState } from '@/components/ui/loading';
-import { formatCurrency, formatDate } from '@/lib/utils';
+import { formatCurrency, formatDate, formatEnum } from '@/lib/utils';
 import { Users, Plus } from 'lucide-react';
 import Link from 'next/link';
 import { ListPagination, slicePage } from '@/components/shared/list-pagination';
@@ -66,8 +66,8 @@ export default function CommitteesPage() {
                   <div className="flex items-center justify-between">
                     <CardTitle className="text-base">{c.name}</CardTitle>
                     <div className="flex gap-1">
-                      <Badge variant={c.type === 'WAIYK' ? 'warning' : 'secondary'} className="text-xs">{c.type}</Badge>
-                      <Badge variant={c.status === 'ACTIVE' ? 'success' : 'outline'} className="text-xs">{c.status}</Badge>
+                      <Badge variant={c.type === 'WAIYK' ? 'warning' : 'secondary'} className="text-xs">{c.type === 'WAIYK' ? 'WAIYK' : formatEnum(c.type)}</Badge>
+                      <Badge variant={c.status === 'ACTIVE' ? 'success' : 'outline'} className="text-xs">{formatEnum(c.status)}</Badge>
                     </div>
                   </div>
                 </CardHeader>

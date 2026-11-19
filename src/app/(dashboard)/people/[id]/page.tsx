@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { PageLoading } from '@/components/ui/loading';
-import { formatCurrency, formatDate } from '@/lib/utils';
+import { formatCurrency, formatDate, formatEnum } from '@/lib/utils';
 import { ArrowLeft, ArrowUpRight, ArrowDownRight, HandCoins, Users } from 'lucide-react';
 import Link from 'next/link';
 
@@ -136,7 +136,7 @@ export default function PersonDetailPage() {
     <div className="space-y-6">
       <div className="flex items-center gap-3 min-w-0">
         <Link href="/people">
-          <Button variant="ghost" size="icon"><ArrowLeft className="h-4 w-4" /></Button>
+          <Button variant="ghost" size="icon" aria-label="Back to people"><ArrowLeft className="h-4 w-4" /></Button>
         </Link>
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2 min-w-0">
@@ -203,7 +203,7 @@ export default function PersonDetailPage() {
                 <div key={t.type} className="flex items-center justify-between px-3 py-2 bg-[var(--glass-bg)] rounded-md">
                   <div className="flex items-center gap-2">
                     <Badge variant={typeBadgeVariant[t.type] || 'outline'} className="text-xs">
-                      {t.type.replace(/_/g, ' ')}
+                      {formatEnum(t.type)}
                     </Badge>
                     <span className="text-xs text-[var(--text-secondary)]">&times;{t.count}</span>
                   </div>
@@ -248,8 +248,8 @@ export default function PersonDetailPage() {
                   <div className="flex items-start justify-between gap-3">
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center gap-2">
-                        <Badge variant={loan.direction === 'GIVEN' ? 'success' : 'warning'} className="text-[10px]">{loan.direction}</Badge>
-                        <Badge variant={loan.status === 'ACTIVE' ? 'default' : 'secondary'} className="text-[10px]">{loan.status}</Badge>
+                        <Badge variant={loan.direction === 'GIVEN' ? 'success' : 'warning'} className="text-[10px]">{formatEnum(loan.direction)}</Badge>
+                        <Badge variant={loan.status === 'ACTIVE' ? 'default' : 'secondary'} className="text-[10px]">{formatEnum(loan.status)}</Badge>
                       </div>
                       <p className="text-xs text-[var(--text-secondary)] mt-1">{formatDate(loan.transactionDate)} · {loan.account.name}</p>
                       <p className="text-xs text-[var(--text-secondary)]">{loan._count.repayments} repayment{loan._count.repayments !== 1 ? 's' : ''}</p>
@@ -282,7 +282,7 @@ export default function PersonDetailPage() {
                       <TableCell>
                         <Link href={`/loans/${loan.id}`}>
                           <Badge variant={loan.direction === 'GIVEN' ? 'success' : 'warning'} className="text-xs cursor-pointer">
-                            {loan.direction}
+                            {formatEnum(loan.direction)}
                           </Badge>
                         </Link>
                       </TableCell>
@@ -290,7 +290,7 @@ export default function PersonDetailPage() {
                       <TableCell className="text-sm">{loan.account.name}</TableCell>
                       <TableCell>
                         <Badge variant={loan.status === 'ACTIVE' ? 'default' : 'secondary'} className="text-xs">
-                          {loan.status}
+                          {formatEnum(loan.status)}
                         </Badge>
                       </TableCell>
                       <TableCell className="text-sm tabular-nums">{loan._count.repayments}</TableCell>
@@ -323,8 +323,8 @@ export default function PersonDetailPage() {
                     <div className="min-w-0 flex-1">
                       <p className="text-sm font-medium truncate">{m.committee.name}</p>
                       <div className="flex items-center gap-2 mt-0.5">
-                        <span className="text-xs text-[var(--text-secondary)]">{m.committee.type}</span>
-                        <Badge variant={m.committee.status === 'ACTIVE' ? 'success' : 'secondary'} className="text-[10px]">{m.committee.status}</Badge>
+                        <span className="text-xs text-[var(--text-secondary)]">{m.committee.type === 'WAIYK' ? 'WAIYK' : formatEnum(m.committee.type)}</span>
+                        <Badge variant={m.committee.status === 'ACTIVE' ? 'success' : 'secondary'} className="text-[10px]">{formatEnum(m.committee.status)}</Badge>
                       </div>
                       <p className="text-xs text-[var(--text-secondary)] mt-0.5">{m.slots} slot{m.slots !== 1 ? 's' : ''}</p>
                     </div>
@@ -353,10 +353,10 @@ export default function PersonDetailPage() {
                           {m.committee.name}
                         </Link>
                       </TableCell>
-                      <TableCell className="text-sm">{m.committee.type}</TableCell>
+                      <TableCell className="text-sm">{m.committee.type === 'WAIYK' ? 'WAIYK' : formatEnum(m.committee.type)}</TableCell>
                       <TableCell>
                         <Badge variant={m.committee.status === 'ACTIVE' ? 'success' : 'secondary'} className="text-xs">
-                          {m.committee.status}
+                          {formatEnum(m.committee.status)}
                         </Badge>
                       </TableCell>
                       <TableCell className="text-sm tabular-nums">{m.slots}</TableCell>
@@ -395,9 +395,9 @@ export default function PersonDetailPage() {
                   <div key={tx.id} className={`py-3 first:pt-0 ${tx.isHistorical ? 'opacity-50' : ''}`}>
                     <div className="flex items-start justify-between gap-3">
                       <div className="min-w-0 flex-1">
-                        <p className="text-sm font-medium truncate">{tx.description || tx.type.replace(/_/g, ' ')}</p>
+                        <p className="text-sm font-medium truncate">{tx.description || formatEnum(tx.type)}</p>
                         <div className="flex items-center gap-2 mt-0.5">
-                          <Badge variant={typeBadgeVariant[tx.type] || 'outline'} className="text-[10px]">{tx.type.replace(/_/g, ' ')}</Badge>
+                          <Badge variant={typeBadgeVariant[tx.type] || 'outline'} className="text-[10px]">{formatEnum(tx.type)}</Badge>
                         </div>
                         <p className="text-xs text-[var(--text-secondary)] mt-0.5">
                           {formatDate(tx.transactionDate)} · {tx.sourceAccount?.name || tx.destAccount?.name || '—'}
@@ -427,7 +427,7 @@ export default function PersonDetailPage() {
                         <TableCell className="text-sm">{tx.description || tx.type}</TableCell>
                         <TableCell>
                           <Badge variant={typeBadgeVariant[tx.type] || 'outline'} className="text-xs">
-                            {tx.type.replace(/_/g, ' ')}
+                            {formatEnum(tx.type)}
                           </Badge>
                         </TableCell>
                         <TableCell className="text-sm text-[var(--text-secondary)]">
