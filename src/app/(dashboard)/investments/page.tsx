@@ -26,6 +26,8 @@ interface Investment {
   currentValue: { toString(): string };
   profitLoss: string;
   profitLossPercent: number;
+  totalReturned: string;
+  totalTax: string;
   status: string;
   investmentDate: string;
   accountId: string;
@@ -200,9 +202,18 @@ export default function InvestmentsPage() {
   if (loading) return <PageLoading />;
 
   const activeInvestments = investments.filter((i) => i.isActive);
-  const totalInvested = activeInvestments.reduce((s, i) => s + parseFloat(i.amountInvested.toString()), 0);
-  const totalCurrent = activeInvestments.reduce((s, i) => s + parseFloat(i.currentValue.toString()), 0);
-  const totalPL = totalCurrent - totalInvested;
+  const closedInvestments = investments.filter((i) => !i.isActive);
+
+  const activeInvested = activeInvestments.reduce((s, i) => s + parseFloat(i.amountInvested.toString()), 0);
+  const activeCurrent = activeInvestments.reduce((s, i) => s + parseFloat(i.currentValue.toString()), 0);
+  const activePL = activeCurrent - activeInvested;
+
+  const allInvested = investments.reduce((s, i) => s + parseFloat(i.amountInvested.toString()), 0);
+  const allReturned = investments.reduce((s, i) => s + parseFloat(i.totalReturned), 0);
+  const allTax = investments.reduce((s, i) => s + parseFloat(i.totalTax), 0);
+  const overallPL = investments.reduce((s, i) => s + parseFloat(i.profitLoss), 0);
+  const overallPLPercent = allInvested > 0 ? Math.round((overallPL / allInvested) * 10000) / 100 : 0;
+
   const accountOptions = accounts.map((a) => ({ value: a.id, label: a.name }));
   const paginatedInvestments = slicePage(investments, page, pageSize);
 
@@ -214,10 +225,28 @@ export default function InvestmentsPage() {
         <Button onClick={() => setShowCreate(true)}><Plus className="h-4 w-4 mr-2" /> Add Investment</Button>
       </div>
 
-      <div className="grid gap-4 sm:grid-cols-3">
-        <Card><CardContent className="pt-6"><p className="text-xs text-[var(--text-secondary)]">Total Invested</p><p className="text-xl font-bold tabular-nums">{formatCurrency(totalInvested.toString())}</p></CardContent></Card>
-        <Card><CardContent className="pt-6"><p className="text-xs text-[var(--text-secondary)]">Current Value</p><p className="text-xl font-bold tabular-nums">{formatCurrency(totalCurrent.toString())}</p></CardContent></Card>
-        <Card><CardContent className="pt-6"><p className="text-xs text-[var(--text-secondary)]">Profit / Loss</p><p className={`text-xl font-bold tabular-nums ${totalPL >= 0 ? 'text-[var(--emerald)]' : 'text-[var(--coral)]'}`}>{totalPL >= 0 ? '+' : ''}{formatCurrency(totalPL.toString())}</p></CardContent></Card>
+      {/* Active Portfolio Summary */}
+      {activeInvestments.length > 0 && (
+        <div>
+          <p className="text-xs font-medium text-[var(--text-secondary)] uppercase tracking-wider mb-2">Active Portfolio ({activeInvestments.length})</p>
+          <div className="grid gap-4 sm:grid-cols-3">
+            <Card><CardContent className="pt-6"><p className="text-xs text-[var(--text-secondary)]">Invested</p><p className="text-xl font-bold tabular-nums">{formatCurrency(activeInvested.toString())}</p></CardContent></Card>
+            <Card><CardContent className="pt-6"><p className="text-xs text-[var(--text-secondary)]">Current Value</p><p className="text-xl font-bold tabular-nums">{formatCurrency(activeCurrent.toString())}</p></CardContent></Card>
+            <Card><CardContent className="pt-6"><p className="text-xs text-[var(--text-secondary)]">Unrealized P/L</p><p className={`text-xl font-bold tabular-nums ${activePL >= 0 ? 'text-[var(--emerald)]' : 'text-[var(--coral)]'}`}>{activePL >= 0 ? '+' : ''}{formatCurrency(activePL.toString())}</p></CardContent></Card>
+          </div>
+        </div>
+      )}
+
+      {/* Overall Summary */}
+      <div>
+        <p className="text-xs font-medium text-[var(--text-secondary)] uppercase tracking-wider mb-2">Overall ({investments.length} total — {activeInvestments.length} active, {closedInvestments.length} closed)</p>
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
+          <Card><CardContent className="pt-5 pb-4"><p className="text-xs text-[var(--text-secondary)]">Total Invested</p><p className="text-lg font-bold tabular-nums">{formatCurrency(allInvested.toString())}</p></CardContent></Card>
+          <Card><CardContent className="pt-5 pb-4"><p className="text-xs text-[var(--text-secondary)]">Total Returned</p><p className="text-lg font-bold tabular-nums">{formatCurrency(allReturned.toString())}</p></CardContent></Card>
+          <Card><CardContent className="pt-5 pb-4"><p className="text-xs text-[var(--text-secondary)]">Tax Paid</p><p className="text-lg font-bold tabular-nums text-[var(--text-secondary)]">{formatCurrency(allTax.toString())}</p></CardContent></Card>
+          <Card><CardContent className="pt-5 pb-4"><p className="text-xs text-[var(--text-secondary)]">Net P/L</p><p className={`text-lg font-bold tabular-nums ${overallPL >= 0 ? 'text-[var(--emerald)]' : 'text-[var(--coral)]'}`}>{overallPL >= 0 ? '+' : ''}{formatCurrency(overallPL.toString())}</p></CardContent></Card>
+          <Card><CardContent className="pt-5 pb-4"><p className="text-xs text-[var(--text-secondary)]">Return %</p><p className={`text-lg font-bold tabular-nums ${overallPLPercent >= 0 ? 'text-[var(--emerald)]' : 'text-[var(--coral)]'}`}>{overallPLPercent >= 0 ? '+' : ''}{overallPLPercent}%</p></CardContent></Card>
+        </div>
       </div>
 
       {investments.length === 0 ? (
@@ -228,21 +257,32 @@ export default function InvestmentsPage() {
         <div className="space-y-3 md:hidden">
           {paginatedInvestments.map((inv) => {
             const pl = parseFloat(inv.profitLoss);
+            const returned = parseFloat(inv.totalReturned);
+            const tax = parseFloat(inv.totalTax);
             return (
               <Card key={inv.id}>
                 <CardContent className="pt-4 pb-3 space-y-2">
                   <div className="flex items-start justify-between gap-2">
                     <div>
                       <p className="font-medium">{inv.name}</p>
-                      <p className="text-xs text-[var(--text-secondary)]">{formatEnum(inv.investmentType)}</p>
+                      <p className="text-xs text-[var(--text-secondary)]">{formatEnum(inv.investmentType)} · {formatDate(inv.investmentDate)}</p>
                     </div>
-                    <Badge variant={inv.isActive ? 'success' : 'secondary'} className="text-xs">{inv.isActive ? 'Active' : 'Inactive'}</Badge>
+                    <Badge variant={inv.isActive ? 'success' : 'secondary'} className="text-xs">{inv.isActive ? 'Active' : 'Closed'}</Badge>
                   </div>
-                  <div className="grid grid-cols-3 gap-2 text-sm">
-                    <div><p className="text-xs text-[var(--text-secondary)]">Invested</p><p className="font-medium tabular-nums">{formatCurrency(inv.amountInvested.toString())}</p></div>
-                    <div><p className="text-xs text-[var(--text-secondary)]">Current</p><p className="font-medium tabular-nums">{formatCurrency(inv.currentValue.toString())}</p></div>
-                    <div><p className="text-xs text-[var(--text-secondary)]">P/L</p><p className={`font-medium tabular-nums ${pl >= 0 ? 'text-[var(--emerald)]' : 'text-[var(--coral)]'}`}>{pl >= 0 ? '+' : ''}{inv.profitLossPercent}%</p></div>
-                  </div>
+                  {inv.isActive ? (
+                    <div className="grid grid-cols-3 gap-2 text-sm">
+                      <div><p className="text-xs text-[var(--text-secondary)]">Invested</p><p className="font-medium tabular-nums">{formatCurrency(inv.amountInvested.toString())}</p></div>
+                      <div><p className="text-xs text-[var(--text-secondary)]">Current</p><p className="font-medium tabular-nums">{formatCurrency(inv.currentValue.toString())}</p></div>
+                      <div><p className="text-xs text-[var(--text-secondary)]">P/L</p><p className={`font-medium tabular-nums ${pl >= 0 ? 'text-[var(--emerald)]' : 'text-[var(--coral)]'}`}>{pl >= 0 ? '+' : ''}{inv.profitLossPercent}%</p></div>
+                    </div>
+                  ) : (
+                    <div className="space-y-1.5 text-sm">
+                      <div className="flex justify-between"><span className="text-[var(--text-secondary)]">Invested</span><span className="font-medium tabular-nums">{formatCurrency(inv.amountInvested.toString())}</span></div>
+                      <div className="flex justify-between"><span className="text-[var(--text-secondary)]">Total Returned</span><span className="font-medium tabular-nums">{formatCurrency(returned.toString())}</span></div>
+                      {tax > 0 && <div className="flex justify-between"><span className="text-[var(--text-secondary)]">Tax Paid</span><span className="font-medium tabular-nums text-[var(--text-secondary)]">{formatCurrency(tax.toString())}</span></div>}
+                      <div className="flex justify-between border-t pt-1.5"><span className="text-[var(--text-secondary)]">Net P/L</span><span className={`font-bold tabular-nums ${pl >= 0 ? 'text-[var(--emerald)]' : 'text-[var(--coral)]'}`}>{pl >= 0 ? '+' : ''}{formatCurrency(pl.toString())} ({pl >= 0 ? '+' : ''}{inv.profitLossPercent}%)</span></div>
+                    </div>
+                  )}
                   <div className="flex justify-end gap-1 pt-1 border-t">
                     {inv.isActive && <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openProfitRecord(inv)} aria-label="Record profit"><DollarSign className="h-3.5 w-3.5" /></Button>}
                     <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openHistory(inv)} aria-label="Profit history"><History className="h-3.5 w-3.5" /></Button>
@@ -264,7 +304,7 @@ export default function InvestmentsPage() {
                   <TableHead>Name</TableHead>
                   <TableHead>Type</TableHead>
                   <TableHead className="text-right">Invested</TableHead>
-                  <TableHead className="text-right">Current</TableHead>
+                  <TableHead className="text-right">Returned / Current</TableHead>
                   <TableHead className="text-right">P/L</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead className="text-right">Actions</TableHead>
@@ -273,24 +313,35 @@ export default function InvestmentsPage() {
               <TableBody>
                 {paginatedInvestments.map((inv) => {
                   const pl = parseFloat(inv.profitLoss);
+                  const returned = parseFloat(inv.totalReturned);
                   return (
                     <TableRow key={inv.id}>
                       <TableCell>
                         <div>
                           <span className="font-medium">{inv.name}</span>
                           {inv.isHistorical && <Badge variant="outline" className="ml-2 text-[10px]">Historical</Badge>}
+                          <p className="text-xs text-[var(--text-secondary)]">{formatDate(inv.investmentDate)}</p>
                         </div>
                       </TableCell>
                       <TableCell>{formatEnum(inv.investmentType)}</TableCell>
                       <TableCell className="text-right tabular-nums">{formatCurrency(inv.amountInvested.toString())}</TableCell>
-                      <TableCell className="text-right tabular-nums">{formatCurrency(inv.currentValue.toString())}</TableCell>
-                      <TableCell className="text-right">
-                        <span className={`inline-flex items-center gap-1 tabular-nums ${pl >= 0 ? 'text-[var(--emerald)]' : 'text-[var(--coral)]'}`}>
-                          {pl >= 0 ? <ArrowUp className="h-3 w-3" /> : <ArrowDown className="h-3 w-3" />}
-                          {inv.profitLossPercent}%
-                        </span>
+                      <TableCell className="text-right tabular-nums">
+                        {inv.isActive ? (
+                          formatCurrency(inv.currentValue.toString())
+                        ) : (
+                          <span title={`Total returned from this investment`}>{formatCurrency(returned.toString())}</span>
+                        )}
                       </TableCell>
-                      <TableCell><Badge variant={inv.isActive ? 'success' : 'secondary'} className="text-xs">{inv.isActive ? 'Active' : 'Inactive'}</Badge></TableCell>
+                      <TableCell className="text-right">
+                        <div className={`inline-flex flex-col items-end tabular-nums ${pl >= 0 ? 'text-[var(--emerald)]' : 'text-[var(--coral)]'}`}>
+                          <span className="inline-flex items-center gap-1">
+                            {pl >= 0 ? <ArrowUp className="h-3 w-3" /> : <ArrowDown className="h-3 w-3" />}
+                            {formatCurrency(Math.abs(pl).toString())}
+                          </span>
+                          <span className="text-xs">{pl >= 0 ? '+' : ''}{inv.profitLossPercent}%</span>
+                        </div>
+                      </TableCell>
+                      <TableCell><Badge variant={inv.isActive ? 'success' : 'secondary'} className="text-xs">{inv.isActive ? 'Active' : 'Closed'}</Badge></TableCell>
                       <TableCell className="text-right">
                         <div className="flex justify-end gap-1">
                           {inv.isActive && <Button variant="ghost" size="icon" onClick={() => openProfitRecord(inv)} title="Record Profit" aria-label="Record profit"><DollarSign className="h-4 w-4" /></Button>}
@@ -469,13 +520,23 @@ export default function InvestmentsPage() {
       <Dialog open={!!closing} onOpenChange={(open) => { if (!open) { setClosing(null); closeForm.reset(); } }}>
         <DialogContent>
           <DialogHeader><DialogTitle>Close Investment — {closing?.name}</DialogTitle></DialogHeader>
-          {closing && (
-            <div className="rounded-md bg-[var(--glass-bg)] px-3 py-2 text-sm space-y-1">
-              <div className="flex justify-between"><span className="text-[var(--text-secondary)]">Amount Invested</span><span className="font-medium tabular-nums">{formatCurrency(closing.amountInvested.toString())}</span></div>
-              <div className="flex justify-between"><span className="text-[var(--text-secondary)]">Current Value</span><span className="font-medium tabular-nums">{formatCurrency(closing.currentValue.toString())}</span></div>
-              <div className="flex justify-between"><span className="text-[var(--text-secondary)]">Total P/L</span><span className={`font-medium tabular-nums ${parseFloat(closing.profitLoss) >= 0 ? 'text-[var(--emerald)]' : 'text-[var(--coral)]'}`}>{parseFloat(closing.profitLoss) >= 0 ? '+' : ''}{formatCurrency(closing.profitLoss)}</span></div>
-            </div>
-          )}
+          {closing && (() => {
+            const invested = parseFloat(closing.amountInvested.toString());
+            const prevReturned = parseFloat(closing.totalReturned);
+            const netReturn = typeof closeForm.form.netAmount === 'number' ? closeForm.form.netAmount : 0;
+            const totalReturn = prevReturned + netReturn;
+            const finalPL = totalReturn - invested;
+            const finalPLPercent = invested > 0 ? Math.round((finalPL / invested) * 10000) / 100 : 0;
+            return (
+              <div className="rounded-md bg-[var(--glass-bg)] px-3 py-2 text-sm space-y-1">
+                <div className="flex justify-between"><span className="text-[var(--text-secondary)]">Amount Invested</span><span className="font-medium tabular-nums">{formatCurrency(invested.toString())}</span></div>
+                {prevReturned > 0 && <div className="flex justify-between"><span className="text-[var(--text-secondary)]">Already Returned (profits)</span><span className="font-medium tabular-nums">{formatCurrency(prevReturned.toString())}</span></div>}
+                <div className="flex justify-between"><span className="text-[var(--text-secondary)]">This Return (net)</span><span className="font-medium tabular-nums">{formatCurrency(netReturn.toString())}</span></div>
+                <div className="flex justify-between border-t pt-1"><span className="text-[var(--text-secondary)]">Total Returned</span><span className="font-medium tabular-nums">{formatCurrency(totalReturn.toString())}</span></div>
+                <div className="flex justify-between"><span className="font-medium">Final P/L</span><span className={`font-bold tabular-nums ${finalPL >= 0 ? 'text-[var(--emerald)]' : 'text-[var(--coral)]'}`}>{finalPL >= 0 ? '+' : ''}{formatCurrency(finalPL.toString())} ({finalPL >= 0 ? '+' : ''}{finalPLPercent}%)</span></div>
+              </div>
+            );
+          })()}
           <form onSubmit={closeForm.handleSubmit} className="space-y-4">
             <div className="grid gap-4 sm:grid-cols-2">
               <FormField label="Return Amount" required error={closeForm.errors.returnAmount}>

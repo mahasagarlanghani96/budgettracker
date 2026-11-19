@@ -8,22 +8,54 @@ import Decimal from 'decimal.js';
 export async function GET() {
   try {
     const session = await requireAuth();
+    const userId = (session.user as { id: string }).id;
 
-    const investments = await prisma.investment.findMany({
-      where: { userId: (session.user as { id: string }).id },
-      include: { account: true },
-      orderBy: { createdAt: 'desc' },
-    });
+    const [investments, returnTxns] = await Promise.all([
+      prisma.investment.findMany({
+        where: { userId },
+        include: { account: true },
+        orderBy: { createdAt: 'desc' },
+      }),
+      prisma.transaction.findMany({
+        where: { userId, type: 'INVESTMENT_RETURN', isDeleted: false },
+        select: {
+          investmentId: true,
+          amount: true,
+          taxAmount: true,
+          sourceAccountId: true,
+          destAccountId: true,
+        },
+      }),
+    ]);
+
+    const returnsByInv = new Map<string, { totalReturned: Decimal; totalTax: Decimal }>();
+    for (const tx of returnTxns) {
+      if (!tx.investmentId) continue;
+      const entry = returnsByInv.get(tx.investmentId) || { totalReturned: new Decimal(0), totalTax: new Decimal(0) };
+      const isLoss = tx.sourceAccountId && !tx.destAccountId;
+      const amt = new Decimal(tx.amount.toString());
+      entry.totalReturned = isLoss ? entry.totalReturned.minus(amt) : entry.totalReturned.plus(amt);
+      if (tx.taxAmount) entry.totalTax = entry.totalTax.plus(new Decimal(tx.taxAmount.toString()));
+      returnsByInv.set(tx.investmentId, entry);
+    }
 
     const investmentsWithPL = investments.map((inv: Record<string, unknown>) => {
       const invested = new Decimal(String(inv.amountInvested));
       const current = new Decimal(String(inv.currentValue ?? inv.amountInvested));
-      const pl = current.minus(invested);
+      const returns = returnsByInv.get(inv.id as string) || { totalReturned: new Decimal(0), totalTax: new Decimal(0) };
+
+      // For closed investments: P/L = total returned - amount invested
+      // For active investments: P/L = current value - amount invested
+      const isActive = inv.isActive as boolean;
+      const pl = isActive ? current.minus(invested) : returns.totalReturned.minus(invested);
       const plPercent = invested.gt(0) ? pl.div(invested).times(100).toNumber() : 0;
+
       return {
         ...inv,
         profitLoss: pl.toString(),
         profitLossPercent: Math.round(plPercent * 100) / 100,
+        totalReturned: returns.totalReturned.toString(),
+        totalTax: returns.totalTax.toString(),
       };
     });
 
