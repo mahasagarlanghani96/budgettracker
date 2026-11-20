@@ -57,6 +57,7 @@ export function PhotoUpload({ name, currentHasPhoto, previewUrl, onPhotoChange, 
           type="button"
           onClick={() => inputRef.current?.click()}
           disabled={disabled || processing}
+          aria-label={processing ? 'Processing photo' : 'Change profile photo'}
           className="absolute inset-0 flex items-center justify-center rounded-full bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer disabled:cursor-not-allowed"
         >
           {processing ? (
@@ -70,6 +71,7 @@ export function PhotoUpload({ name, currentHasPhoto, previewUrl, onPhotoChange, 
           type="file"
           accept="image/jpeg,image/png,image/webp"
           onChange={handleFileSelect}
+          aria-label="Upload profile photo"
           className="hidden"
         />
       </div>

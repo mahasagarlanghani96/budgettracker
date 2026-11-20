@@ -15,11 +15,14 @@ export async function cleanupTestData(userId: string) {
   await prisma.user.deleteMany({ where: { id: userId } });
 }
 
+let counter = 0;
+
 export async function createTestUser() {
+  const unique = `${Date.now()}_${process.pid}_${++counter}`;
   return prisma.user.create({
     data: {
       name: 'Integration Test User',
-      email: `integration_${Date.now()}@test.local`,
+      email: `integration_${unique}@test.local`,
       passwordHash: '$2a$10$placeholder',
     },
   });

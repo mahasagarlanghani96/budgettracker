@@ -72,8 +72,8 @@ test.describe('FIN-QA-0305: Registration page accessibility', () => {
     }
 
     // FIN-BUG-0002 fixed: password toggles now have aria-label
-    // PhotoUpload button may still lack accessible name — at most 1 violation
-    expect(critical.length).toBeLessThanOrEqual(1);
+    // PhotoUpload button now has aria-label — expect 0 critical violations
+    expect(critical.length).toBe(0);
   });
 
   test('all form fields have labels', async ({ page }) => {

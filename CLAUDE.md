@@ -46,6 +46,7 @@ npm run test:regression    # Full regression (unit + component + E2E)
 - FIN-BUG-0001: ~~`formatCurrency(Infinity)` produces corrupted output~~ — FIXED: guard for non-finite values returns `Rs. 0`
 - FIN-BUG-0002: ~~Password toggle button has no `aria-label`~~ — FIXED: added `aria-label` to `PasswordInput`
 - FIN-BUG-0003: ~~Offline page has color-contrast issue~~ — FIXED: darkened paragraph text `#64748b` to `#475569`
+- FIN-BUG-0004: ~~PhotoUpload overlay button has no accessible name~~ — FIXED: added `aria-label` to overlay button and file input
 
 ## Architecture Notes
 - Money uses `Decimal(18,2)` in DB, `Decimal.js` in calculations — never `number` for currency
