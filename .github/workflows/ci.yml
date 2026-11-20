@@ -74,16 +74,11 @@ jobs:
           node-version: ${{ env.NODE_VERSION }}
       - run: rm -rf node_modules package-lock.json && npm install
       - run: npx playwright install chromium --with-deps
-      - run: npm run build
-        env:
-          DATABASE_URL: ${{ secrets.DATABASE_URL }}
-          NEXTAUTH_SECRET: ${{ secrets.NEXTAUTH_SECRET }}
-          NEXTAUTH_URL: ${{ secrets.NEXTAUTH_URL }}
       - run: npx playwright test --project=chromium
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
           NEXTAUTH_SECRET: ${{ secrets.NEXTAUTH_SECRET }}
-          NEXTAUTH_URL: ${{ secrets.NEXTAUTH_URL }}
+          NEXTAUTH_URL: http://localhost:3000
           BASE_URL: http://localhost:3000
           CI: true
       - name: Upload Playwright report
